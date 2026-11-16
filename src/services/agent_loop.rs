@@ -68,6 +68,7 @@ pub struct AgentLoop {
     checkpoint: Option<CheckpointHook>,
     system_prompt: Option<crate::services::system_prompt::SystemPrompt>,
     goals: Option<crate::services::goals::GoalStore>,
+    compaction: Option<crate::services::compaction::CompactionEngine>,
 }
 
 impl AgentLoop {
@@ -82,6 +83,7 @@ impl AgentLoop {
             checkpoint: None,
             system_prompt: None,
             goals: None,
+            compaction: None,
         }
     }
 
@@ -118,6 +120,15 @@ impl AgentLoop {
     /// Inject the live goal as the `goal` assembly variable.
     pub fn with_goals(mut self, goals: crate::services::goals::GoalStore) -> Self {
         self.goals = Some(goals);
+        self
+    }
+
+    /// Run automatic pressure compaction before each step.
+    pub fn with_compaction(
+        mut self,
+        compaction: crate::services::compaction::CompactionEngine,
+    ) -> Self {
+        self.compaction = Some(compaction);
         self
     }
 
@@ -159,6 +170,12 @@ impl AgentLoop {
         }
 
         for step_index in 0..self.max_steps {
+            // Automatic pressure compaction at the step boundary, mirroring
+            // upstream's `agent/pre-step` policy listener.
+            if let (Some(session), Some(compaction)) = (&self.session, &self.compaction) {
+                use crate::services::compaction::CompactionTrigger;
+                let _ = compaction.maybe_compact(session, CompactionTrigger::Pressure)?;
+            }
             if let Some(session) = &self.session {
                 session.append("step/start", serde_json::json!({ "step": step_index + 1 }));
             }

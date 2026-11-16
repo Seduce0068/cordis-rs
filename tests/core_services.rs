@@ -1325,3 +1325,60 @@ async fn compaction_triggers_on_pressure_and_appends_checkpoint() {
     assert_eq!(checkpoints.len(), 1);
     assert_eq!(checkpoints[0].data["trigger"], "pressure");
 }
+
+#[tokio::test]
+async fn agent_loop_compacts_at_step_boundary_under_pressure() {
+    use std::sync::Arc as StdArc;
+
+    use cordis_rs::core_services::{
+        AgentLoop, CompactionConfig, CompactionEngine, LlmRequest, Session, StreamChunk,
+        TokenMeter, provide_llm, provide_tools,
+    };
+
+    let ctx = Context::root("agent-compaction");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let llm = provide_llm(&ctx).await.unwrap();
+    let session = Session::new("auto-compact", None);
+
+    let provider = cordis_rs::core_services::LlmProvider::new(
+        "one",
+        "one-1",
+        StdArc::new(|_request: LlmRequest| {
+            Box::pin(futures::stream::iter(vec![
+                StreamChunk::Text("done".to_string()),
+                StreamChunk::Done,
+            ]))
+        }),
+    );
+    let _p = llm.register(provider);
+    llm.set_default("one");
+
+    // A tiny budget guarantees pressure > threshold after the first user msg.
+    let meter = TokenMeter::new(1);
+    let engine = CompactionEngine::new(
+        CompactionConfig {
+            pressure_threshold: 0.5,
+            head_chars: 2,
+            tail_chars: 2,
+        },
+        meter,
+    )
+    .unwrap();
+
+    let loop_ = AgentLoop::new(llm, tools)
+        .with_session(session.clone())
+        .with_compaction(engine)
+        .with_call_parser(StdArc::new(|_text: &str| Vec::new()));
+    loop_
+        .run("a long prompt that exceeds the tiny budget")
+        .await
+        .unwrap();
+
+    let checkpoints: Vec<_> = session
+        .events()
+        .into_iter()
+        .filter(|event| event.event_type == "compaction/checkpoint")
+        .collect();
+    assert!(!checkpoints.is_empty(), "expected an automatic checkpoint");
+    assert_eq!(checkpoints[0].data["trigger"], "pressure");
+}
