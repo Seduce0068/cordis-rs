@@ -12,6 +12,7 @@ pub mod events;
 pub mod loader;
 pub mod plugin;
 pub mod ports;
+pub mod services;
 
 pub use config::{
     FieldSpec, FieldType, ValidationError, ValidationErrors, ValidationReason,
@@ -29,5 +30,17 @@ pub mod plugin_ports {
         Counts, MountedTodo, RawTodo, SessionEvent, SessionProjections, TodoItem, TodoStatus,
         TodoWriteArgs, TodoWriteResult, ToolExecution, ToolFailure, ToolTodo, Tools, describe,
         mount, to_todo_list,
+    };
+}
+
+/// Core service implementations.
+pub mod core_services {
+    pub use crate::services::sessions::{
+        ProjectionFold, Session, SessionEvent as LoggedSessionEvent, SessionHeader,
+        SessionProjectionRegistry, SessionStore, provide as provide_sessions,
+    };
+    pub use crate::services::tools::{
+        ToolArgs, ToolDefinition, ToolError, ToolExecContext, ToolHandler, ToolNext, ToolOutput,
+        ToolPipeline, ToolRegistry, invoke_blocking, provide as provide_tools,
     };
 }
