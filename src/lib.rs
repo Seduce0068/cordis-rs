@@ -36,6 +36,10 @@ pub mod plugin_ports {
         DeepSeekConfig, LlmDeepSeek, PROVIDER as DEEPSEEK_PROVIDER, mount as mount_llm_deepseek,
         resolve_api_key,
     };
+    pub use crate::ports::message_feedback::{
+        FeedbackError, FeedbackItem, MessageFeedback, MessageFeedbackConfig, MessageFeedbackPlugin,
+        Rating, mount as mount_message_feedback,
+    };
     pub use crate::ports::session_persistence_jsonl::{
         JsonlPersistence, JsonlSessionHandle, PersistedEvent, PersistenceError,
         mount as mount_session_persistence_jsonl,

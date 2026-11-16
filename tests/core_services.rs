@@ -895,3 +895,54 @@ async fn deepseek_provider_requires_api_key() {
     assert!(response.text.contains("authenticated"));
     assert_eq!(response.model, "deepseek-chat");
 }
+
+#[tokio::test]
+async fn message_feedback_validates_notes_and_records_events() {
+    use cordis_rs::plugin_ports::{
+        FeedbackError, FeedbackItem, MessageFeedbackConfig, Rating, mount_message_feedback,
+    };
+
+    let ctx = Context::root("message-feedback");
+    let feedback = mount_message_feedback(&ctx, MessageFeedbackConfig { max_note_bytes: 16 })
+        .await
+        .unwrap();
+
+    let session = cordis_rs::core_services::Session::new("fb-session", None);
+    feedback.register_session(session.clone());
+
+    let item = |version: &str, note: Option<&str>| FeedbackItem {
+        message_id: "msg-1".to_string(),
+        rating: Rating::Positive,
+        note: note.map(str::to_string),
+        version: version.to_string(),
+    };
+
+    // Too-large note is rejected before any event is appended.
+    assert!(matches!(
+        feedback.put("fb-session", item("v1", Some("this note is way too long"))),
+        Err(FeedbackError::NoteTooLarge { .. })
+    ));
+    assert!(feedback.put_events("fb-session").is_empty());
+
+    feedback
+        .put("fb-session", item("v1", Some("good")))
+        .unwrap();
+    assert_eq!(feedback.put_events("fb-session").len(), 1);
+    let event = &feedback.put_events("fb-session")[0];
+    assert_eq!(event.data["rating"], "positive");
+    assert_eq!(event.data["note"], "good");
+
+    // An older/equal version is a conflict.
+    assert!(matches!(
+        feedback.put("fb-session", item("v1", Some("again"))),
+        Err(FeedbackError::VersionConflict { .. })
+    ));
+    feedback.put("fb-session", item("v2", None)).unwrap();
+    assert_eq!(feedback.put_events("fb-session").len(), 2);
+
+    // Unknown session fails.
+    assert!(matches!(
+        feedback.put("missing", item("v1", None)),
+        Err(FeedbackError::SessionNotFound(_))
+    ));
+}

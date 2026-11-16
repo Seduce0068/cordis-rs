@@ -16,3 +16,5 @@ pub mod session_persistence_jsonl;
 pub mod skill_filesystem;
 
 pub mod llm_deepseek;
+
+pub mod message_feedback;
