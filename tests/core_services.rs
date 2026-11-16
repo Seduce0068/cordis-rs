@@ -851,3 +851,47 @@ async fn skill_filesystem_discovers_and_registers_a_provider() {
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[tokio::test]
+async fn deepseek_provider_requires_api_key() {
+    use std::collections::BTreeMap;
+
+    use cordis_rs::core_services::{ChatMessage, LlmRequest, provide_llm};
+    use cordis_rs::plugin_ports::{DeepSeekConfig, mount_llm_deepseek, resolve_api_key};
+
+    let config = DeepSeekConfig {
+        api_key_env: "CORDIS_TEST_KEY".to_string(),
+        model: "deepseek-chat".to_string(),
+        ..Default::default()
+    };
+
+    // Missing key fails the credential gate.
+    let mut env = BTreeMap::new();
+    assert!(resolve_api_key(&config, &env).is_err());
+
+    let ctx = Context::root("deepseek-no-key");
+    let _ = provide_llm(&ctx).await.unwrap();
+    assert!(
+        mount_llm_deepseek(&ctx, config.clone(), env.clone())
+            .await
+            .is_err()
+    );
+
+    // With a key the provider mounts and streams an authenticated response.
+    env.insert("CORDIS_TEST_KEY".to_string(), "sk-test".to_string());
+    assert_eq!(resolve_api_key(&config, &env).unwrap(), "sk-test");
+    let ctx2 = Context::root("deepseek-key");
+    let llm = mount_llm_deepseek(&ctx2, config, env).await.unwrap();
+    let response = llm
+        .stream(
+            Some("deepseek-official"),
+            LlmRequest {
+                model: String::new(),
+                messages: vec![ChatMessage::user("hello")],
+            },
+        )
+        .await
+        .unwrap();
+    assert!(response.text.contains("authenticated"));
+    assert_eq!(response.model, "deepseek-chat");
+}

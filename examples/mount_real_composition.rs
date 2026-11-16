@@ -9,8 +9,8 @@ use cordis_rs::config::Value;
 use cordis_rs::core_services::{provide_fs, provide_tools};
 use cordis_rs::loader::{Composition, PluginFactory, PluginRegistry, VarTable};
 use cordis_rs::plugin_ports::{
-    SkillFsConfig, ToolFsConfig, mount_session_persistence_jsonl, mount_skill_filesystem,
-    mount_tool_fs,
+    DeepSeekConfig, SkillFsConfig, ToolFsConfig, mount_llm_deepseek,
+    mount_session_persistence_jsonl, mount_skill_filesystem, mount_tool_fs,
 };
 use cordis_rs::{Context, Lifecycle};
 
@@ -44,6 +44,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             async move {
                 let _ = mount_session_persistence_jsonl(&ctx, root).await?;
+                Ok(())
+            }
+        }),
+    );
+
+    // llm-deepseek-api-key -> credential-gated provider (demo key supplied).
+    let ctx_for_llm = ctx.clone();
+    registry.register(
+        "@deepseek-ai/dsh-llm-deepseek-api-key",
+        PluginFactory::new(move |_ctx, _config| {
+            let ctx = ctx_for_llm.clone();
+            async move {
+                let mut env = std::collections::BTreeMap::new();
+                env.insert("DEEPSEEK_API_KEY".to_string(), "sk-demo".to_string());
+                let _ = mount_llm_deepseek(&ctx, DeepSeekConfig::default(), env).await?;
                 Ok(())
             }
         }),

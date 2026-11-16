@@ -14,3 +14,5 @@ pub mod tool_bash;
 pub mod session_persistence_jsonl;
 
 pub mod skill_filesystem;
+
+pub mod llm_deepseek;
