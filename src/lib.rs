@@ -109,6 +109,10 @@ pub mod core_services {
         ChatMessage, LlmProvider, LlmRequest, LlmResponse, LlmService, StreamChunk, echo_provider,
         from_async_text, provide as provide_llm,
     };
+    pub use crate::services::permission_presets::{
+        ApprovalPolicy, PermissionPresets, PermissionState, Preset, PresetSpec, SandboxMode,
+        provide as provide_permission_presets,
+    };
     pub use crate::services::pruner::{
         PruneError, PrunedText, PrunerConfig, ToolResultPruner, provide as provide_pruner,
     };

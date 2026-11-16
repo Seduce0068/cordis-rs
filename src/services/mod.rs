@@ -33,3 +33,5 @@ pub mod token_meter;
 pub mod compaction;
 
 pub mod approval;
+
+pub mod permission_presets;

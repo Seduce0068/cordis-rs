@@ -1423,3 +1423,26 @@ async fn approval_fails_closed_and_honors_answerers() {
         Err(ApprovalError::Unavailable)
     ));
 }
+
+#[tokio::test]
+async fn permission_presets_switch_both_knobs() {
+    use cordis_rs::core_services::{
+        ApprovalPolicy, PermissionPresets, Preset, SandboxMode, provide_permission_presets,
+    };
+
+    let ctx = Context::root("permission-presets");
+    let presets: PermissionPresets = provide_permission_presets(&ctx).await.unwrap();
+    assert_eq!(presets.names().len(), 3);
+
+    let state = presets.switch("read-only").unwrap();
+    assert_eq!(state.preset, Some(Preset::ReadOnly));
+    assert_eq!(state.sandbox, SandboxMode::ReadOnly);
+    assert_eq!(state.approval, ApprovalPolicy::Never);
+
+    let state = presets.switch("danger-full-access").unwrap();
+    assert_eq!(state.sandbox, SandboxMode::DangerFullAccess);
+    assert_eq!(state.approval, ApprovalPolicy::Ask); // Auto-style preset asks
+
+    assert!(presets.switch("unknown").is_err());
+    assert_eq!(presets.current().sandbox, SandboxMode::DangerFullAccess);
+}
