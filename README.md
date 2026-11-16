@@ -25,6 +25,9 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 | effect | 逆順解除・single-shot disposer・reentrancy 対策・ネスト効果 |
 | Fiber | `PENDING → LOADING → ACTIVE`、依存喪失で unload、復帰で reload |
 | Plugin | `Plugin` trait + `FunctionPlugin`、`inject` による依存宣言 |
+| コアサービス | `ctx.tools`（registry + pipeline）、`ctx.sessions`（append-only log + projection folds）、`ctx.commands` |
+| 再利用 port | `dsh-tool-todo`、`dsh-command-feedback` |
+| GPUI 連携 | 別リポジトリ `dsh-gpui-client-poc` の `cordis_todo_ui` が `todos` projection を描画 |
 
 ### 意図的な差分
 
@@ -56,4 +59,4 @@ AGPL-3.0-or-later ですが、ここでは上流 MIT との互換性を優先し
 ## 関連
 
 - 旧 PoC（ACP 経由の GPUI クライアント）: `../dsh-gpui-client-poc/`
-- 調査レポート: `../../passkey-gateway/docs/dsh-client-gpui-migration-2026-11-16.md`
+- 調査レポート: ローカル `passkey-gateway/docs/dsh-client-gpui-migration-2026-11-16.md`（非公開）
