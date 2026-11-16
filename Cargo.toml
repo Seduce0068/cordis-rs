@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 description = "Cordis-compatible plugin runtime in Rust (DSH GPUI reimplementation PoC)"
 license = "MIT"
+repository = "https://github.com/Seduce0068/cordis-rs"
+homepage = "https://github.com/Seduce0068/cordis-rs"
+documentation = "https://docs.rs/cordis-rs"
 
 [dependencies]
 async-trait = "0.1"
