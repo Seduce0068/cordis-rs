@@ -299,3 +299,56 @@ async fn llm_registry_streams_and_agent_loop_uses_tools() {
 
     assert!(llm.names().contains(&"echo".to_string()));
 }
+
+#[tokio::test]
+async fn working_directory_tool_reads_and_changes_cwd() {
+    use cordis_rs::core_services::{ToolExecContext, ToolRegistry, provide_tools};
+    use cordis_rs::plugin_ports::{
+        WorkingDirectory, execute_working_directory, mount_working_directory,
+    };
+
+    let ctx = Context::root("working-directory-port");
+    let (registry, _pipeline) = provide_tools(&ctx).await.unwrap();
+    assert!(ctx.get::<ToolRegistry>("tools").is_some());
+
+    let directory = WorkingDirectory::new();
+    directory.ensure("agent-1", "/tmp/base");
+
+    let read = execute_working_directory(
+        &directory,
+        &serde_json::json!({}),
+        &ToolExecContext::agent("agent-1"),
+    )
+    .unwrap();
+    assert_eq!(read.rendered, ["/tmp/base"]);
+
+    let changed = execute_working_directory(
+        &directory,
+        &serde_json::json!({ "cd": "sub" }),
+        &ToolExecContext::agent("agent-1"),
+    )
+    .unwrap();
+    assert_eq!(changed.rendered, ["/tmp/base/sub"]);
+    assert_eq!(
+        directory.get("agent-1"),
+        Some(std::path::PathBuf::from("/tmp/base/sub"))
+    );
+
+    let empty = execute_working_directory(
+        &directory,
+        &serde_json::json!({ "cd": "" }),
+        &ToolExecContext::agent("agent-1"),
+    );
+    assert!(empty.is_err());
+
+    let no_agent = execute_working_directory(
+        &directory,
+        &serde_json::json!({}),
+        &ToolExecContext::anonymous(),
+    );
+    assert!(no_agent.is_err());
+
+    // Mount variant registers the tool on the shared tools seam.
+    let _mounted = mount_working_directory(&ctx).await.unwrap();
+    assert!(registry.names().contains(&"working_directory".to_string()));
+}

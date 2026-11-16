@@ -35,6 +35,10 @@ pub mod plugin_ports {
         TodoWriteArgs, TodoWriteResult, ToolExecution, ToolFailure, ToolTodo, Tools, describe,
         mount, to_todo_list,
     };
+    pub use crate::ports::tool_working_directory::{
+        DESCRIPTION as WORKING_DIRECTORY_DESCRIPTION, ToolWorkingDirectory, WorkingDirectory,
+        execute as execute_working_directory, mount as mount_working_directory,
+    };
 }
 
 /// Core service implementations.
