@@ -228,10 +228,20 @@ impl CheckpointCursor {
 
     /// Persist the cursor so a restarted process resumes from the same event.
     pub fn save(&self, path: impl AsRef<std::path::Path>) -> crate::Result<()> {
+        let path = path.as_ref();
         let written = *self.written.lock().expect("checkpoint cursor poisoned");
         let json = serde_json::json!({ "written": written });
-        std::fs::write(path, json.to_string())
-            .map_err(|error| crate::Error::Other(error.to_string()))
+
+        // Write to a sibling temp file and rename it into place. A crash
+        // between write and rename leaves the previous cursor intact rather
+        // than a half-written file that would reset progress to zero.
+        let temp = path.with_extension("tmp");
+        std::fs::write(&temp, json.to_string())
+            .map_err(|error| crate::Error::Other(error.to_string()))?;
+        std::fs::rename(&temp, path).map_err(|error| {
+            let _ = std::fs::remove_file(&temp);
+            crate::Error::Other(error.to_string())
+        })
     }
 
     /// Restore a cursor previously written by `save`. A missing or malformed

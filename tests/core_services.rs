@@ -794,3 +794,30 @@ async fn checkpoint_cursor_survives_restart() {
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[tokio::test]
+async fn checkpoint_cursor_save_is_atomic_and_overwrites_cleanly() {
+    use cordis_rs::core_services::{CheckpointCursor, Session};
+
+    let dir = std::env::temp_dir().join(format!("cordis-cursor-atomic-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cursor_path = dir.join("cursor.json");
+
+    let session = Session::new("atomic", None);
+    let cursor = CheckpointCursor::new();
+
+    // First save.
+    session.append("a", serde_json::json!({}));
+    cursor.commit(cursor.pending(&session).len());
+    cursor.save(&cursor_path).unwrap();
+    assert_eq!(CheckpointCursor::load(&cursor_path).written(), 1);
+
+    // Second save overwrites the existing file without leaving a temp file.
+    session.append("b", serde_json::json!({}));
+    cursor.commit(cursor.pending(&session).len());
+    cursor.save(&cursor_path).unwrap();
+    assert_eq!(CheckpointCursor::load(&cursor_path).written(), 2);
+    assert!(!cursor_path.with_extension("tmp").exists());
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}
