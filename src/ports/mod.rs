@@ -20,3 +20,5 @@ pub mod llm_deepseek;
 pub mod message_feedback;
 
 pub mod tool_subagent;
+
+pub mod feedback_producer;

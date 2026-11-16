@@ -10,8 +10,9 @@ use cordis_rs::core_services::{provide_fs, provide_tools};
 use cordis_rs::loader::{Composition, PluginFactory, PluginRegistry, VarTable};
 use cordis_rs::plugin_ports::{
     DeepSeekConfig, MessageFeedbackConfig, SkillFsConfig, ToolFsConfig, ToolSubagentConfig,
-    mount_llm_deepseek, mount_message_feedback, mount_session_persistence_jsonl,
-    mount_skill_filesystem, mount_tool_fs, mount_tool_subagent,
+    mount_feedback_producer, mount_llm_deepseek, mount_message_feedback,
+    mount_session_persistence_jsonl, mount_skill_filesystem, mount_tool_fs, mount_tool_subagent,
+    turn_stopping_event,
 };
 use cordis_rs::{Context, Lifecycle};
 
@@ -60,6 +61,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut env = std::collections::BTreeMap::new();
                 env.insert("DEEPSEEK_API_KEY".to_string(), "sk-demo".to_string());
                 let _ = mount_llm_deepseek(&ctx, DeepSeekConfig::default(), env).await?;
+                Ok(())
+            }
+        }),
+    );
+
+    // snapshot-feedback-producer -> turn-stopping listener.
+    let ctx_for_producer = ctx.clone();
+    registry.register(
+        "./feedback-producer.mjs",
+        PluginFactory::new(move |_ctx, _config| {
+            let ctx = ctx_for_producer.clone();
+            async move {
+                let event = turn_stopping_event();
+                mount_feedback_producer(&ctx, event).await?;
                 Ok(())
             }
         }),
@@ -142,8 +157,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     assert!(report.failed.is_empty());
     assert!(
-        !report.skipped_unknown.is_empty(),
-        "fixture has unported plugins"
+        report.skipped_unknown.is_empty(),
+        "all fixture entries should be mapped"
     );
 
     let _ = std::fs::remove_dir_all("/tmp/cordis-real");

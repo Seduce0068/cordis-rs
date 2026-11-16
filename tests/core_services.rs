@@ -992,3 +992,60 @@ async fn tool_subagent_delegates_with_depth_cap() {
         .unwrap_err();
     assert!(error.to_string().contains("depth"));
 }
+
+#[tokio::test]
+async fn feedback_producer_records_log_only_feedback() {
+    use cordis_rs::core_services::{
+        CommandDefinition, CommandInvocation, CommandResult, provide_commands,
+    };
+    use cordis_rs::plugin_ports::{MessageFeedback, MessageFeedbackConfig, TurnStopping, produce};
+
+    let ctx = Context::root("feedback-producer");
+    let commands = provide_commands(&ctx).await.unwrap();
+    let _d = commands.register(CommandDefinition::new(
+        "/feedback",
+        "record feedback",
+        std::sync::Arc::new(|_inv: CommandInvocation| {
+            Box::pin(async { CommandResult::success("recorded") })
+        }),
+    ));
+
+    let session = cordis_rs::core_services::Session::new("producer-session", None);
+    let feedback = MessageFeedback::new(MessageFeedbackConfig::default()).unwrap();
+    feedback.register_session(session.clone());
+
+    let root = TurnStopping {
+        session_id: "producer-session".to_string(),
+        is_root: true,
+        has_assistant_message: true,
+    };
+    let outcome = produce(&root, &commands, &session, &feedback)
+        .await
+        .unwrap();
+    assert!(outcome.command_success);
+    assert!(outcome.session_recorded);
+    assert!(outcome.message_rated);
+
+    // A non-root agent is skipped without side effects.
+    let child = TurnStopping {
+        session_id: "producer-session".to_string(),
+        is_root: false,
+        has_assistant_message: true,
+    };
+    let skipped = produce(&child, &commands, &session, &feedback)
+        .await
+        .unwrap();
+    assert!(!skipped.session_recorded);
+
+    // A root turn without an assistant message fails loudly.
+    let no_assistant = TurnStopping {
+        session_id: "producer-session".to_string(),
+        is_root: true,
+        has_assistant_message: false,
+    };
+    assert!(
+        produce(&no_assistant, &commands, &session, &feedback)
+            .await
+            .is_err()
+    );
+}

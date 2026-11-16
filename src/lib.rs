@@ -32,6 +32,10 @@ pub mod plugin_ports {
         CommandFeedback, FEEDBACK_CATEGORIES, FeedbackRecord, USAGE as FEEDBACK_USAGE,
         feedback_events, mount as mount_command_feedback, record_feedback,
     };
+    pub use crate::ports::feedback_producer::{
+        FeedbackProducer, ProducerOutcome, TurnStopping, TurnStoppingEvent,
+        mount as mount_feedback_producer, produce, turn_stopping_event,
+    };
     pub use crate::ports::llm_deepseek::{
         DeepSeekConfig, LlmDeepSeek, PROVIDER as DEEPSEEK_PROVIDER, mount as mount_llm_deepseek,
         resolve_api_key,
