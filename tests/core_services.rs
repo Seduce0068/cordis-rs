@@ -1,6 +1,7 @@
 //! Tests for the reusable core service implementations.
 
 use std::sync::Arc;
+use std::sync::atomic::Ordering as AtomicOrdering;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use cordis_rs::Context;
@@ -644,7 +645,6 @@ async fn jsonl_persistence_appends_reads_and_restores() {
 #[tokio::test]
 async fn agent_loop_records_session_events_and_checkpoints() {
     use std::sync::Arc as StdArc;
-    use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
     use cordis_rs::core_services::{
         AgentLoop, ChatMessage, LlmProvider, LlmRequest, Session, StreamChunk, ToolCall,
@@ -1133,4 +1133,65 @@ async fn system_prompt_sections_sort_interpolate_and_reject_duplicates() {
     let assembly = prompt.assemble(&AssembleContext::default()).unwrap();
     assert_eq!(assembly.text, "ONLY THIS");
     assert_eq!(assembly.sections, ["override"]);
+}
+
+#[tokio::test]
+async fn agent_loop_injects_system_prompt_and_goal() {
+    use std::sync::Arc as StdArc;
+
+    use cordis_rs::core_services::{
+        AgentLoop, LlmRequest, PromptSection, provide_goals, provide_llm, provide_system_prompt,
+        provide_tools,
+    };
+    use cordis_rs::plugin_ports::mount_command_goal;
+
+    let ctx = Context::root("agent-prompt-goal");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let llm = provide_llm(&ctx).await.unwrap();
+    let prompt = provide_system_prompt(&ctx).await.unwrap();
+    let goals = provide_goals(&ctx).await.unwrap();
+    let _ = mount_command_goal(&ctx).await.unwrap();
+    goals.set("ship the Rust port", 50).unwrap();
+
+    let _section = prompt
+        .section(PromptSection::new(
+            "task",
+            100,
+            "Goal: {{goal}} ({{goal_status}})",
+        ))
+        .unwrap();
+
+    // Capture the request messages from the provider.
+    let seen = StdArc::new(std::sync::Mutex::new(Vec::<LlmRequest>::new()));
+    let capture = seen.clone();
+    let provider = cordis_rs::core_services::from_async_text(
+        "capture",
+        "capture-1",
+        move |request: LlmRequest| {
+            let capture = capture.clone();
+            async move {
+                capture.lock().unwrap().push(request);
+                Ok::<_, String>("done".to_string())
+            }
+        },
+    );
+    let _p = llm.register(provider);
+    llm.set_default("capture");
+
+    let loop_ = AgentLoop::new(llm, tools)
+        .with_system_prompt(prompt)
+        .with_goals(goals)
+        .with_call_parser(StdArc::new(|_text: &str| Vec::new()));
+    loop_.run("start").await.unwrap();
+
+    let requests = seen.lock().unwrap();
+    assert_eq!(requests.len(), 1);
+    assert_eq!(requests[0].messages[0].role, "system");
+    assert!(
+        requests[0].messages[0]
+            .content
+            .contains("ship the Rust port")
+    );
+    assert!(requests[0].messages[0].content.contains("active"));
+    assert_eq!(requests[0].messages[1].role, "user");
 }

@@ -66,6 +66,8 @@ pub struct AgentLoop {
     parse_calls: CallParser,
     session: Option<Session>,
     checkpoint: Option<CheckpointHook>,
+    system_prompt: Option<crate::services::system_prompt::SystemPrompt>,
+    goals: Option<crate::services::goals::GoalStore>,
 }
 
 impl AgentLoop {
@@ -78,6 +80,8 @@ impl AgentLoop {
             parse_calls: Arc::new(no_calls),
             session: None,
             checkpoint: None,
+            system_prompt: None,
+            goals: None,
         }
     }
 
@@ -102,6 +106,21 @@ impl AgentLoop {
         self
     }
 
+    /// Assemble a system message from the shared prompt registry each turn.
+    pub fn with_system_prompt(
+        mut self,
+        prompt: crate::services::system_prompt::SystemPrompt,
+    ) -> Self {
+        self.system_prompt = Some(prompt);
+        self
+    }
+
+    /// Inject the live goal as the `goal` assembly variable.
+    pub fn with_goals(mut self, goals: crate::services::goals::GoalStore) -> Self {
+        self.goals = Some(goals);
+        self
+    }
+
     /// Checkpoint the session after each committed step.
     pub fn with_checkpoint(mut self, hook: CheckpointHook) -> Self {
         self.checkpoint = Some(hook);
@@ -112,9 +131,27 @@ impl AgentLoop {
     /// parser keeps producing calls.
     pub async fn run(&self, prompt: impl Into<String>) -> Result<AgentRun> {
         let prompt = prompt.into();
-        let mut messages = vec![ChatMessage::user(prompt.clone())];
+        let mut messages = Vec::new();
         let mut steps = Vec::new();
         let mut final_text = String::new();
+
+        // Assemble the system prompt with the live goal as a variable.
+        if let Some(system_prompt) = &self.system_prompt {
+            use crate::services::system_prompt::AssembleContext;
+            use std::collections::BTreeMap;
+            let mut variables = BTreeMap::new();
+            if let Some(goal) = self.goals.as_ref().and_then(|goals| goals.get()) {
+                variables.insert("goal".to_string(), goal.objective);
+                variables.insert("goal_status".to_string(), goal.status.as_str().to_string());
+            }
+            let assembly = system_prompt
+                .assemble(&AssembleContext { variables })
+                .map_err(|error| crate::Error::Other(error.to_string()))?;
+            if !assembly.text.trim().is_empty() {
+                messages.push(ChatMessage::system(assembly.text));
+            }
+        }
+        messages.push(ChatMessage::user(prompt.clone()));
 
         if let Some(session) = &self.session {
             session.append("turn/start", serde_json::json!({}));
