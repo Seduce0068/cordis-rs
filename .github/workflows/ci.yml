@@ -1,0 +1,23 @@
+# 個人リポジトリ共通の再利用可能ワークフロー
+# （Seduce0068/workflows の rust-gates.yml）へ委譲する。
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    uses: Seduce0068/workflows/.github/workflows/rust-gates.yml@v1
+    with:
+      clippy_args: -A clippy::type_complexity

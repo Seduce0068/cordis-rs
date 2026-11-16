@@ -1,0 +1,49 @@
+# cordis-rs
+
+DSH（DeepSeek Harness）を GPUI/Rust で再実装するための第一歩として作った、
+Cordis 互換プラグインランタイムの PoC です。
+
+## 背景
+
+DSH の公式プラグインはすべて MIT で、ソースは
+[deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)
+の `packages/` に公開されています。プラグインを移植するには、その土台である
+Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
+サービスレジストリ・イベント・ライフサイクルを Rust 側で再現する必要があります。
+
+## 実装したもの
+
+| 機能 | 対応 |
+|---|---|
+| Context / スコープ | ルート + 子 + `isolate`（isolate は親へのフォールバックなし） |
+| サービスレジストリ | `provide` / `get` / `require`（通知駆動の待機）/ `remove_service` |
+| 5 つの dispatch モード | `emit` / `parallel` / `serial` / `bail` / `waterfall`（next 一回限り + veto） |
+| effect | 逆順解除・single-shot disposer・reentrancy 対策・ネスト効果 |
+| Fiber | `PENDING → LOADING → ACTIVE`、依存喪失で unload、復帰で reload |
+| Plugin | `Plugin` trait + `FunctionPlugin`、`inject` による依存宣言 |
+
+### 意図的な差分
+
+- JS Proxy による `ctx.foo` アクセスは、Rust では明示的な `ctx.get::<T>()` / `require()` に置換。
+- `serial` / `bail` の戻り値は `Option<R>`。`Some(0)` / `Some(String::new())` は bail。
+  upstream の `false` だけは非 bail という差がある。
+- Schemastery による Config 検証、YAML Loader、HMR は対象外。
+- `emit` は試験の決定性のため await する（`emit_detached` で fire-and-forget も提供）。
+
+## 検証
+
+```bash
+cargo fmt --all --check
+cargo check --all-targets
+cargo clippy --all-targets -- -D warnings
+cargo test --all-targets
+```
+
+`tests/cordis.rs` にランタイム自体の 7 テスト、
+`tests/official_plugin_port.rs` に公式 `dsh-command-compact` の移植デモを収録。
+移植デモは `inject = ['commands', 'compaction']` の待機・再ロードを検証します。
+
+## 関連
+
+- 旧 PoC（ACP 経由の GPUI クライアント）: `../dsh-gpui-client-poc/`
+- 調査レポート: `../../passkey-gateway/docs/dsh-client-gpui-migration-2026-11-16.md`
