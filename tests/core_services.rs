@@ -352,3 +352,113 @@ async fn working_directory_tool_reads_and_changes_cwd() {
     let _mounted = mount_working_directory(&ctx).await.unwrap();
     assert!(registry.names().contains(&"working_directory".to_string()));
 }
+
+#[tokio::test]
+async fn tool_fs_read_write_edit_through_shared_seams() {
+    use cordis_rs::core_services::{ToolExecContext, ToolOutput, provide_fs, provide_tools};
+    use cordis_rs::plugin_ports::{
+        EditInput, ToolFsConfig, mount_tool_fs, parse_edit_args, parse_read_args, parse_write_args,
+    };
+
+    let ctx = Context::root("tool-fs-port");
+    let (registry, _pipeline) = provide_tools(&ctx).await.unwrap();
+    let fs = provide_fs(&ctx).await.unwrap();
+    let _tools = mount_tool_fs(&ctx, fs.clone(), ToolFsConfig::default())
+        .await
+        .unwrap();
+
+    let mut names = registry.names();
+    names.sort();
+    assert_eq!(names, ["edit", "read", "write"]);
+
+    let dir = std::env::temp_dir().join(format!("cordis-tool-fs-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("note.txt");
+    let path_str = path.to_string_lossy().to_string();
+
+    // write (create)
+    let (parsed_path, content) = parse_write_args(&serde_json::json!({
+        "file_path": path_str,
+        "content": "alpha beta\ngamma\n",
+    }))
+    .unwrap();
+    assert_eq!(parsed_path, path_str);
+    let output: ToolOutput = registry
+        .invoke(
+            "write",
+            serde_json::json!({ "file_path": path_str, "content": content }),
+            ToolExecContext::agent("agent-1"),
+        )
+        .await
+        .unwrap();
+    assert!(output.rendered[0].contains("Created file"));
+    assert_eq!(fs.version(&path_str), Some(1));
+
+    // read with a bounded window
+    let (_, offset, limit) = parse_read_args(
+        &serde_json::json!({
+            "file_path": path_str,
+            "offset": 1,
+            "limit": 1,
+        }),
+        10,
+    )
+    .unwrap();
+    assert_eq!((offset, limit), (1, 1));
+    let output: ToolOutput = registry
+        .invoke(
+            "read",
+            serde_json::json!({ "file_path": path_str, "offset": 1, "limit": 1 }),
+            ToolExecContext::agent("agent-1"),
+        )
+        .await
+        .unwrap();
+    assert!(output.rendered[0].contains("alpha beta"));
+    assert!(!output.rendered[0].contains("gamma"));
+
+    // edit with unique match
+    let input: EditInput = parse_edit_args(&serde_json::json!({
+        "file_path": path_str,
+        "old_string": "alpha",
+        "new_string": "ALPHA",
+    }))
+    .unwrap();
+    assert!(!input.replace_all);
+    let output: ToolOutput = registry
+        .invoke(
+            "edit",
+            serde_json::json!({
+                "file_path": path_str,
+                "old_string": "alpha",
+                "new_string": "ALPHA",
+            }),
+            ToolExecContext::agent("agent-1"),
+        )
+        .await
+        .unwrap();
+    assert!(output.rendered[0].contains("updated successfully"));
+    assert_eq!(fs.read_text(&path_str).unwrap(), "ALPHA beta\ngamma\n");
+    assert_eq!(fs.version(&path_str), Some(2));
+
+    // argument validation
+    assert!(
+        parse_edit_args(&serde_json::json!({
+            "file_path": path_str,
+            "old_string": "x",
+            "new_string": "x",
+        }))
+        .is_err()
+    );
+    assert!(
+        parse_read_args(
+            &serde_json::json!({
+                "file_path": path_str,
+                "limit": 0,
+            }),
+            10
+        )
+        .is_err()
+    );
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}

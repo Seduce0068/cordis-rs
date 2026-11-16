@@ -6,3 +6,5 @@ pub mod tool_todo;
 pub mod command_feedback;
 
 pub mod tool_working_directory;
+
+pub mod tool_fs;

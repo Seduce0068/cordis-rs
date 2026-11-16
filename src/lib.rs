@@ -30,6 +30,10 @@ pub mod plugin_ports {
         CommandFeedback, FEEDBACK_CATEGORIES, FeedbackRecord, USAGE as FEEDBACK_USAGE,
         feedback_events, mount as mount_command_feedback, record_feedback,
     };
+    pub use crate::ports::tool_fs::{
+        EditInput, READ_LIMIT, STREAM_MIN_SIZE, ToolFs, ToolFsConfig, mount as mount_tool_fs,
+        parse_edit_args, parse_read_args, parse_write_args,
+    };
     pub use crate::ports::tool_todo::{
         Counts, MountedTodo, RawTodo, SessionEvent, SessionProjections, TodoItem, TodoStatus,
         TodoWriteArgs, TodoWriteResult, ToolExecution, ToolFailure, ToolTodo, Tools, describe,
@@ -47,6 +51,10 @@ pub mod core_services {
     pub use crate::services::commands::{
         CommandDefinition, CommandHandler, CommandInvocation, CommandRegistry, CommandResult,
         provide as provide_commands,
+    };
+    pub use crate::services::fs::{
+        FileSystem, FsEditOutcome, FsInfo, FsWriteOutcome, ReadWindow, WriteOperation,
+        provide as provide_fs,
     };
     pub use crate::services::llm::{
         ChatMessage, LlmProvider, LlmRequest, LlmResponse, LlmService, StreamChunk, echo_provider,
