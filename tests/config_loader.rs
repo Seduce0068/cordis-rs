@@ -494,3 +494,38 @@ entries:
     );
     assert_eq!(map.get("numeric"), Some(&Value::Integer(3)));
 }
+
+#[test]
+fn js_logical_operators_are_evaluated() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let mut vars = VarTable::new();
+    vars.insert("a", Value::Bool(true));
+    vars.insert("b", Value::Bool(false));
+    vars.insert("n", Value::Integer(0));
+
+    let yaml = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      and: !!js a && b
+      or: !!js a || b
+      not: !!js !b
+      not_n: !!js !n
+      combined: !!js a && !b ? "ok" : "bad"
+      inequality: !!js a != b
+"#;
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let map = match &composition.entries[0].config {
+        Value::Object(map) => map.clone(),
+        _ => panic!("expected object"),
+    };
+    assert_eq!(map.get("and"), Some(&Value::Bool(false)));
+    assert_eq!(map.get("or"), Some(&Value::Bool(true)));
+    assert_eq!(map.get("not"), Some(&Value::Bool(true)));
+    assert_eq!(map.get("not_n"), Some(&Value::Bool(true)));
+    assert_eq!(map.get("combined"), Some(&Value::String("ok".to_string())));
+    assert_eq!(map.get("inequality"), Some(&Value::Bool(true)));
+}

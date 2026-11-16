@@ -911,6 +911,20 @@ fn evaluate_expression(
         return evaluate_expression(selected.trim(), vars, path);
     }
 
+    // Logical OR: lowest precedence among the logical operators.
+    if let Some((left, right)) = split_once_top_level(expression, "||") {
+        let left_truthy = expression_truthy(&evaluate_expression(left.trim(), vars, path)?);
+        let right_truthy = expression_truthy(&evaluate_expression(right.trim(), vars, path)?);
+        return Ok(Value::Bool(left_truthy || right_truthy));
+    }
+
+    // Logical AND.
+    if let Some((left, right)) = split_once_top_level(expression, "&&") {
+        let left_truthy = expression_truthy(&evaluate_expression(left.trim(), vars, path)?);
+        let right_truthy = expression_truthy(&evaluate_expression(right.trim(), vars, path)?);
+        return Ok(Value::Bool(left_truthy && right_truthy));
+    }
+
     // Comparisons: `==`, `!=`, `>=`, `<=`, `>`, `<`. Operands are evaluated
     // as expressions and compared structurally; the result is a Bool.
     for operator in ["==", "!=", ">=", "<=", ">", "<"] {
@@ -923,6 +937,12 @@ fn evaluate_expression(
                 &right_value,
             )?));
         }
+    }
+
+    // Logical NOT (prefix). Placed after comparisons so `!=` is consumed first.
+    if let Some(inner) = expression.strip_prefix('!') {
+        let truthy = expression_truthy(&evaluate_expression(inner.trim(), vars, path)?);
+        return Ok(Value::Bool(!truthy));
     }
 
     // Bare reference: `$name` or a plain identifier inside `!!js`.

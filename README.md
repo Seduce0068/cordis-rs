@@ -44,7 +44,12 @@ cargo fmt --all --check
 cargo check --all-targets
 cargo clippy --all-targets -- -D warnings
 cargo test --all-targets
+cargo run --example agent_demo
 ```
+
+`agent_demo` は scripted LLM provider で agent-loop を回し、tool-fs の
+`write` / `read` を使って実ファイルを作成・検証する end-to-end デモです
+（ネットワークやモデル認証は不要）。
 
 `tests/cordis.rs` にランタイム自体の 7 テスト、
 `tests/official_plugin_port.rs` に公式 `dsh-command-compact` の移植デモを収録。

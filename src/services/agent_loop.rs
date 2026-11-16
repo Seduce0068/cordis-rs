@@ -111,12 +111,6 @@ impl AgentLoop {
                 messages.push(ChatMessage::user(rendered));
             }
 
-            eprintln!(
-                "STEP {}: calls={}, last_role={:?}",
-                steps.len(),
-                tool_results.len(),
-                messages.last().map(|m| m.role.clone())
-            );
             steps.push(AgentStep {
                 response,
                 tool_results,
