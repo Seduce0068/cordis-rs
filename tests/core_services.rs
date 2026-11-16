@@ -581,3 +581,62 @@ async fn tool_bash_runs_foreground_and_background() {
     let (text, _) = jobs.read(id, 0, Some("bash")).unwrap();
     assert_eq!(text, "background");
 }
+
+#[tokio::test]
+async fn jsonl_persistence_appends_reads_and_restores() {
+    use cordis_rs::plugin_ports::{
+        JsonlPersistence, PersistenceError, mount_session_persistence_jsonl,
+    };
+
+    let dir = std::env::temp_dir().join(format!("cordis-jsonl-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let ctx = Context::root("jsonl-persistence");
+    let store = mount_session_persistence_jsonl(&ctx, &dir).await.unwrap();
+
+    let handle = store.create("session-1").unwrap();
+    assert_eq!(handle.id(), "session-1");
+    assert!(matches!(
+        store.create("session-1"),
+        Err(PersistenceError::AlreadyExists(_))
+    ));
+
+    handle
+        .append(&cordis_rs::core_services::LoggedSessionEvent {
+            seq: 1,
+            event_type: "user/message".to_string(),
+            data: serde_json::json!({ "text": "hello" }),
+        })
+        .unwrap();
+    handle
+        .append(&cordis_rs::core_services::LoggedSessionEvent {
+            seq: 2,
+            event_type: "assistant/message".to_string(),
+            data: serde_json::json!({ "text": "hi" }),
+        })
+        .unwrap();
+
+    let events = handle.read().unwrap();
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0].event_type, "user/message");
+    assert_eq!(events[1].data["text"], "hi");
+
+    let restored = store
+        .restore("session-1", Some("/tmp".to_string()))
+        .unwrap();
+    assert_eq!(restored.id(), "session-1");
+    assert_eq!(restored.seq(), 2);
+    assert_eq!(restored.cwd(), Some("/tmp"));
+
+    // reopen from disk after dropping the in-memory handle
+    store.close("session-1");
+    let reopened = store.open("session-1").unwrap();
+    assert_eq!(reopened.read().unwrap().len(), 2);
+    assert!(matches!(
+        store.open("missing"),
+        Err(PersistenceError::NotFound(_))
+    ));
+
+    let _ = JsonlPersistence::new(&dir);
+    std::fs::remove_dir_all(&dir).unwrap();
+}

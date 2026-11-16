@@ -30,6 +30,10 @@ pub mod plugin_ports {
         CommandFeedback, FEEDBACK_CATEGORIES, FeedbackRecord, USAGE as FEEDBACK_USAGE,
         feedback_events, mount as mount_command_feedback, record_feedback,
     };
+    pub use crate::ports::session_persistence_jsonl::{
+        JsonlPersistence, JsonlSessionHandle, PersistedEvent, PersistenceError,
+        mount as mount_session_persistence_jsonl,
+    };
     pub use crate::ports::tool_bash::{
         BashArgs, DESCRIPTION as BASH_DESCRIPTION, ToolBash, ToolBashConfig, job_handle,
         mount as mount_tool_bash, parse_bash_args,
@@ -44,9 +48,10 @@ pub mod plugin_ports {
         mount, to_todo_list,
     };
     pub use crate::ports::tool_working_directory::{
-        DESCRIPTION as WORKING_DIRECTORY_DESCRIPTION, ToolWorkingDirectory, WorkingDirectory,
+        DESCRIPTION as WORKING_DIRECTORY_DESCRIPTION, ToolWorkingDirectory,
         execute as execute_working_directory, mount as mount_working_directory,
     };
+    pub use crate::services::working_directory::WorkingDirectory;
 }
 
 /// Core service implementations.
@@ -77,5 +82,8 @@ pub mod core_services {
     pub use crate::services::tools::{
         ToolArgs, ToolDefinition, ToolError, ToolExecContext, ToolHandler, ToolNext, ToolOutput,
         ToolPipeline, ToolRegistry, invoke_blocking, provide as provide_tools,
+    };
+    pub use crate::services::working_directory::{
+        WorkingDirectory, provide as provide_working_directory,
     };
 }
