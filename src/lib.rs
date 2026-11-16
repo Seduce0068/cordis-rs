@@ -11,6 +11,7 @@ pub mod error;
 pub mod events;
 pub mod loader;
 pub mod plugin;
+pub mod ports;
 
 pub use config::{
     FieldSpec, FieldType, ValidationError, ValidationErrors, ValidationReason,
@@ -21,3 +22,12 @@ pub use error::{Error, Result};
 pub use events::Event;
 pub use loader::{Composition, Entry, LoaderError, PluginFactory, PluginRegistry, VarTable};
 pub use plugin::{Fiber, FunctionPlugin, Plugin};
+
+/// Reusable ports of official DSH plugin implementations.
+pub mod plugin_ports {
+    pub use crate::ports::tool_todo::{
+        Counts, MountedTodo, RawTodo, SessionEvent, SessionProjections, TodoItem, TodoStatus,
+        TodoWriteArgs, TodoWriteResult, ToolExecution, ToolFailure, ToolTodo, Tools, describe,
+        mount, to_todo_list,
+    };
+}
