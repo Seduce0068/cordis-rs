@@ -1239,3 +1239,32 @@ async fn tool_result_pruner_keeps_head_and_tail() {
         .is_err()
     );
 }
+
+#[tokio::test]
+async fn token_meter_estimates_session_pressure() {
+    use cordis_rs::core_services::{
+        Session, TokenMeter, estimate_message, estimate_text, provide_token_meter,
+    };
+
+    let ctx = Context::root("token-meter");
+    let meter: TokenMeter = provide_token_meter(&ctx).await.unwrap();
+    assert_eq!(estimate_text("abcd"), 1);
+    assert_eq!(estimate_message("user", "abcd"), 1 + 1 + 4);
+
+    let session = Session::new("meter-session", None);
+    session.append("user/message", serde_json::json!({ "text": "hello world" }));
+    session.append(
+        "assistant/message",
+        serde_json::json!({ "text": "hi there" }),
+    );
+    session.append("step/start", serde_json::json!({})); // ignored
+
+    let measurement = meter.measure(&session);
+    assert_eq!(measurement.message_count, 2);
+    assert!(measurement.total_tokens > 0);
+    assert!(measurement.pressure > 0.0 && measurement.pressure < 1.0);
+
+    let small = TokenMeter::new(1);
+    let high = small.measure(&session);
+    assert!(high.pressure > 1.0);
+}

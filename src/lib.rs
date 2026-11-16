@@ -122,6 +122,10 @@ pub mod core_services {
         AssembleContext, PromptAssembly, PromptError, PromptSection, SystemPrompt,
         provide as provide_system_prompt,
     };
+    pub use crate::services::token_meter::{
+        TokenMeasurement, TokenMeter, estimate_message, estimate_text,
+        provide as provide_token_meter,
+    };
     pub use crate::services::tools::{
         ToolArgs, ToolDefinition, ToolError, ToolExecContext, ToolHandler, ToolNext, ToolOutput,
         ToolPipeline, ToolRegistry, invoke_blocking, provide as provide_tools,
