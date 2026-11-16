@@ -96,6 +96,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(restored.seq() as usize, events.len());
     println!("restored session seq: {}", restored.seq());
 
+    // Persist the cursor so a later process resumes from the same event.
+    let cursor_path = dir.join("cursor.json");
+    cursor.save(&cursor_path)?;
+    let resumed = cordis_rs::core_services::CheckpointCursor::load(&cursor_path);
+    assert_eq!(resumed.written(), events.len());
+    println!("checkpoint cursor persisted: {}", resumed.written());
+
     std::fs::remove_dir_all(&dir)?;
     Ok(())
 }

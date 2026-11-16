@@ -225,6 +225,28 @@ impl CheckpointCursor {
     pub fn written(&self) -> usize {
         *self.written.lock().expect("checkpoint cursor poisoned")
     }
+
+    /// Persist the cursor so a restarted process resumes from the same event.
+    pub fn save(&self, path: impl AsRef<std::path::Path>) -> crate::Result<()> {
+        let written = *self.written.lock().expect("checkpoint cursor poisoned");
+        let json = serde_json::json!({ "written": written });
+        std::fs::write(path, json.to_string())
+            .map_err(|error| crate::Error::Other(error.to_string()))
+    }
+
+    /// Restore a cursor previously written by `save`. A missing or malformed
+    /// file starts from zero so a fresh run checkpoints the whole log.
+    pub fn load(path: impl AsRef<std::path::Path>) -> Self {
+        let written = std::fs::read_to_string(path)
+            .ok()
+            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+            .and_then(|value| value["written"].as_u64())
+            .and_then(|value| usize::try_from(value).ok())
+            .unwrap_or(0);
+        Self {
+            written: Arc::new(std::sync::Mutex::new(written)),
+        }
+    }
 }
 
 /// Mount both services on a context.

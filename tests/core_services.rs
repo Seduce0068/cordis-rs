@@ -756,3 +756,41 @@ async fn checkpoint_cursor_appends_only_new_events() {
     assert!(cursor.pending(&session).is_empty());
     assert_eq!(cursor.written(), 3);
 }
+
+#[tokio::test]
+async fn checkpoint_cursor_survives_restart() {
+    use cordis_rs::core_services::{CheckpointCursor, Session};
+
+    let dir = std::env::temp_dir().join(format!("cordis-cursor-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let cursor_path = dir.join("cursor.json");
+
+    let session = Session::new("restart-session", None);
+    session.append("first", serde_json::json!({}));
+    session.append("second", serde_json::json!({}));
+
+    let cursor = CheckpointCursor::new();
+    let pending = cursor.pending(&session);
+    assert_eq!(pending.len(), 2);
+    cursor.commit(pending.len());
+    cursor.save(&cursor_path).unwrap();
+    assert_eq!(cursor.written(), 2);
+
+    // Simulate a restart: a fresh session log with two more events and a
+    // cursor restored from disk.
+    session.append("third", serde_json::json!({}));
+    session.append("fourth", serde_json::json!({}));
+    let resumed = CheckpointCursor::load(&cursor_path);
+    assert_eq!(resumed.written(), 2);
+    let pending = resumed.pending(&session);
+    assert_eq!(pending.len(), 2);
+    assert_eq!(pending[0].event_type, "third");
+    assert_eq!(pending[1].event_type, "fourth");
+
+    // A missing cursor file starts from zero.
+    let fresh = CheckpointCursor::load(dir.join("missing.json"));
+    assert_eq!(fresh.written(), 0);
+    assert_eq!(fresh.pending(&session).len(), 4);
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}
