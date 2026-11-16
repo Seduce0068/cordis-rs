@@ -32,6 +32,9 @@ pub mod plugin_ports {
         CommandFeedback, FEEDBACK_CATEGORIES, FeedbackRecord, USAGE as FEEDBACK_USAGE,
         feedback_events, mount as mount_command_feedback, record_feedback,
     };
+    pub use crate::ports::command_goal::{
+        CommandGoal, USAGE as GOAL_USAGE, mount as mount_command_goal,
+    };
     pub use crate::ports::feedback_producer::{
         FeedbackProducer, ProducerOutcome, TurnStopping, TurnStoppingEvent,
         mount as mount_feedback_producer, produce, turn_stopping_event,
@@ -87,6 +90,9 @@ pub mod core_services {
     pub use crate::services::fs::{
         FileSystem, FsEditOutcome, FsInfo, FsWriteOutcome, ReadWindow, WriteOperation,
         provide as provide_fs,
+    };
+    pub use crate::services::goals::{
+        Goal, GoalError, GoalStatus, GoalStore, provide as provide_goals,
     };
     pub use crate::services::jobs::{
         JobError, JobHandle, JobRegistry, JobStatus, JobView, provide as provide_jobs,

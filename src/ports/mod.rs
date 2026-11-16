@@ -22,3 +22,5 @@ pub mod message_feedback;
 pub mod tool_subagent;
 
 pub mod feedback_producer;
+
+pub mod command_goal;

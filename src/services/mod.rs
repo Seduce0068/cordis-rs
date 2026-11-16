@@ -21,3 +21,5 @@ pub mod working_directory;
 pub mod skills;
 
 pub mod subagents;
+
+pub mod goals;

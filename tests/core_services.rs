@@ -1049,3 +1049,46 @@ async fn feedback_producer_records_log_only_feedback() {
             .is_err()
     );
 }
+
+#[tokio::test]
+async fn goal_store_enforces_revisions_and_command_registers() {
+    use cordis_rs::core_services::{CommandResult, provide_commands};
+    use cordis_rs::plugin_ports::mount_command_goal;
+    use cordis_rs::services::goals::GoalError;
+
+    let ctx = Context::root("goals-service");
+    let commands = provide_commands(&ctx).await.unwrap();
+    let store = mount_command_goal(&ctx).await.unwrap();
+    assert!(commands.names().contains(&"/goal".to_string()));
+
+    let goal = store.set("finish the port", 100).unwrap();
+    assert_eq!(goal.revision, 1);
+    assert_eq!(goal.objective, "finish the port");
+
+    // A stale edit is rejected.
+    assert!(matches!(
+        store.edit("new objective", 100, 0),
+        Err(GoalError::StaleRevision { .. })
+    ));
+
+    let goal = store.edit("new objective", 100, goal.revision).unwrap();
+    assert_eq!(goal.revision, 2);
+    let goal = store.pause(goal.revision).unwrap();
+    assert_eq!(goal.status, cordis_rs::services::goals::GoalStatus::Paused);
+    let goal = store.resume(goal.revision).unwrap();
+    assert_eq!(goal.status, cordis_rs::services::goals::GoalStatus::Active);
+
+    // The command reflects the live store.
+    let result = commands
+        .invoke(
+            "/goal",
+            cordis_rs::services::commands::CommandInvocation::new(""),
+        )
+        .await
+        .unwrap();
+    assert!(matches!(result, CommandResult::Success { .. }));
+
+    store.clear();
+    assert!(store.get().is_none());
+    assert!(store.event_count() > 0);
+}
