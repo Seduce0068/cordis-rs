@@ -648,3 +648,31 @@ entries:
 
     let _ = Value::Null;
 }
+
+#[test]
+fn js_dsh_home_path_helper_resolves_against_var_table() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let vars = VarTable::new().with_home_path("/home/user/.dsh");
+    let yaml = r#"
+entries:
+  - id: persistence
+    plugin: demo/persist
+    config:
+      root: !!js dshHomePath('sessions')
+      text: !!js String("ok")
+      count: !!js Number(3)
+"#;
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let map = match &composition.entries[0].config {
+        Value::Object(map) => map.clone(),
+        _ => panic!("expected object"),
+    };
+    assert_eq!(
+        map.get("root"),
+        Some(&Value::String("/home/user/.dsh/sessions".to_string()))
+    );
+    assert_eq!(map.get("text"), Some(&Value::String("ok".to_string())));
+    assert_eq!(map.get("count"), Some(&Value::Integer(3)));
+}

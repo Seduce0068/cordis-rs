@@ -113,7 +113,11 @@ impl From<LoaderError> for Error {
 
 /// Values available to `$name` references in config and `disabled` fields.
 #[derive(Debug, Clone, Default)]
-pub struct VarTable(BTreeMap<String, Value>);
+pub struct VarTable {
+    values: BTreeMap<String, Value>,
+    /// Base directory used to resolve DSH's `dshHomePath('...')` helper.
+    home_path: Option<std::path::PathBuf>,
+}
 
 impl VarTable {
     pub fn new() -> Self {
@@ -121,12 +125,18 @@ impl VarTable {
     }
 
     pub fn insert(&mut self, name: impl Into<String>, value: Value) -> &mut Self {
-        self.0.insert(name.into(), value);
+        self.values.insert(name.into(), value);
         self
     }
 
     pub fn get(&self, name: &str) -> Option<&Value> {
-        self.0.get(name)
+        self.values.get(name)
+    }
+
+    /// Set the base directory for `dshHomePath('...')` expressions.
+    pub fn with_home_path(mut self, path: impl AsRef<std::path::Path>) -> Self {
+        self.home_path = Some(path.as_ref().to_path_buf());
+        self
     }
 
     /// Populate the table with `process.env.*`-style entries from the real
@@ -134,7 +144,7 @@ impl VarTable {
     /// compositions without evaluating JavaScript.
     pub fn from_env(mut self) -> Self {
         for (key, value) in std::env::vars() {
-            self.0
+            self.values
                 .entry(format!("env.{key}"))
                 .or_insert_with(|| Value::String(value));
         }
@@ -798,6 +808,56 @@ fn parse_value_after_key(
     }
 }
 
+/// Evaluate known DSH helper calls. Returns `Ok(None)` for other forms.
+fn evaluate_helper_call(
+    expression: &str,
+    vars: &VarTable,
+    path: &str,
+) -> Result<Option<Value>, LoaderError> {
+    let Some(open) = expression.find('(') else {
+        return Ok(None);
+    };
+    if !expression.ends_with(')') {
+        return Ok(None);
+    }
+    let function = expression[..open].trim();
+    let argument = expression[open + 1..expression.len() - 1].trim();
+    let argument = argument
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .or_else(|| {
+            argument
+                .strip_prefix('\'')
+                .and_then(|v| v.strip_suffix('\''))
+        })
+        .unwrap_or(argument);
+
+    match function {
+        "dshHomePath" => {
+            let Some(home) = &vars.home_path else {
+                return Err(LoaderError::InvalidExpression {
+                    path: path.to_string(),
+                    expression: expression.to_string(),
+                    reason: "dshHomePath requires VarTable::with_home_path".to_string(),
+                });
+            };
+            Ok(Some(Value::String(
+                home.join(argument).to_string_lossy().to_string(),
+            )))
+        }
+        "String" => Ok(Some(Value::String(argument.to_string()))),
+        "Number" => argument
+            .parse::<i64>()
+            .map(|value| Some(Value::Integer(value)))
+            .map_err(|_| LoaderError::InvalidExpression {
+                path: path.to_string(),
+                expression: expression.to_string(),
+                reason: format!("Number({argument:?}) is not an integer"),
+            }),
+        _ => Ok(None),
+    }
+}
+
 /// Flatten upstream's nested `insert:` rows into a single entry list.
 fn flatten_entry_nodes(node: Node, output: &mut Vec<Node>) -> Result<(), LoaderError> {
     match node {
@@ -1016,6 +1076,12 @@ fn evaluate_expression(
     if let Some(inner) = expression.strip_prefix('!') {
         let truthy = expression_truthy(&evaluate_expression(inner.trim(), vars, path)?);
         return Ok(Value::Bool(!truthy));
+    }
+
+    // DSH helper calls: `dshHomePath('sessions')` resolves against the
+    // VarTable's configured home path. Other helpers are left as literals.
+    if let Some(result) = evaluate_helper_call(expression, vars, path)? {
+        return Ok(result);
     }
 
     // Member access: `$name[0]` (array index) or `$name.length` / `[0].length`.
