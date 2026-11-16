@@ -47,6 +47,7 @@ cargo test --all-targets
 cargo run --example agent_demo
 cargo run --example agent_checkpoint_demo
 cargo run --example load_cordis_yml
+cargo run --example mount_composition
 ```
 
 `agent_demo` は scripted LLM provider で agent-loop を回し、tool-fs の
@@ -58,6 +59,9 @@ JSONL に永続化し、restore までを検証するデモです。
 
 `load_cordis_yml` は DSH 実サンプルの `cordis.yml` を丸ごと loader で読み込み、
 6 エントリと `!!js` 式（dshHomePath / process.env / 三項）の解決を検証します。
+
+`mount_composition` は YAML -> Composition -> 検証済み config -> PluginFactory -> Fiber の
+起動までを検証します。
 
 `tests/cordis.rs` にランタイム自体の 7 テスト、
 `tests/official_plugin_port.rs` に公式 `dsh-command-compact` の移植デモを収録。
