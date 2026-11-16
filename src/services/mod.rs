@@ -29,3 +29,5 @@ pub mod system_prompt;
 pub mod pruner;
 
 pub mod token_meter;
+
+pub mod compaction;

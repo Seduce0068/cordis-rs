@@ -87,6 +87,10 @@ pub mod core_services {
         CommandDefinition, CommandHandler, CommandInvocation, CommandRegistry, CommandResult,
         provide as provide_commands,
     };
+    pub use crate::services::compaction::{
+        CompactionConfig, CompactionEngine, CompactionResult, CompactionTrigger,
+        provide as provide_compaction,
+    };
     pub use crate::services::fs::{
         FileSystem, FsEditOutcome, FsInfo, FsWriteOutcome, ReadWindow, WriteOperation,
         provide as provide_fs,

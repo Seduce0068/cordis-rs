@@ -1268,3 +1268,60 @@ async fn token_meter_estimates_session_pressure() {
     let high = small.measure(&session);
     assert!(high.pressure > 1.0);
 }
+
+#[tokio::test]
+async fn compaction_triggers_on_pressure_and_appends_checkpoint() {
+    use cordis_rs::core_services::{
+        CompactionConfig, CompactionEngine, CompactionTrigger, Session, TokenMeter,
+    };
+
+    let session = Session::new("compact-session", None);
+    session.append("user/message", serde_json::json!({ "text": "abc" }));
+    session.append("assistant/message", serde_json::json!({ "text": "def" }));
+
+    // A high threshold means no compaction.
+    let meter = TokenMeter::new(1000);
+    let engine = CompactionEngine::new(
+        CompactionConfig {
+            pressure_threshold: 0.99,
+            ..Default::default()
+        },
+        meter,
+    )
+    .unwrap();
+    let result = engine
+        .maybe_compact(&session, CompactionTrigger::Pressure)
+        .unwrap();
+    assert!(!result.compacted);
+    assert!(
+        !session
+            .events()
+            .iter()
+            .any(|event| event.event_type == "compaction/checkpoint")
+    );
+
+    // A tiny budget triggers compaction and appends a checkpoint.
+    let meter = TokenMeter::new(1);
+    let engine = CompactionEngine::new(
+        CompactionConfig {
+            pressure_threshold: 0.5,
+            head_chars: 2,
+            tail_chars: 2,
+        },
+        meter,
+    )
+    .unwrap();
+    let result = engine
+        .maybe_compact(&session, CompactionTrigger::Pressure)
+        .unwrap();
+    assert!(result.compacted);
+    assert_eq!(result.shadowed_events, 2);
+    assert!(result.pressure > 1.0);
+    let checkpoints: Vec<_> = session
+        .events()
+        .into_iter()
+        .filter(|event| event.event_type == "compaction/checkpoint")
+        .collect();
+    assert_eq!(checkpoints.len(), 1);
+    assert_eq!(checkpoints[0].data["trigger"], "pressure");
+}
