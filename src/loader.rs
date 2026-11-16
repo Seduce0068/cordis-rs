@@ -139,6 +139,13 @@ impl VarTable {
         self
     }
 
+    /// Insert an `env.NAME` value without mutating the process environment.
+    pub fn with_env_value(mut self, name: &str, value: impl Into<String>) -> Self {
+        self.values
+            .insert(format!("env.{name}"), Value::String(value.into()));
+        self
+    }
+
     /// Populate the table with `process.env.*`-style entries from the real
     /// process environment, so `!!js process.env.FOO` resolves in DSH-style
     /// compositions without evaluating JavaScript.
@@ -261,6 +268,42 @@ impl Composition {
         }
         Ok(fibers)
     }
+
+    /// Mount every entry whose plugin id is registered, skipping unknown ones.
+    /// Useful for real DSH compositions that reference plugins a port has not
+    /// implemented yet: partial support still boots the known subset.
+    pub async fn mount_available(
+        &self,
+        ctx: &Context,
+        registry: &PluginRegistry,
+    ) -> Result<MountReport, LoaderError> {
+        let mut report = MountReport::default();
+        for entry in self.enabled() {
+            match entry.to_plugin(registry) {
+                Ok(plugin) => match Fiber::mount(ctx, Box::new(plugin)).await {
+                    Ok(fiber) => report.mounted.push(fiber),
+                    Err(error) => report
+                        .failed
+                        .push((entry.id.clone(), format!("mount: {error}"))),
+                },
+                Err(LoaderError::UnknownPlugin { plugin, .. }) => {
+                    report.skipped_unknown.push((entry.id.clone(), plugin));
+                }
+                Err(error) => report.failed.push((entry.id.clone(), error.to_string())),
+            }
+        }
+        Ok(report)
+    }
+}
+
+/// Outcome of a partial composition mount.
+#[derive(Default)]
+pub struct MountReport {
+    pub mounted: Vec<Fiber>,
+    /// Entries whose plugin id is not in the registry.
+    pub skipped_unknown: Vec<(String, String)>,
+    /// Entries that had a factory but failed validation or mounting.
+    pub failed: Vec<(String, String)>,
 }
 
 impl Entry {
