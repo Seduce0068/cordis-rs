@@ -173,6 +173,65 @@ pub struct Entry {
     pub inject: Vec<String>,
 }
 
+/// Persisted enable/disable overrides for a composition's entries.
+/// A host (for example a GPUI toggle UI) saves this so a restart restores
+/// the user's choices instead of the YAML defaults.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct CompositionState {
+    /// `true` = enabled, `false` = disabled. Absent entries keep YAML default.
+    pub overrides: BTreeMap<String, bool>,
+}
+
+impl CompositionState {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn set(&mut self, id: impl Into<String>, enabled: bool) {
+        self.overrides.insert(id.into(), enabled);
+    }
+
+    pub fn is_enabled(&self, id: &str, default: bool) -> bool {
+        self.overrides.get(id).copied().unwrap_or(default)
+    }
+
+    /// Persist atomically (sibling temp file + rename).
+    pub fn save(&self, path: impl AsRef<std::path::Path>) -> Result<(), LoaderError> {
+        let path = path.as_ref();
+        let mut map = serde_json::Map::new();
+        for (id, enabled) in &self.overrides {
+            map.insert(id.clone(), serde_json::Value::Bool(*enabled));
+        }
+        let temp = path.with_extension("tmp");
+        std::fs::write(&temp, serde_json::Value::Object(map).to_string())
+            .map_err(|error| LoaderError::Structure(error.to_string()))?;
+        std::fs::rename(&temp, path).map_err(|error| {
+            let _ = std::fs::remove_file(&temp);
+            LoaderError::Structure(error.to_string())
+        })
+    }
+
+    /// Load a previously saved state. Missing or malformed files yield an
+    /// empty override set so YAML defaults apply.
+    pub fn load(path: impl AsRef<std::path::Path>) -> Self {
+        let Ok(text) = std::fs::read_to_string(path) else {
+            return Self::default();
+        };
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
+            return Self::default();
+        };
+        let mut overrides = BTreeMap::new();
+        if let Some(map) = value.as_object() {
+            for (id, enabled) in map {
+                if let Some(flag) = enabled.as_bool() {
+                    overrides.insert(id.clone(), flag);
+                }
+            }
+        }
+        Self { overrides }
+    }
+}
+
 /// A parsed `cordis.yml` composition.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Composition {
@@ -237,6 +296,16 @@ impl Composition {
     /// Entries that should actually be mounted (`disabled: true` is skipped).
     pub fn enabled(&self) -> impl Iterator<Item = &Entry> {
         self.entries.iter().filter(|entry| !entry.disabled)
+    }
+
+    /// Entries enabled after applying persisted overrides. An override can
+    /// re-enable a row that YAML marked `disabled: true`.
+    pub fn enabled_with(&self, state: &CompositionState) -> Vec<Entry> {
+        self.entries
+            .iter()
+            .filter(|entry| state.is_enabled(&entry.id, !entry.disabled))
+            .cloned()
+            .collect()
     }
 
     /// Validate each enabled entry's config and mount it as a fiber.

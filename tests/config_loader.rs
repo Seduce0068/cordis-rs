@@ -676,3 +676,51 @@ entries:
     assert_eq!(map.get("text"), Some(&Value::String("ok".to_string())));
     assert_eq!(map.get("count"), Some(&Value::Integer(3)));
 }
+
+#[test]
+fn composition_state_persists_toggle_overrides() {
+    use cordis_rs::loader::{Composition, CompositionState};
+
+    let yaml = r#"
+entries:
+  - id: a
+    plugin: demo/a
+    config: {}
+  - id: b
+    plugin: demo/b
+    disabled: true
+    config: {}
+"#;
+    let composition = Composition::parse(yaml).unwrap();
+    assert_eq!(composition.enabled().count(), 1); // only "a"
+
+    let mut state = CompositionState::new();
+    state.set("a", false); // disable a
+    state.set("b", true); // re-enable b
+
+    let enabled = composition.enabled_with(&state);
+    let ids: Vec<_> = enabled.iter().map(|entry| entry.id.as_str()).collect();
+    assert_eq!(ids, ["b"]);
+
+    let dir = std::env::temp_dir().join(format!("cordis-composition-state-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let path = dir.join("state.json");
+    state.save(&path).unwrap();
+    assert!(!path.with_extension("tmp").exists());
+
+    let restored = CompositionState::load(&path);
+    assert_eq!(restored, state);
+    let enabled_restored = composition.enabled_with(&restored);
+    let ids: Vec<_> = enabled_restored
+        .iter()
+        .map(|entry| entry.id.as_str())
+        .collect();
+    assert_eq!(ids, ["b"]);
+
+    // Missing file yields no overrides (YAML defaults).
+    let fresh = CompositionState::load(dir.join("missing.json"));
+    assert!(fresh.overrides.is_empty());
+    assert_eq!(composition.enabled_with(&fresh).len(), 1);
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}

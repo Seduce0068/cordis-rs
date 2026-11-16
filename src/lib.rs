@@ -22,7 +22,8 @@ pub use context::{Context, Disposer, EffectScope, Lifecycle};
 pub use error::{Error, Result};
 pub use events::Event;
 pub use loader::{
-    Composition, Entry, LoaderError, MountReport, PluginFactory, PluginRegistry, VarTable,
+    Composition, CompositionState, Entry, LoaderError, MountReport, PluginFactory, PluginRegistry,
+    VarTable,
 };
 pub use plugin::{Fiber, FunctionPlugin, Plugin};
 
