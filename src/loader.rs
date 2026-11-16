@@ -15,10 +15,10 @@
 //! anchors, multi-document files or real expressions, replace it with a
 //! maintained crate instead of growing it further.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::future::Future;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use crate::config::{FieldSpec, ValidationError, Value, validate};
 use crate::context::Context;
@@ -37,6 +37,7 @@ pub enum LoaderError {
     UnresolvedReference { path: String, name: String },
     Validation(Vec<ValidationError>),
     Mount(String),
+    TooDeep { depth: usize, max: usize },
 }
 
 impl fmt::Display for LoaderError {
@@ -65,6 +66,9 @@ impl fmt::Display for LoaderError {
                 Ok(())
             }
             Self::Mount(message) => write!(f, "failed to mount fiber: {message}"),
+            Self::TooDeep { depth, max } => {
+                write!(f, "composition nesting depth {depth} exceeds limit {max}")
+            }
         }
     }
 }
@@ -103,9 +107,10 @@ pub struct Entry {
     pub plugin: String,
     pub config: Value,
     pub disabled: bool,
-    /// Dependency names from the entry. Kept as metadata: the mount adapter
-    /// takes injected services from `PluginFactory::inject`, because the
-    /// existing `Plugin::inject` trait method returns `&[&'static str]`.
+    /// Dependency names from the entry, merged with `PluginFactory::inject`
+    /// by [`Entry::to_plugin`] so they drive `Fiber` waiting too. Because the
+    /// existing `Plugin::inject` returns `&[&'static str]`, runtime strings
+    /// are interned once per process (see `intern_inject_name`).
     pub inject: Vec<String>,
 }
 
@@ -123,13 +128,14 @@ impl Composition {
 
     /// Parse and resolve `$name` references against `vars`.
     pub fn parse_with_vars(yaml: &str, vars: &VarTable) -> Result<Self, LoaderError> {
+        let limits = limits_for(yaml);
         let lines = tokenize(yaml)?;
         let root = if lines.is_empty() {
             Node::Map(Vec::new())
         } else {
             let mut index = 0;
             let indent = lines[0].indent;
-            parse_node(&lines, &mut index, indent)?
+            parse_node(&lines, &mut index, indent, limits, 1)?
         };
 
         let mut entries = Vec::new();
@@ -138,7 +144,7 @@ impl Composition {
                 continue;
             }
             for (index, item) in node.into_seq()?.into_iter().enumerate() {
-                entries.push(parse_entry(item, index, vars)?);
+                entries.push(parse_entry(item, index, vars, limits)?);
             }
         }
         Ok(Self { entries })
@@ -157,11 +163,24 @@ impl Composition {
     ) -> Result<Vec<Fiber>, LoaderError> {
         let mut fibers = Vec::new();
         for entry in self.enabled() {
-            let plugin = entry.to_plugin(registry)?;
-            let fiber = Fiber::mount(ctx, Box::new(plugin))
-                .await
-                .map_err(|error| LoaderError::Mount(format!("{}: {error}", entry.id)))?;
-            fibers.push(fiber);
+            let plugin = entry.to_plugin(registry);
+            let result = match plugin {
+                Ok(plugin) => Fiber::mount(ctx, Box::new(plugin))
+                    .await
+                    .map_err(|error| LoaderError::Mount(format!("{}: {error}", entry.id))),
+                Err(error) => Err(error),
+            };
+            match result {
+                Ok(fiber) => fibers.push(fiber),
+                Err(error) => {
+                    // A partial mount must not leave earlier plugins running:
+                    // unload in reverse order and surface the original error.
+                    for fiber in fibers.drain(..).rev() {
+                        let _ = fiber.unload().await;
+                    }
+                    return Err(error);
+                }
+            }
         }
         Ok(fibers)
     }
@@ -170,6 +189,7 @@ impl Composition {
 impl Entry {
     /// Turn a resolved entry into a `FunctionPlugin`, which `Fiber::mount`
     /// accepts directly. Config is validated here, before `apply` can run.
+    /// Dependency names from YAML and from the factory are merged (deduplicated).
     pub fn to_plugin(&self, registry: &PluginRegistry) -> Result<FunctionPlugin, LoaderError> {
         let factory = registry
             .get(&self.plugin)
@@ -184,14 +204,38 @@ impl Entry {
         } else {
             validate(&factory.fields, &self.config).map_err(LoaderError::Validation)?
         };
+        let mut inject = factory.inject.clone();
+        for name in &self.inject {
+            let name = intern_inject_name(name);
+            if !inject.contains(&name) {
+                inject.push(name);
+            }
+        }
+
         let apply = factory.apply.clone();
         let plugin = FunctionPlugin::new(self.id.clone(), move |ctx| {
             let apply = apply.clone();
             let config = config.clone();
             apply(ctx, &config)
         });
-        Ok(plugin.with_inject(factory.inject.clone()))
+        Ok(plugin.with_inject(inject))
     }
+}
+
+/// Give a runtime dependency name the `'static` lifetime required by
+/// `Plugin::inject() -> &[&'static str]`, without `unsafe`. Each distinct name
+/// is leaked at most once per process, so repeated mounts/HMR reloads with the
+/// same names do not grow memory without bound.
+fn intern_inject_name(name: &str) -> &'static str {
+    static INTERNED: OnceLock<Mutex<BTreeSet<&'static str>>> = OnceLock::new();
+    let names = INTERNED.get_or_init(|| Mutex::new(BTreeSet::new()));
+    let mut names = names.lock().expect("inject name intern pool poisoned");
+    if let Some(interned) = names.get(name) {
+        return interned;
+    }
+    let leaked: &'static str = Box::leak(name.to_string().into_boxed_str());
+    names.insert(leaked);
+    leaked
 }
 
 /// The plugin body registered for a plugin id.
@@ -265,6 +309,30 @@ impl PluginRegistry {
 // ---------------------------------------------------------------------------
 // Lightweight YAML subset parser (internal).
 // ---------------------------------------------------------------------------
+
+/// Recursion budget derived from the input size. A larger document may nest
+/// deeper, but the cap keeps pathological input from exhausting the stack.
+#[derive(Debug, Clone, Copy)]
+struct Limits {
+    max_depth: usize,
+}
+
+fn limits_for(input: &str) -> Limits {
+    Limits {
+        max_depth: (input.len() / 64 + 8).min(128),
+    }
+}
+
+fn check_depth(limits: Limits, depth: usize) -> Result<(), LoaderError> {
+    if depth > limits.max_depth {
+        Err(LoaderError::TooDeep {
+            depth,
+            max: limits.max_depth,
+        })
+    } else {
+        Ok(())
+    }
+}
 
 #[derive(Debug)]
 struct Line {
@@ -492,7 +560,8 @@ fn scalar_from_text(text: &str) -> Scalar {
     }
 }
 
-fn parse_inline(raw: &str) -> Result<Node, LoaderError> {
+fn parse_inline(raw: &str, limits: Limits, depth: usize) -> Result<Node, LoaderError> {
+    check_depth(limits, depth)?;
     let mut text = raw.trim();
     let mut tagged = false;
     if let Some(rest) = text.strip_prefix("!!js") {
@@ -505,7 +574,7 @@ fn parse_inline(raw: &str) -> Result<Node, LoaderError> {
         let mut items = Vec::new();
         for part in split_top_level(inner, ',') {
             if !part.is_empty() {
-                items.push(parse_inline(&part)?);
+                items.push(parse_inline(&part, limits, depth + 1)?);
             }
         }
         Ok(Node::Seq(items))
@@ -519,7 +588,7 @@ fn parse_inline(raw: &str) -> Result<Node, LoaderError> {
             let (key, value) = split_key_value(&part).ok_or_else(|| {
                 LoaderError::Structure(format!("invalid inline mapping entry `{part}`"))
             })?;
-            map.push((key, parse_inline(value)?));
+            map.push((key, parse_inline(value, limits, depth + 1)?));
         }
         Ok(Node::Map(map))
     } else {
@@ -529,11 +598,18 @@ fn parse_inline(raw: &str) -> Result<Node, LoaderError> {
     }
 }
 
-fn parse_node(lines: &[Line], index: &mut usize, indent: usize) -> Result<Node, LoaderError> {
+fn parse_node(
+    lines: &[Line],
+    index: &mut usize,
+    indent: usize,
+    limits: Limits,
+    depth: usize,
+) -> Result<Node, LoaderError> {
+    check_depth(limits, depth)?;
     if is_dash(&lines[*index].text) {
-        parse_seq(lines, index, indent)
+        parse_seq(lines, index, indent, limits, depth)
     } else {
-        parse_map(lines, index, indent)
+        parse_map(lines, index, indent, limits, depth)
     }
 }
 
@@ -541,7 +617,13 @@ fn is_dash(text: &str) -> bool {
     text == "-" || text.starts_with("- ")
 }
 
-fn parse_map(lines: &[Line], index: &mut usize, indent: usize) -> Result<Node, LoaderError> {
+fn parse_map(
+    lines: &[Line],
+    index: &mut usize,
+    indent: usize,
+    limits: Limits,
+    depth: usize,
+) -> Result<Node, LoaderError> {
     let mut map = Vec::new();
     while *index < lines.len() && lines[*index].indent == indent && !is_dash(&lines[*index].text) {
         let text = lines[*index].text.clone();
@@ -550,26 +632,42 @@ fn parse_map(lines: &[Line], index: &mut usize, indent: usize) -> Result<Node, L
             message: format!("expected `key: value` but got `{text}`"),
         })?;
         *index += 1;
-        let value = parse_value_after_key(lines, index, indent, raw_value)?;
+        let value = parse_value_after_key(lines, index, indent, raw_value, limits, depth + 1)?;
         map.push((key, value));
     }
     Ok(Node::Map(map))
 }
 
-fn parse_seq(lines: &[Line], index: &mut usize, indent: usize) -> Result<Node, LoaderError> {
+fn parse_seq(
+    lines: &[Line],
+    index: &mut usize,
+    indent: usize,
+    limits: Limits,
+    depth: usize,
+) -> Result<Node, LoaderError> {
     let mut items = Vec::new();
     while *index < lines.len() && lines[*index].indent == indent && is_dash(&lines[*index].text) {
         let text = lines[*index].text.clone();
         let rest = text[1..].trim_start();
-        let key_indent = indent + text.len() - 1 - rest.len();
+        // The first mapping key starts after `- ` (the dash, its following
+        // spaces), not at the dash column. Undercounting makes a nested
+        // block look like a sibling and swallows `id` / `plugin` into config.
+        let key_indent = indent + text.len() - rest.len();
         *index += 1;
 
         if rest.is_empty() {
-            items.push(parse_nested_or_null(lines, index, indent)?);
+            items.push(parse_nested_or_null(
+                lines,
+                index,
+                indent,
+                limits,
+                depth + 1,
+            )?);
         } else if let Some((key, raw_value)) = split_key_value(rest) {
             // A sequence item can start a mapping on the dash line itself:
             // `- id: greeter` followed by `  plugin: ...`.
-            let value = parse_value_after_key(lines, index, key_indent, raw_value)?;
+            let value =
+                parse_value_after_key(lines, index, key_indent, raw_value, limits, depth + 1)?;
             let mut map = vec![(key, value)];
             while *index < lines.len()
                 && lines[*index].indent > indent
@@ -585,12 +683,19 @@ fn parse_seq(lines: &[Line], index: &mut usize, indent: usize) -> Result<Node, L
                 *index += 1;
                 map.push((
                     key,
-                    parse_value_after_key(lines, index, sibling_indent, raw_value)?,
+                    parse_value_after_key(
+                        lines,
+                        index,
+                        sibling_indent,
+                        raw_value,
+                        limits,
+                        depth + 1,
+                    )?,
                 ));
             }
             items.push(Node::Map(map));
         } else {
-            items.push(parse_inline(rest)?);
+            items.push(parse_inline(rest, limits, depth + 1)?);
         }
     }
     Ok(Node::Seq(items))
@@ -600,10 +705,12 @@ fn parse_nested_or_null(
     lines: &[Line],
     index: &mut usize,
     indent: usize,
+    limits: Limits,
+    depth: usize,
 ) -> Result<Node, LoaderError> {
     if *index < lines.len() && lines[*index].indent > indent {
         let child_indent = lines[*index].indent;
-        parse_node(lines, index, child_indent)
+        parse_node(lines, index, child_indent, limits, depth)
     } else {
         Ok(Node::null())
     }
@@ -614,15 +721,22 @@ fn parse_value_after_key(
     index: &mut usize,
     indent: usize,
     raw_value: &str,
+    limits: Limits,
+    depth: usize,
 ) -> Result<Node, LoaderError> {
     if raw_value.is_empty() {
-        parse_nested_or_null(lines, index, indent)
+        parse_nested_or_null(lines, index, indent, limits, depth)
     } else {
-        parse_inline(raw_value)
+        parse_inline(raw_value, limits, depth)
     }
 }
 
-fn parse_entry(node: Node, position: usize, vars: &VarTable) -> Result<Entry, LoaderError> {
+fn parse_entry(
+    node: Node,
+    position: usize,
+    vars: &VarTable,
+    limits: Limits,
+) -> Result<Entry, LoaderError> {
     let label = format!("entries[{position}]");
     let mut id = None;
     let mut plugin = None;
@@ -642,10 +756,10 @@ fn parse_entry(node: Node, position: usize, vars: &VarTable) -> Result<Entry, Lo
                 } else {
                     value
                 };
-                config = resolve_value(value, vars, &path)?;
+                config = resolve_value(value, vars, &path, limits, 1)?;
             }
             "disabled" => {
-                let value = resolve_value(node_to_value(&node), vars, &path)?;
+                let value = resolve_value(node_to_value(&node), vars, &path, limits, 1)?;
                 disabled = match value {
                     Value::Bool(flag) => flag,
                     other => {
@@ -750,7 +864,14 @@ fn reference_name(raw: &str) -> Option<&str> {
     }
 }
 
-fn resolve_value(value: Value, vars: &VarTable, path: &str) -> Result<Value, LoaderError> {
+fn resolve_value(
+    value: Value,
+    vars: &VarTable,
+    path: &str,
+    limits: Limits,
+    depth: usize,
+) -> Result<Value, LoaderError> {
+    check_depth(limits, depth)?;
     match value {
         Value::Reference(name) => {
             vars.get(&name)
@@ -763,7 +884,13 @@ fn resolve_value(value: Value, vars: &VarTable, path: &str) -> Result<Value, Loa
         Value::Array(items) => {
             let mut resolved = Vec::with_capacity(items.len());
             for (index, item) in items.into_iter().enumerate() {
-                resolved.push(resolve_value(item, vars, &format!("{path}[{index}]"))?);
+                resolved.push(resolve_value(
+                    item,
+                    vars,
+                    &format!("{path}[{index}]"),
+                    limits,
+                    depth + 1,
+                )?);
             }
             Ok(Value::Array(resolved))
         }
@@ -775,7 +902,10 @@ fn resolve_value(value: Value, vars: &VarTable, path: &str) -> Result<Value, Loa
                 } else {
                     format!("{path}.{key}")
                 };
-                resolved.insert(key, resolve_value(item, vars, &child_path)?);
+                resolved.insert(
+                    key,
+                    resolve_value(item, vars, &child_path, limits, depth + 1)?,
+                );
             }
             Ok(Value::Object(resolved))
         }

@@ -285,3 +285,107 @@ entries:
     assert!(matches!(error, LoaderError::UnknownPlugin { .. }));
     assert!(error.to_string().contains("not-registered"));
 }
+
+#[tokio::test]
+async fn mount_failure_unloads_already_mounted_fibers() {
+    let yaml =
+        "entries:\n  - id: first\n    plugin: demo/ok\n  - id: broken\n    plugin: demo/bad\n";
+    let composition = Composition::parse(yaml).unwrap();
+    let mut registry = PluginRegistry::new();
+    let disposed = Arc::new(AtomicBool::new(false));
+    let body_disposed = disposed.clone();
+    registry.register(
+        "demo/ok",
+        PluginFactory::new(move |ctx, _config| {
+            let ctx = ctx.clone();
+            let disposed = body_disposed.clone();
+            async move {
+                ctx.effect(move |scope| {
+                    let disposed = disposed.clone();
+                    async move {
+                        scope.on_dispose(move || {
+                            let disposed = disposed.clone();
+                            async move {
+                                disposed.store(true, Ordering::SeqCst);
+                                Ok(())
+                            }
+                        });
+                        Ok(())
+                    }
+                })
+                .await
+            }
+        }),
+    );
+    registry.register(
+        "demo/bad",
+        PluginFactory::new(|_ctx, _config| async { Err(cordis_rs::Error::Other("boom".into())) }),
+    );
+
+    let ctx = Context::root("rollback");
+    let result = composition.mount(&ctx, &registry).await;
+    let error = result.err().expect("second plugin must fail the mount");
+    assert!(matches!(error, LoaderError::Mount(_)));
+    assert!(
+        disposed.load(Ordering::SeqCst),
+        "first fiber must be unloaded"
+    );
+}
+
+#[tokio::test]
+async fn yaml_inject_delays_fiber_until_dependency_is_provided() {
+    let yaml = "entries:\n  - id: needs-input\n    plugin: demo/greet\n    inject: [input]\n";
+    let composition = Composition::parse(yaml).unwrap();
+    let ran = Arc::new(AtomicBool::new(false));
+    let body_ran = ran.clone();
+    let mut registry = PluginRegistry::new();
+    registry.register(
+        "demo/greet",
+        PluginFactory::new(move |_ctx, _config| {
+            let ran = body_ran.clone();
+            async move {
+                ran.store(true, Ordering::SeqCst);
+                Ok(())
+            }
+        }),
+    );
+
+    let ctx = Context::root("yaml-inject");
+    let fibers = composition.mount(&ctx, &registry).await.unwrap();
+    assert_eq!(fibers.len(), 1);
+    assert_eq!(fibers[0].state(), Lifecycle::Pending);
+    assert!(!ran.load(Ordering::SeqCst));
+
+    ctx.provide("input", 1u32).await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    assert_eq!(fibers[0].state(), Lifecycle::Active);
+    assert!(ran.load(Ordering::SeqCst));
+}
+
+#[test]
+fn recursion_depth_is_bounded_by_input_size() {
+    let nested = format!("{}{}", "[".repeat(200), "]".repeat(200));
+    let yaml = format!(
+        "entries:\n  - id: deep\n    plugin: demo/deep\n    config:\n      nested: {nested}\n"
+    );
+    let error = Composition::parse(&yaml).unwrap_err();
+    assert!(matches!(error, LoaderError::TooDeep { .. }));
+
+    let reasonable =
+        "entries:\n  - id: ok\n    plugin: demo/deep\n    config:\n      nested: [[[1]]]\n";
+    assert!(Composition::parse(reasonable).is_ok());
+}
+
+#[test]
+fn dash_line_mapping_keys_align_with_the_first_key_column() {
+    // Regression for key_indent: `config:` opens an inline mapping on the
+    // dash line; `id` / `plugin` below are siblings at the same column, not
+    // children of `config`.
+    let yaml = "entries:\n  - config:\n    id: a\n    plugin: demo/greet\n";
+    let composition = Composition::parse(yaml).unwrap();
+    assert_eq!(composition.entries.len(), 1);
+    let entry = &composition.entries[0];
+    assert_eq!(entry.id, "a");
+    assert_eq!(entry.plugin, "demo/greet");
+    assert_eq!(entry.config, ConfigValue::object());
+}
