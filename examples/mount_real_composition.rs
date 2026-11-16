@@ -9,8 +9,9 @@ use cordis_rs::config::Value;
 use cordis_rs::core_services::{provide_fs, provide_tools};
 use cordis_rs::loader::{Composition, PluginFactory, PluginRegistry, VarTable};
 use cordis_rs::plugin_ports::{
-    DeepSeekConfig, MessageFeedbackConfig, SkillFsConfig, ToolFsConfig, mount_llm_deepseek,
-    mount_message_feedback, mount_session_persistence_jsonl, mount_skill_filesystem, mount_tool_fs,
+    DeepSeekConfig, MessageFeedbackConfig, SkillFsConfig, ToolFsConfig, ToolSubagentConfig,
+    mount_llm_deepseek, mount_message_feedback, mount_session_persistence_jsonl,
+    mount_skill_filesystem, mount_tool_fs, mount_tool_subagent,
 };
 use cordis_rs::{Context, Lifecycle};
 
@@ -59,6 +60,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut env = std::collections::BTreeMap::new();
                 env.insert("DEEPSEEK_API_KEY".to_string(), "sk-demo".to_string());
                 let _ = mount_llm_deepseek(&ctx, DeepSeekConfig::default(), env).await?;
+                Ok(())
+            }
+        }),
+    );
+
+    // tool-subagent -> delegation tool (no providers registered in this demo).
+    let ctx_for_subagent = ctx.clone();
+    registry.register(
+        "@deepseek-ai/dsh-tool-subagent",
+        PluginFactory::new(move |_ctx, _config| {
+            let ctx = ctx_for_subagent.clone();
+            async move {
+                let config = ToolSubagentConfig {
+                    provider: "spawn".to_string(),
+                    ..Default::default()
+                };
+                let _ = mount_tool_subagent(&ctx, config).await?;
                 Ok(())
             }
         }),

@@ -946,3 +946,49 @@ async fn message_feedback_validates_notes_and_records_events() {
         Err(FeedbackError::SessionNotFound(_))
     ));
 }
+
+#[tokio::test]
+async fn tool_subagent_delegates_with_depth_cap() {
+    use std::sync::Arc as StdArc;
+
+    use cordis_rs::core_services::{provide_subagents, provide_tools};
+    use cordis_rs::plugin_ports::{ToolSubagentConfig, mount_tool_subagent};
+
+    let ctx = Context::root("subagent-tool");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let subagents = provide_subagents(&ctx).await.unwrap();
+
+    let _provider = subagents.register(
+        "spawn",
+        StdArc::new(|request| Box::pin(async move { format!("child says: {}", request.prompt) })),
+    );
+
+    let config = ToolSubagentConfig {
+        provider: "spawn".to_string(),
+        tool_name: "subagent".to_string(),
+        max_depth: 1,
+    };
+    let _tools = mount_tool_subagent(&ctx, config).await.unwrap();
+    assert!(tools.names().contains(&"subagent".to_string()));
+
+    let output = tools
+        .invoke(
+            "subagent",
+            serde_json::json!({ "prompt": "hello", "depth": 1 }),
+            cordis_rs::core_services::ToolExecContext::agent("parent"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(output.rendered, ["child says: hello"]);
+
+    // depth 2 exceeds the cap of 1.
+    let error = tools
+        .invoke(
+            "subagent",
+            serde_json::json!({ "prompt": "deep", "depth": 2 }),
+            cordis_rs::core_services::ToolExecContext::agent("parent"),
+        )
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("depth"));
+}

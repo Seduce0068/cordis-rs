@@ -56,6 +56,9 @@ pub mod plugin_ports {
         EditInput, READ_LIMIT, STREAM_MIN_SIZE, ToolFs, ToolFsConfig, mount as mount_tool_fs,
         parse_edit_args, parse_read_args, parse_write_args,
     };
+    pub use crate::ports::tool_subagent::{
+        ToolSubagent, ToolSubagentConfig, mount as mount_tool_subagent,
+    };
     pub use crate::ports::tool_todo::{
         Counts, MountedTodo, RawTodo, SessionEvent, SessionProjections, TodoItem, TodoStatus,
         TodoWriteArgs, TodoWriteResult, ToolExecution, ToolFailure, ToolTodo, Tools, describe,
@@ -97,6 +100,10 @@ pub mod core_services {
     };
     pub use crate::services::skills::{
         Skill, SkillCatalog, SkillProvider, SkillRegistry, provide as provide_skills,
+    };
+    pub use crate::services::subagents::{
+        SubagentError, SubagentRegistry, SubagentRequest, SubagentResult,
+        provide as provide_subagents,
     };
     pub use crate::services::tools::{
         ToolArgs, ToolDefinition, ToolError, ToolExecContext, ToolHandler, ToolNext, ToolOutput,

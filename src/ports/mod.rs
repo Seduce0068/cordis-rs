@@ -18,3 +18,5 @@ pub mod skill_filesystem;
 pub mod llm_deepseek;
 
 pub mod message_feedback;
+
+pub mod tool_subagent;
