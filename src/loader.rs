@@ -921,6 +921,38 @@ fn parse_value_after_key(
 }
 
 /// Evaluate known DSH helper calls. Returns `Ok(None)` for other forms.
+/// Numeric arithmetic helper used by `!!js`. Returns `None` for non-numeric
+/// operands so a `+` in a string context can still fall through to a literal.
+fn arithmetic(left: &Value, operator: &str, right: &Value) -> Option<Value> {
+    let number = |value: &Value| -> Option<f64> {
+        match value {
+            Value::Integer(value) => Some(*value as f64),
+            Value::Number(value) => Some(*value),
+            _ => None,
+        }
+    };
+    let a = number(left)?;
+    let b = number(right)?;
+    let result = match operator {
+        "+" => a + b,
+        "-" => a - b,
+        "*" => a * b,
+        "/" => {
+            if b == 0.0 {
+                return None;
+            }
+            a / b
+        }
+        _ => return None,
+    };
+    // Keep integer results as integers for stable comparisons.
+    if result.fract() == 0.0 && result >= i64::MIN as f64 && result <= i64::MAX as f64 {
+        Some(Value::Integer(result as i64))
+    } else {
+        Some(Value::Number(result))
+    }
+}
+
 fn evaluate_helper_call(
     expression: &str,
     vars: &VarTable,
@@ -1168,6 +1200,23 @@ fn evaluate_expression(
         let left_truthy = expression_truthy(&evaluate_expression(left.trim(), vars, path)?);
         let right_truthy = expression_truthy(&evaluate_expression(right.trim(), vars, path)?);
         return Ok(Value::Bool(left_truthy && right_truthy));
+    }
+
+    // Arithmetic on numeric operands. Require surrounding whitespace so
+    // identifiers such as `working-directory` are never split on `-`.
+    for operator in ["+", "-", "*", "/"] {
+        if let Some((left, right)) = split_once_top_level(expression, operator) {
+            let spaced =
+                left.ends_with(char::is_whitespace) && right.starts_with(char::is_whitespace);
+            if !spaced {
+                continue;
+            }
+            let left_value = evaluate_expression(left.trim(), vars, path)?;
+            let right_value = evaluate_expression(right.trim(), vars, path)?;
+            if let Some(result) = arithmetic(&left_value, operator, &right_value) {
+                return Ok(result);
+            }
+        }
     }
 
     // Comparisons: `==`, `!=`, `>=`, `<=`, `>`, `<`. Operands are evaluated

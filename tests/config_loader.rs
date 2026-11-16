@@ -767,3 +767,41 @@ entries:
     assert_eq!(map.get("arr"), Some(&Value::Bool(true)));
     assert_eq!(map.get("chained"), Some(&Value::String("yes".to_string())));
 }
+
+#[test]
+fn js_arithmetic_operators_are_evaluated() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let mut vars = VarTable::new();
+    vars.insert("count", Value::Integer(5));
+    vars.insert("path", Value::String("working-directory".to_string()));
+
+    let yaml = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      add: !!js 2 + 3
+      sub: !!js 10 - 4
+      mul: !!js count * 2
+      div: !!js 9 / 2
+      chain: !!js count + 1 >= 6 ? "yes" : "no"
+      literal: !!js $path
+"#;
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let map = match &composition.entries[0].config {
+        Value::Object(map) => map.clone(),
+        _ => panic!("expected object"),
+    };
+    assert_eq!(map.get("add"), Some(&Value::Integer(5)));
+    assert_eq!(map.get("sub"), Some(&Value::Integer(6)));
+    assert_eq!(map.get("mul"), Some(&Value::Integer(10)));
+    assert_eq!(map.get("div"), Some(&Value::Number(4.5)));
+    assert_eq!(map.get("chain"), Some(&Value::String("yes".to_string())));
+    // Hyphen in a value must not be parsed as subtraction.
+    assert_eq!(
+        map.get("literal"),
+        Some(&Value::String("working-directory".to_string()))
+    );
+}
