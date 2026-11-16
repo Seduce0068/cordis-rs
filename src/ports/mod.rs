@@ -8,3 +8,5 @@ pub mod command_feedback;
 pub mod tool_working_directory;
 
 pub mod tool_fs;
+
+pub mod tool_bash;

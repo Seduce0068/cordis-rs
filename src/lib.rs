@@ -30,6 +30,10 @@ pub mod plugin_ports {
         CommandFeedback, FEEDBACK_CATEGORIES, FeedbackRecord, USAGE as FEEDBACK_USAGE,
         feedback_events, mount as mount_command_feedback, record_feedback,
     };
+    pub use crate::ports::tool_bash::{
+        BashArgs, DESCRIPTION as BASH_DESCRIPTION, ToolBash, ToolBashConfig, job_handle,
+        mount as mount_tool_bash, parse_bash_args,
+    };
     pub use crate::ports::tool_fs::{
         EditInput, READ_LIMIT, STREAM_MIN_SIZE, ToolFs, ToolFsConfig, mount as mount_tool_fs,
         parse_edit_args, parse_read_args, parse_write_args,
@@ -66,6 +70,9 @@ pub mod core_services {
     pub use crate::services::sessions::{
         ProjectionFold, Session, SessionEvent as LoggedSessionEvent, SessionHeader,
         SessionProjectionRegistry, SessionStore, provide as provide_sessions,
+    };
+    pub use crate::services::shell::{
+        Shell, ShellError, ShellRequest, ShellResult, ShellSpec, provide as provide_shell,
     };
     pub use crate::services::tools::{
         ToolArgs, ToolDefinition, ToolError, ToolExecContext, ToolHandler, ToolNext, ToolOutput,

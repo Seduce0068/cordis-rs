@@ -1,0 +1,159 @@
+//! `ctx.shell`: subprocess execution seam.
+//!
+//! Upstream: `packages/shell/shell/src/index.ts` in
+//! deepseek-ai/deepseek-harness (MIT), read as untrusted reference data.
+//! This port resolves a request into a concrete argv and runs it through
+//! `std::process::Command`, returning stdout/stderr and an exit status.
+//! Sandbox policy is left to the host.
+
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use std::sync::{Arc, RwLock};
+
+use crate::Result;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShellRequest {
+    pub command: String,
+    pub cwd: Option<PathBuf>,
+    pub timeout_ms: Option<u64>,
+}
+
+impl ShellRequest {
+    pub fn new(command: impl Into<String>) -> Self {
+        Self {
+            command: command.into(),
+            cwd: None,
+            timeout_ms: None,
+        }
+    }
+
+    pub fn in_dir(mut self, cwd: impl Into<PathBuf>) -> Self {
+        self.cwd = Some(cwd.into());
+        self
+    }
+
+    pub fn with_timeout(mut self, timeout_ms: u64) -> Self {
+        self.timeout_ms = Some(timeout_ms);
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShellSpec {
+    pub program: String,
+    pub args: Vec<String>,
+    pub cwd: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShellResult {
+    pub stdout: String,
+    pub stderr: String,
+    pub exit_code: i32,
+    pub success: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ShellError {
+    InvalidCommand(String),
+    Spawn(String),
+    TimedOut(u64),
+}
+
+impl std::fmt::Display for ShellError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidCommand(message) => write!(f, "invalid command: {message}"),
+            Self::Spawn(message) => write!(f, "failed to spawn: {message}"),
+            Self::TimedOut(ms) => write!(f, "command timed out after {ms}ms"),
+        }
+    }
+}
+
+impl std::error::Error for ShellError {}
+
+#[derive(Default)]
+struct ShellState {
+    default_cwd: Option<PathBuf>,
+}
+
+/// The shell execution seam.
+#[derive(Default, Clone)]
+pub struct Shell {
+    state: Arc<RwLock<ShellState>>,
+}
+
+impl Shell {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn set_default_cwd(&self, cwd: impl Into<PathBuf>) {
+        self.state
+            .write()
+            .expect("shell state poisoned")
+            .default_cwd = Some(cwd.into());
+    }
+
+    /// Resolve a request into a concrete program + argv. Uses `sh -c` on
+    /// Unix and `cmd /C` on Windows, matching a typical shell executor.
+    pub fn resolve(&self, request: &ShellRequest) -> std::result::Result<ShellSpec, ShellError> {
+        if request.command.trim().is_empty() {
+            return Err(ShellError::InvalidCommand(
+                "command must not be empty".to_string(),
+            ));
+        }
+        let cwd = request.cwd.clone().or_else(|| {
+            self.state
+                .read()
+                .expect("shell state poisoned")
+                .default_cwd
+                .clone()
+        });
+        #[cfg(windows)]
+        let spec = ShellSpec {
+            program: "cmd".to_string(),
+            args: vec!["/C".to_string(), request.command.clone()],
+            cwd,
+        };
+        #[cfg(not(windows))]
+        let spec = ShellSpec {
+            program: "sh".to_string(),
+            args: vec!["-c".to_string(), request.command.clone()],
+            cwd,
+        };
+        Ok(spec)
+    }
+
+    /// Execute a resolved spec synchronously.
+    pub fn execute(&self, spec: &ShellSpec) -> std::result::Result<ShellResult, ShellError> {
+        let mut command = Command::new(&spec.program);
+        command.args(&spec.args);
+        if let Some(cwd) = &spec.cwd {
+            command.current_dir(cwd);
+        }
+        command.stdout(Stdio::piped()).stderr(Stdio::piped());
+        let output = command
+            .output()
+            .map_err(|error| ShellError::Spawn(error.to_string()))?;
+        Ok(ShellResult {
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+            exit_code: output.status.code().unwrap_or(-1),
+            success: output.status.success(),
+        })
+    }
+
+    /// Convenience: resolve and execute in one call.
+    pub fn run(&self, request: &ShellRequest) -> std::result::Result<ShellResult, ShellError> {
+        let spec = self.resolve(request)?;
+        self.execute(&spec)
+    }
+}
+
+pub async fn provide(ctx: &crate::Context) -> Result<Shell> {
+    let shell = Shell::new();
+    ctx.provide("shell", shell.clone()).await?;
+    Ok(shell)
+}

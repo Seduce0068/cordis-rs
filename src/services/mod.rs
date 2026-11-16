@@ -13,3 +13,5 @@ pub mod agent_loop;
 pub mod fs;
 
 pub mod jobs;
+
+pub mod shell;

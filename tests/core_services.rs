@@ -508,3 +508,76 @@ async fn job_registry_lifecycle_output_and_owner_fencing() {
     assert_eq!(listed[0].status, JobStatus::Succeeded);
     assert!(jobs.list(Some("agent-2")).is_empty());
 }
+
+#[tokio::test]
+async fn tool_bash_runs_foreground_and_background() {
+    use cordis_rs::core_services::{
+        JobStatus, ToolExecContext, ToolOutput, provide_jobs, provide_shell, provide_tools,
+    };
+    use cordis_rs::plugin_ports::{ToolBashConfig, mount_tool_bash, parse_bash_args};
+
+    let ctx = Context::root("tool-bash-port");
+    let (registry, _) = provide_tools(&ctx).await.unwrap();
+    let shell = provide_shell(&ctx).await.unwrap();
+    let jobs = provide_jobs(&ctx).await.unwrap();
+    let _tools = mount_tool_bash(&ctx, shell.clone(), ToolBashConfig::default())
+        .await
+        .unwrap();
+    assert!(registry.names().contains(&"bash".to_string()));
+
+    // argument validation
+    assert!(
+        parse_bash_args(
+            &serde_json::json!({ "command": "" }),
+            &ToolBashConfig::default()
+        )
+        .is_err()
+    );
+    let disabled = ToolBashConfig {
+        enable_run_in_background: false,
+        ..Default::default()
+    };
+    assert!(
+        parse_bash_args(
+            &serde_json::json!({ "command": "echo hi", "run_in_background": true }),
+            &disabled,
+        )
+        .is_err()
+    );
+
+    // foreground calls return job ids while a job registry is composed
+    // (upstream registers every call as a job).
+    let output: ToolOutput = registry
+        .invoke(
+            "bash",
+            serde_json::json!({ "command": "printf hello" }),
+            ToolExecContext::agent("agent-1"),
+        )
+        .await
+        .unwrap();
+    let foreground_job = output.content["job_id"].as_u64().unwrap();
+    assert!(jobs.wait(foreground_job, Some("bash"), 1000).unwrap());
+    let (foreground_text, _) = jobs.read(foreground_job, 0, Some("bash")).unwrap();
+    assert_eq!(foreground_text, "hello");
+
+    // background: returns immediately with a job id that settles
+    let output: ToolOutput = registry
+        .invoke(
+            "bash",
+            serde_json::json!({
+                "command": "printf background",
+                "run_in_background": true,
+            }),
+            ToolExecContext::agent("agent-1"),
+        )
+        .await
+        .unwrap();
+    let id = output.content["job_id"].as_u64().unwrap();
+    assert!(jobs.wait(id, Some("bash"), 1000).unwrap());
+    assert_eq!(
+        jobs.view(id, Some("bash")).unwrap().status,
+        JobStatus::Succeeded
+    );
+    let (text, _) = jobs.read(id, 0, Some("bash")).unwrap();
+    assert_eq!(text, "background");
+}
