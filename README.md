@@ -45,11 +45,15 @@ cargo check --all-targets
 cargo clippy --all-targets -- -D warnings
 cargo test --all-targets
 cargo run --example agent_demo
+cargo run --example agent_checkpoint_demo
 ```
 
 `agent_demo` は scripted LLM provider で agent-loop を回し、tool-fs の
 `write` / `read` を使って実ファイルを作成・検証する end-to-end デモです
 （ネットワークやモデル認証は不要）。
+
+`agent_checkpoint_demo` は agent-loop の session イベントを checkpoint hook 経由で
+JSONL に永続化し、restore までを検証するデモです。
 
 `tests/cordis.rs` にランタイム自体の 7 テスト、
 `tests/official_plugin_port.rs` に公式 `dsh-command-compact` の移植デモを収録。
