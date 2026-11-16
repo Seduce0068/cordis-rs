@@ -1382,3 +1382,44 @@ async fn agent_loop_compacts_at_step_boundary_under_pressure() {
     assert!(!checkpoints.is_empty(), "expected an automatic checkpoint");
     assert_eq!(checkpoints[0].data["trigger"], "pressure");
 }
+
+#[tokio::test]
+async fn approval_fails_closed_and_honors_answerers() {
+    use std::sync::Arc as StdArc;
+
+    use cordis_rs::core_services::{
+        ApprovalDecision, ApprovalError, ApprovalRequest, ApprovalService, provide_approval,
+    };
+
+    let ctx = Context::root("approval");
+    let approval: ApprovalService = provide_approval(&ctx).await.unwrap();
+    let req = ApprovalRequest::new("sandbox escalate", "allow danger-full-access?");
+
+    // No answerer -> fail closed.
+    assert!(matches!(
+        approval.request(&req),
+        Err(ApprovalError::Unavailable)
+    ));
+
+    let _d = approval.add_answerer(
+        "test-answerer",
+        StdArc::new(|req: &ApprovalRequest| {
+            if req.action == "sandbox escalate" {
+                Some(ApprovalDecision::Deny)
+            } else {
+                None
+            }
+        }),
+    );
+    let outcome = approval.request(&req).unwrap();
+    assert_eq!(outcome.decision, ApprovalDecision::Deny);
+    assert_eq!(outcome.answerer.as_deref(), Some("test-answerer"));
+    assert_eq!(approval.answerer_names(), ["test-answerer"]);
+
+    // A different action that no answerer handles fails closed again.
+    let other = ApprovalRequest::new("other", "unhandled");
+    assert!(matches!(
+        approval.request(&other),
+        Err(ApprovalError::Unavailable)
+    ));
+}
