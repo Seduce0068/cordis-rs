@@ -1092,3 +1092,45 @@ async fn goal_store_enforces_revisions_and_command_registers() {
     assert!(store.get().is_none());
     assert!(store.event_count() > 0);
 }
+
+#[tokio::test]
+async fn system_prompt_sections_sort_interpolate_and_reject_duplicates() {
+    use cordis_rs::core_services::{
+        AssembleContext, PromptError, PromptSection, provide_system_prompt,
+    };
+    use std::collections::BTreeMap;
+
+    let ctx = Context::root("system-prompt");
+    let prompt = provide_system_prompt(&ctx).await.unwrap();
+
+    let _d1 = prompt
+        .section(PromptSection::new("z-last", 900, "last"))
+        .unwrap();
+    let _d2 = prompt
+        .section(PromptSection::new("a-first", 100, "You are {{role}}."))
+        .unwrap();
+    assert!(matches!(
+        prompt.section(PromptSection::new("a-first", 100, "dup")),
+        Err(PromptError::DuplicateSection(_))
+    ));
+
+    let mut variables = BTreeMap::new();
+    variables.insert("role".to_string(), "a helper".to_string());
+    let assembly = prompt.assemble(&AssembleContext { variables }).unwrap();
+    assert_eq!(assembly.sections, ["a-first", "z-last"]);
+    assert_eq!(assembly.text, "You are a helper.\n\nlast");
+
+    // A complete section replaces all others.
+    let _d3 = prompt
+        .section(PromptSection {
+            name: "override".to_string(),
+            order: 500,
+            text: "ONLY THIS".to_string(),
+            interpolate: false,
+            complete: true,
+        })
+        .unwrap();
+    let assembly = prompt.assemble(&AssembleContext::default()).unwrap();
+    assert_eq!(assembly.text, "ONLY THIS");
+    assert_eq!(assembly.sections, ["override"]);
+}

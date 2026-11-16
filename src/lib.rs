@@ -115,6 +115,10 @@ pub mod core_services {
         SubagentError, SubagentRegistry, SubagentRequest, SubagentResult,
         provide as provide_subagents,
     };
+    pub use crate::services::system_prompt::{
+        AssembleContext, PromptAssembly, PromptError, PromptSection, SystemPrompt,
+        provide as provide_system_prompt,
+    };
     pub use crate::services::tools::{
         ToolArgs, ToolDefinition, ToolError, ToolExecContext, ToolHandler, ToolNext, ToolOutput,
         ToolPipeline, ToolRegistry, invoke_blocking, provide as provide_tools,
