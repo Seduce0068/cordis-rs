@@ -821,3 +821,33 @@ async fn checkpoint_cursor_save_is_atomic_and_overwrites_cleanly() {
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[tokio::test]
+async fn skill_filesystem_discovers_and_registers_a_provider() {
+    use cordis_rs::plugin_ports::{SkillFsConfig, mount_skill_filesystem};
+
+    let dir = std::env::temp_dir().join(format!("cordis-skills-{}", std::process::id()));
+    let skill_dir = dir.join("demo-skill");
+    let _ = std::fs::create_dir_all(&skill_dir);
+    std::fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: demo-skill\n---\n# Demo\nA demo skill for tests.\n",
+    )
+    .unwrap();
+
+    let ctx = Context::root("skill-fs");
+    let config = SkillFsConfig {
+        roots: vec![dir.clone()],
+        rank: 10,
+    };
+    let registry = mount_skill_filesystem(&ctx, config).await.unwrap();
+
+    let catalog = registry.catalog();
+    assert_eq!(catalog.skills.len(), 1);
+    assert_eq!(catalog.skills[0].name, "demo-skill");
+    assert_eq!(catalog.skills[0].description, "A demo skill for tests.");
+    assert_eq!(catalog.skills[0].source, "filesystem");
+    assert_eq!(registry.names(), ["demo-skill"]);
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}

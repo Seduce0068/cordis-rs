@@ -26,7 +26,7 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 | Fiber | `PENDING → LOADING → ACTIVE`、依存喪失で unload、復帰で reload |
 | Plugin | `Plugin` trait + `FunctionPlugin`、`inject` による依存宣言 |
 | コアサービス | `ctx.tools`（registry + pipeline）、`ctx.sessions`（append-only log + projection folds）、`ctx.commands` |
-| 再利用 port | `dsh-tool-todo`、`dsh-command-feedback` |
+| 再利用 port | `dsh-tool-todo`、`dsh-command-feedback`、`dsh-skill-filesystem` ほか |
 | GPUI 連携 | 別リポジトリ `dsh-gpui-client-poc` の `cordis_todo_ui` が `todos` projection を描画 |
 
 ### 意図的な差分

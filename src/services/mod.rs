@@ -17,3 +17,5 @@ pub mod jobs;
 pub mod shell;
 
 pub mod working_directory;
+
+pub mod skills;

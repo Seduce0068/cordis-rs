@@ -36,6 +36,10 @@ pub mod plugin_ports {
         JsonlPersistence, JsonlSessionHandle, PersistedEvent, PersistenceError,
         mount as mount_session_persistence_jsonl,
     };
+    pub use crate::ports::skill_filesystem::{
+        SkillFilesystem, SkillFsConfig, discover as discover_skills,
+        mount as mount_skill_filesystem,
+    };
     pub use crate::ports::tool_bash::{
         BashArgs, DESCRIPTION as BASH_DESCRIPTION, ToolBash, ToolBashConfig, job_handle,
         mount as mount_tool_bash, parse_bash_args,
@@ -82,6 +86,9 @@ pub mod core_services {
     };
     pub use crate::services::shell::{
         Shell, ShellError, ShellRequest, ShellResult, ShellSpec, provide as provide_shell,
+    };
+    pub use crate::services::skills::{
+        Skill, SkillCatalog, SkillProvider, SkillRegistry, provide as provide_skills,
     };
     pub use crate::services::tools::{
         ToolArgs, ToolDefinition, ToolError, ToolExecContext, ToolHandler, ToolNext, ToolOutput,

@@ -12,3 +12,5 @@ pub mod tool_fs;
 pub mod tool_bash;
 
 pub mod session_persistence_jsonl;
+
+pub mod skill_filesystem;

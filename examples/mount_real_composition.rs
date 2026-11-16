@@ -8,7 +8,10 @@
 use cordis_rs::config::Value;
 use cordis_rs::core_services::{provide_fs, provide_tools};
 use cordis_rs::loader::{Composition, PluginFactory, PluginRegistry, VarTable};
-use cordis_rs::plugin_ports::{ToolFsConfig, mount_session_persistence_jsonl, mount_tool_fs};
+use cordis_rs::plugin_ports::{
+    SkillFsConfig, ToolFsConfig, mount_session_persistence_jsonl, mount_skill_filesystem,
+    mount_tool_fs,
+};
 use cordis_rs::{Context, Lifecycle};
 
 #[tokio::main]
@@ -41,6 +44,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
             async move {
                 let _ = mount_session_persistence_jsonl(&ctx, root).await?;
+                Ok(())
+            }
+        }),
+    );
+
+    // skill-filesystem -> our skill provider port (no roots in this demo).
+    let ctx_for_skills = ctx.clone();
+    registry.register(
+        "@deepseek-ai/dsh-skill-filesystem",
+        PluginFactory::new(move |_ctx, _config| {
+            let ctx = ctx_for_skills.clone();
+            async move {
+                let _ = mount_skill_filesystem(&ctx, SkillFsConfig::default()).await?;
                 Ok(())
             }
         }),
