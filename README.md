@@ -48,6 +48,7 @@ cargo run --example agent_demo
 cargo run --example agent_checkpoint_demo
 cargo run --example load_cordis_yml
 cargo run --example mount_composition
+cargo run --example composition_with_tool_fs
 ```
 
 `agent_demo` は scripted LLM provider で agent-loop を回し、tool-fs の
@@ -62,6 +63,9 @@ JSONL に永続化し、restore までを検証するデモです。
 
 `mount_composition` は YAML -> Composition -> 検証済み config -> PluginFactory -> Fiber の
 起動までを検証します。
+
+`composition_with_tool_fs` は YAML の `config` で有効なツールを選び、実際に
+`write` / `read` を呼んでファイルを検証します。
 
 `tests/cordis.rs` にランタイム自体の 7 テスト、
 `tests/official_plugin_port.rs` に公式 `dsh-command-compact` の移植デモを収録。
