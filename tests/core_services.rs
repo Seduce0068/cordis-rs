@@ -170,3 +170,36 @@ async fn session_store_appends_and_projections_fold() {
     disposer.dispose().await.unwrap();
     assert!(!projections.has("count"));
 }
+
+#[tokio::test]
+async fn command_feedback_records_log_only_event() {
+    use cordis_rs::core_services::{CommandInvocation, CommandResult, Session};
+    use cordis_rs::plugin_ports::{FEEDBACK_CATEGORIES, feedback_events, mount_command_feedback};
+
+    assert!(FEEDBACK_CATEGORIES.contains(&"task-result"));
+
+    let ctx = Context::root("feedback-port");
+    let session = Session::new("session-1", None);
+    let commands = mount_command_feedback(&ctx, session.clone()).await.unwrap();
+    assert_eq!(commands.names(), ["/feedback"]);
+
+    let blank = commands
+        .invoke("/feedback", CommandInvocation::new("   "))
+        .await
+        .unwrap();
+    assert!(matches!(blank, CommandResult::Error { .. }));
+    assert!(feedback_events(&session).is_empty());
+
+    let ok = commands
+        .invoke(
+            "/feedback",
+            CommandInvocation::new("great response").with_session("session-1"),
+        )
+        .await
+        .unwrap();
+    assert!(matches!(ok, CommandResult::Success { .. }));
+    let events = feedback_events(&session);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].event_type, "feedback/record");
+    assert_eq!(events[0].data["text"], serde_json::json!("great response"));
+}

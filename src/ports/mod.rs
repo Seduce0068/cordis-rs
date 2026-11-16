@@ -2,3 +2,5 @@
 //! native host can mount them on a cordis-rs `Context`.
 
 pub mod tool_todo;
+
+pub mod command_feedback;
