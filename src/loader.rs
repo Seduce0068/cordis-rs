@@ -1060,7 +1060,7 @@ fn evaluate_expression(
 
     // Comparisons: `==`, `!=`, `>=`, `<=`, `>`, `<`. Operands are evaluated
     // as expressions and compared structurally; the result is a Bool.
-    for operator in ["==", "!=", ">=", "<=", ">", "<"] {
+    for operator in ["===", "!==", "==", "!=", ">=", "<=", ">", "<"] {
         if let Some((left, right)) = split_once_top_level(expression, operator) {
             let left_value = evaluate_expression(left.trim(), vars, path)?;
             let right_value = evaluate_expression(right.trim(), vars, path)?;
@@ -1088,6 +1088,11 @@ fn evaluate_expression(
     // Applied left-to-right so chains such as `$items[1].length` work.
     if let Some(result) = evaluate_member_access(expression, vars, path)? {
         return Ok(result);
+    }
+
+    // `undefined` is a JS literal, not a variable reference.
+    if expression == "undefined" {
+        return Ok(Value::Null);
     }
 
     // Bare reference: `$name` or a plain identifier inside `!!js`.
@@ -1262,8 +1267,8 @@ fn expression_truthy(value: &Value) -> bool {
 fn compare_values(left: &Value, operator: &str, right: &Value) -> Result<bool, LoaderError> {
     let equal = left == right;
     match operator {
-        "==" => Ok(equal),
-        "!=" => Ok(!equal),
+        "===" | "==" => Ok(equal),
+        "!==" | "!=" => Ok(!equal),
         ">" | "<" | ">=" | "<=" => {
             let ordering = match (left, right) {
                 (Value::Integer(a), Value::Integer(b)) => a.cmp(b),
@@ -1332,11 +1337,7 @@ fn evaluate_member_access(
             &tail[1..]
         };
         let key = format!("env.{env_name}");
-        return Ok(Some(
-            vars.get(&key)
-                .cloned()
-                .unwrap_or(Value::String(String::new())),
-        ));
+        return Ok(Some(vars.get(&key).cloned().unwrap_or(Value::Null)));
     }
 
     let mut rest = tail;

@@ -46,6 +46,7 @@ cargo clippy --all-targets -- -D warnings
 cargo test --all-targets
 cargo run --example agent_demo
 cargo run --example agent_checkpoint_demo
+cargo run --example load_cordis_yml
 ```
 
 `agent_demo` は scripted LLM provider で agent-loop を回し、tool-fs の
@@ -54,6 +55,9 @@ cargo run --example agent_checkpoint_demo
 
 `agent_checkpoint_demo` は agent-loop の session イベントを checkpoint hook 経由で
 JSONL に永続化し、restore までを検証するデモです。
+
+`load_cordis_yml` は DSH 実サンプルの `cordis.yml` を丸ごと loader で読み込み、
+6 エントリと `!!js` 式（dshHomePath / process.env / 三項）の解決を検証します。
 
 `tests/cordis.rs` にランタイム自体の 7 テスト、
 `tests/official_plugin_port.rs` に公式 `dsh-command-compact` の移植デモを収録。
