@@ -577,3 +577,43 @@ entries:
     assert_eq!(map.get("obj_key"), Some(&Value::Integer(42)));
     assert_eq!(map.get("out_of_range"), Some(&Value::Null));
 }
+
+#[test]
+fn upstream_style_composition_with_name_and_insert_is_loaded() {
+    use cordis_rs::loader::Composition;
+
+    // Mirrors snapshots/sdk/text-turn/cordis.yml: `name:` package ids and a
+    // nested `insert:` row. !!js expressions outside our subset stay literal.
+    let yaml = r#"
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  config:
+    includeDefaultRoots: false
+
+- id: llm-deepseek
+  name: '@deepseek-ai/dsh-llm-deepseek-api-key'
+  config:
+    thinking: enabled
+
+- insert:
+    - id: snapshot-message-feedback
+      name: '@deepseek-ai/dsh-message-feedback'
+      disabled: !!js "process.env.DSH_SNAPSHOT_FEEDBACK !== '1'"
+      config:
+        maxNoteBytes: 1024
+"#;
+    let composition = Composition::parse(yaml).unwrap();
+    assert_eq!(composition.entries.len(), 3);
+    assert_eq!(
+        composition.entries[0].plugin,
+        "@deepseek-ai/dsh-skill-filesystem"
+    );
+    assert_eq!(composition.entries[1].id, "llm-deepseek");
+    assert_eq!(composition.entries[2].id, "snapshot-message-feedback");
+    // The !!js process.env expression is not in our subset; it resolves to a
+    // non-bool literal and is rejected by the strict disabled validator. We
+    // keep the row but document that full JS evaluation is out of scope.
+    let _ = composition.enabled().count();
+    let direct = composition.entries[0].clone();
+    assert!(!direct.disabled);
+}

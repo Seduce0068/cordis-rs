@@ -169,12 +169,37 @@ impl Composition {
         };
 
         let mut entries = Vec::new();
-        for (key, node) in root.into_map()? {
-            if key != "entries" {
-                continue;
+        match root {
+            // A bare top-level sequence is the patch form used by DSH's
+            // `cordis.yml` snapshot fixtures.
+            Node::Seq(items) => {
+                let mut flat = Vec::new();
+                for item in items {
+                    flatten_entry_nodes(item, &mut flat)?;
+                }
+                for (index, item) in flat.into_iter().enumerate() {
+                    entries.push(parse_entry(item, index, vars, limits)?);
+                }
             }
-            for (index, item) in node.into_seq()?.into_iter().enumerate() {
-                entries.push(parse_entry(item, index, vars, limits)?);
+            Node::Map(pairs) => {
+                for (key, node) in pairs {
+                    if key != "entries" {
+                        continue;
+                    }
+                    let mut flat = Vec::new();
+                    for item in node.into_seq()? {
+                        flatten_entry_nodes(item, &mut flat)?;
+                    }
+                    for (index, item) in flat.into_iter().enumerate() {
+                        entries.push(parse_entry(item, index, vars, limits)?);
+                    }
+                }
+            }
+            other => {
+                return Err(LoaderError::Structure(format!(
+                    "expected a mapping or sequence but got {}",
+                    other.kind()
+                )));
             }
         }
         Ok(Self { entries })
@@ -761,6 +786,40 @@ fn parse_value_after_key(
     }
 }
 
+/// Flatten upstream's nested `insert:` rows into a single entry list.
+fn flatten_entry_nodes(node: Node, output: &mut Vec<Node>) -> Result<(), LoaderError> {
+    match node {
+        Node::Seq(items) => {
+            for item in items {
+                flatten_entry_nodes(item, output)?;
+            }
+            Ok(())
+        }
+        Node::Map(entries) => {
+            let mut inserted = Vec::new();
+            let mut normal = Vec::new();
+            for (key, child) in entries {
+                if key == "insert" {
+                    inserted.push(child);
+                } else {
+                    normal.push((key, child));
+                }
+            }
+            for child in inserted {
+                flatten_entry_nodes(child, output)?;
+            }
+            if !normal.is_empty() {
+                output.push(Node::Map(normal));
+            }
+            Ok(())
+        }
+        other => {
+            output.push(other);
+            Ok(())
+        }
+    }
+}
+
 fn parse_entry(
     node: Node,
     position: usize,
@@ -778,7 +837,9 @@ fn parse_entry(
         let path = format!("{label}.{key}");
         match key.as_str() {
             "id" => id = Some(expect_scalar(&node, &path)?),
-            "plugin" => plugin = Some(expect_scalar(&node, &path)?),
+            // Upstream compositions use `name:` for the plugin package id;
+            // `plugin:` is accepted as a compatible alias.
+            "plugin" | "name" => plugin = Some(expect_scalar(&node, &path)?),
             "config" => {
                 let value = node_to_value(&node);
                 let value = if value == Value::Null {
