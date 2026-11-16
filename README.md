@@ -1,7 +1,11 @@
 # cordis-rs
 
+[![CI](https://github.com/Seduce0068/cordis-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/Seduce0068/cordis-rs/actions/workflows/ci.yml)
+
 DSH（DeepSeek Harness）を GPUI/Rust で再実装するための第一歩として作った、
 Cordis 互換プラグインランタイムの PoC です。
+
+リポジトリ: <https://github.com/Seduce0068/cordis-rs>
 
 ## 背景
 
@@ -42,6 +46,12 @@ cargo test --all-targets
 `tests/cordis.rs` にランタイム自体の 7 テスト、
 `tests/official_plugin_port.rs` に公式 `dsh-command-compact` の移植デモを収録。
 移植デモは `inject = ['commands', 'compaction']` の待機・再ロードを検証します。
+
+## ライセンス
+
+MIT。上流 Cordis（MIT、Copyright (c) 2026 DeepSeek）の API 契約を Rust に
+移植しているため、上流ライセンスを継承しています。個人リポジトリの既定は
+AGPL-3.0-or-later ですが、ここでは上流 MIT との互換性を優先しました。
 
 ## 関連
 
