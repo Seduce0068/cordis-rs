@@ -29,15 +29,37 @@ use crate::plugin::{Fiber, FunctionPlugin};
 /// Failures produced while parsing or resolving a composition.
 #[derive(Debug, Clone, PartialEq)]
 pub enum LoaderError {
-    Syntax { line: usize, message: String },
+    Syntax {
+        line: usize,
+        message: String,
+    },
     Structure(String),
-    MissingPlugin { entry: String },
-    UnknownPlugin { plugin: String, entry: String },
-    InvalidDisabled { entry: String, got: &'static str },
-    UnresolvedReference { path: String, name: String },
+    MissingPlugin {
+        entry: String,
+    },
+    UnknownPlugin {
+        plugin: String,
+        entry: String,
+    },
+    InvalidDisabled {
+        entry: String,
+        got: &'static str,
+    },
+    UnresolvedReference {
+        path: String,
+        name: String,
+    },
+    InvalidExpression {
+        path: String,
+        expression: String,
+        reason: String,
+    },
     Validation(Vec<ValidationError>),
     Mount(String),
-    TooDeep { depth: usize, max: usize },
+    TooDeep {
+        depth: usize,
+        max: usize,
+    },
 }
 
 impl fmt::Display for LoaderError {
@@ -55,6 +77,14 @@ impl fmt::Display for LoaderError {
             Self::UnresolvedReference { path, name } => {
                 write!(f, "{path} has unresolved reference ${name}")
             }
+            Self::InvalidExpression {
+                path,
+                expression,
+                reason,
+            } => write!(
+                f,
+                "{path} has invalid !!js expression `{expression}`: {reason}"
+            ),
             Self::Validation(errors) => {
                 f.write_str("invalid config: ")?;
                 for (index, error) in errors.iter().enumerate() {
@@ -828,7 +858,12 @@ fn node_to_value(node: &Node) -> Value {
 }
 
 fn scalar_to_value(scalar: &Scalar) -> Value {
-    if let Some(name) = (!scalar.quoted || scalar.tagged)
+    if scalar.tagged {
+        // `!!js` marks an expression. `$name` stays a direct reference;
+        // `${name}` inside a larger string is interpolated at resolve time.
+        return Value::Reference(format!("expr:{}", scalar.raw));
+    }
+    if let Some(name) = (!scalar.quoted)
         .then(|| reference_name(&scalar.raw))
         .flatten()
     {
@@ -847,6 +882,127 @@ fn scalar_to_value(scalar: &Scalar) -> Value {
                 Value::String(raw.to_string())
             }
         }
+    }
+}
+
+/// Evaluate a `!!js` expression. Supported forms mirror the subset of
+/// `cordis-plugin-include` that composition files use: a bare `$name`,
+/// `${name}` interpolation inside a larger string, JSON-like literals
+/// (`true` / `false` / `null` / numbers / quoted strings), and a flow array
+/// of those. Anything else stays a literal string.
+fn evaluate_expression(
+    expression: &str,
+    vars: &VarTable,
+    path: &str,
+) -> Result<Value, LoaderError> {
+    let expression = expression.trim();
+
+    // Bare reference.
+    if let Some(name) = reference_name(expression) {
+        return vars
+            .get(name)
+            .cloned()
+            .ok_or_else(|| LoaderError::UnresolvedReference {
+                path: path.to_string(),
+                name: name.to_string(),
+            });
+    }
+
+    // `${name}` interpolation: replace every occurrence with a textual form.
+    if expression.contains("${") {
+        let mut rendered = String::new();
+        let mut rest = expression;
+        while let Some(start) = rest.find("${") {
+            rendered.push_str(&rest[..start]);
+            let after = &rest[start + 2..];
+            let end = after
+                .find('}')
+                .ok_or_else(|| LoaderError::InvalidExpression {
+                    path: path.to_string(),
+                    expression: expression.to_string(),
+                    reason: "unterminated ${...}".to_string(),
+                })?;
+            let name = &after[..end];
+            let value = vars
+                .get(name)
+                .ok_or_else(|| LoaderError::UnresolvedReference {
+                    path: path.to_string(),
+                    name: name.to_string(),
+                })?;
+            rendered.push_str(&value_to_text(value));
+            rest = &after[end + 1..];
+        }
+        rendered.push_str(rest);
+        return Ok(Value::String(rendered));
+    }
+
+    // Literal forms.
+    match expression {
+        "true" => return Ok(Value::Bool(true)),
+        "false" => return Ok(Value::Bool(false)),
+        "null" | "" => return Ok(Value::Null),
+        _ => {}
+    }
+    if let Ok(number) = expression.parse::<i64>() {
+        return Ok(Value::Integer(number));
+    }
+    if let Ok(number) = expression.parse::<f64>() {
+        return Ok(Value::Number(number));
+    }
+    if expression.starts_with('"') && expression.ends_with('"') && expression.len() >= 2 {
+        return Ok(Value::String(
+            expression[1..expression.len() - 1].to_string(),
+        ));
+    }
+    if expression.starts_with('[') && expression.ends_with(']') {
+        let inner = &expression[1..expression.len() - 1];
+        let mut items = Vec::new();
+        for part in split_flow(inner) {
+            items.push(evaluate_expression(part.trim(), vars, path)?);
+        }
+        return Ok(Value::Array(items));
+    }
+    Ok(Value::String(expression.to_string()))
+}
+
+fn split_flow(input: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut depth = 0usize;
+    let mut start = 0usize;
+    let mut quote: Option<char> = None;
+    for (index, ch) in input.char_indices() {
+        match ch {
+            '"' | '\'' => {
+                if quote == Some(ch) {
+                    quote = None;
+                } else if quote.is_none() {
+                    quote = Some(ch);
+                }
+            }
+            '[' | '{' if quote.is_none() => depth += 1,
+            ']' | '}' if quote.is_none() => depth = depth.saturating_sub(1),
+            ',' if quote.is_none() && depth == 0 => {
+                parts.push(&input[start..index]);
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+    if !input[start..].trim().is_empty() {
+        parts.push(&input[start..]);
+    }
+    parts
+}
+
+fn value_to_text(value: &Value) -> String {
+    match value {
+        Value::Null => "null".to_string(),
+        Value::Bool(value) => value.to_string(),
+        Value::Integer(value) => value.to_string(),
+        Value::Number(value) => value.to_string(),
+        Value::String(value) => value.clone(),
+        Value::Reference(name) => format!("${name}"),
+        Value::Array(_) | Value::Object(_) => "".to_string(),
     }
 }
 
@@ -874,6 +1030,9 @@ fn resolve_value(
     check_depth(limits, depth)?;
     match value {
         Value::Reference(name) => {
+            if let Some(expression) = name.strip_prefix("expr:") {
+                return evaluate_expression(expression, vars, path);
+            }
             vars.get(&name)
                 .cloned()
                 .ok_or_else(|| LoaderError::UnresolvedReference {

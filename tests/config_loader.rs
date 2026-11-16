@@ -389,3 +389,67 @@ fn dash_line_mapping_keys_align_with_the_first_key_column() {
     assert_eq!(entry.plugin, "demo/greet");
     assert_eq!(entry.config, ConfigValue::object());
 }
+
+#[test]
+fn js_expressions_are_evaluated_in_config_and_disabled() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let mut vars = VarTable::new();
+    vars.insert("model", Value::String("gpt-test".to_string()));
+    vars.insert("limit", Value::Integer(7));
+
+    let yaml = r#"
+entries:
+  - id: enabled
+    plugin: demo/greet
+    disabled: !!js false
+    config:
+      model: !!js $model
+      label: !!js "model=${model},limit=${limit}"
+      retries: !!js 3
+      tags: !!js ["a", "b"]
+  - id: skipped
+    plugin: demo/greet
+    disabled: !!js true
+    config: {}
+"#;
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let enabled: Vec<_> = composition.enabled().collect();
+    assert_eq!(enabled.len(), 1, "disabled !!js true row must be skipped");
+    let entry = enabled[0];
+    assert_eq!(entry.id, "enabled");
+
+    let model = match &entry.config {
+        Value::Object(map) => map.get("model").cloned(),
+        _ => None,
+    };
+    assert_eq!(model, Some(Value::String("gpt-test".to_string())));
+
+    let label = match &entry.config {
+        Value::Object(map) => map.get("label").cloned(),
+        _ => None,
+    };
+    assert_eq!(
+        label,
+        Some(Value::String("model=gpt-test,limit=7".to_string()))
+    );
+
+    let retries = match &entry.config {
+        Value::Object(map) => map.get("retries").cloned(),
+        _ => None,
+    };
+    assert_eq!(retries, Some(Value::Integer(3)));
+
+    let tags = match &entry.config {
+        Value::Object(map) => map.get("tags").cloned(),
+        _ => None,
+    };
+    assert_eq!(
+        tags,
+        Some(Value::Array(vec![
+            Value::String("a".to_string()),
+            Value::String("b".to_string()),
+        ]))
+    );
+}
