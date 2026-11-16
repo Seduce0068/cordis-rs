@@ -724,3 +724,46 @@ entries:
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn js_string_methods_are_evaluated() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let mut vars = VarTable::new();
+    vars.insert(
+        "path",
+        Value::String("https://api.deepseek.com".to_string()),
+    );
+    vars.insert(
+        "items",
+        Value::Array(vec![
+            Value::String("a".to_string()),
+            Value::String("b".to_string()),
+        ]),
+    );
+
+    let yaml = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      inc: !!js $path.includes('deepseek')
+      starts: !!js $path.startsWith('https')
+      ends: !!js $path.endsWith('.com')
+      miss: !!js $path.includes('openai')
+      arr: !!js $items.includes('b')
+      chained: !!js $path.includes('deepseek') ? "yes" : "no"
+"#;
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let map = match &composition.entries[0].config {
+        Value::Object(map) => map.clone(),
+        _ => panic!("expected object"),
+    };
+    assert_eq!(map.get("inc"), Some(&Value::Bool(true)));
+    assert_eq!(map.get("starts"), Some(&Value::Bool(true)));
+    assert_eq!(map.get("ends"), Some(&Value::Bool(true)));
+    assert_eq!(map.get("miss"), Some(&Value::Bool(false)));
+    assert_eq!(map.get("arr"), Some(&Value::Bool(true)));
+    assert_eq!(map.get("chained"), Some(&Value::String("yes".to_string())));
+}

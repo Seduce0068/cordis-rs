@@ -1493,13 +1493,48 @@ fn evaluate_member_access(
                 });
             }
             let property = &after_dot[..prop_end];
-            value = match (&value, property) {
-                (Value::String(text), "length") => Value::Integer(text.chars().count() as i64),
-                (Value::Array(items), "length") => Value::Integer(items.len() as i64),
-                (Value::Object(map), _) => map.get(property).cloned().unwrap_or(Value::Null),
-                _ => Value::Null,
-            };
-            rest = &after_dot[prop_end..];
+            let after_prop = &after_dot[prop_end..];
+            if after_prop.starts_with('(') {
+                // A method call on the current value: .includes(x) / .startsWith(x)
+                let close = after_prop
+                    .find(')')
+                    .ok_or_else(|| LoaderError::InvalidExpression {
+                        path: path.to_string(),
+                        expression: expression.to_string(),
+                        reason: format!("unterminated {property}("),
+                    })?;
+                let arg_text = after_prop[1..close].trim();
+                let arg = arg_text
+                    .strip_prefix('"')
+                    .and_then(|value| value.strip_suffix('"'))
+                    .or_else(|| {
+                        arg_text
+                            .strip_prefix('\'')
+                            .and_then(|v| v.strip_suffix('\''))
+                    })
+                    .unwrap_or(arg_text);
+                value = match (&value, property) {
+                    (Value::String(text), "includes") => Value::Bool(text.contains(arg)),
+                    (Value::String(text), "startsWith") => Value::Bool(text.starts_with(arg)),
+                    (Value::String(text), "endsWith") => Value::Bool(text.ends_with(arg)),
+                    (Value::Array(items), "includes") => {
+                        Value::Bool(items.iter().any(|item| match item {
+                            Value::String(text) => text == arg,
+                            _ => false,
+                        }))
+                    }
+                    _ => Value::Null,
+                };
+                rest = &after_prop[close + 1..];
+            } else {
+                value = match (&value, property) {
+                    (Value::String(text), "length") => Value::Integer(text.chars().count() as i64),
+                    (Value::Array(items), "length") => Value::Integer(items.len() as i64),
+                    (Value::Object(map), _) => map.get(property).cloned().unwrap_or(Value::Null),
+                    _ => Value::Null,
+                };
+                rest = after_prop;
+            }
         } else {
             break;
         }
