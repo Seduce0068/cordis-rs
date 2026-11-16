@@ -617,3 +617,34 @@ fn upstream_style_composition_with_name_and_insert_is_loaded() {
     let direct = composition.entries[0].clone();
     assert!(!direct.disabled);
 }
+
+#[test]
+fn js_process_env_reference_and_inequality() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    // A deterministic env var for the test (set only for this process).
+    let mut vars = VarTable::new();
+    vars.insert("env.CORDIS_TEST_FLAG", Value::String("1".to_string()));
+
+    let yaml = r#"
+entries:
+  - id: skip
+    plugin: demo/x
+    disabled: !!js process.env.CORDIS_TEST_FLAG !== '1'
+    config: {}
+  - id: keep
+    plugin: demo/y
+    disabled: !!js env.CORDIS_TEST_FLAG == '1'
+    config: {}
+"#;
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    assert_eq!(composition.entries.len(), 2);
+    // CORDIS_TEST_FLAG == "1", so `!== '1'` is false (enabled) and
+    // `== '1'` is true (disabled).
+    assert!(!composition.entries[0].disabled);
+    assert!(composition.entries[1].disabled);
+    assert_eq!(composition.enabled().count(), 1);
+
+    let _ = Value::Null;
+}

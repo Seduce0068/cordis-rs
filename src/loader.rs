@@ -128,6 +128,18 @@ impl VarTable {
     pub fn get(&self, name: &str) -> Option<&Value> {
         self.0.get(name)
     }
+
+    /// Populate the table with `process.env.*`-style entries from the real
+    /// process environment, so `!!js process.env.FOO` resolves in DSH-style
+    /// compositions without evaluating JavaScript.
+    pub fn from_env(mut self) -> Self {
+        for (key, value) in std::env::vars() {
+            self.0
+                .entry(format!("env.{key}"))
+                .or_insert_with(|| Value::String(value));
+        }
+        self
+    }
 }
 
 /// One resolved `entries:` row.
@@ -1079,7 +1091,27 @@ fn evaluate_expression(
     if let Ok(number) = expression.parse::<f64>() {
         return Ok(Value::Number(number));
     }
+    // Upstream wraps JS expressions in quotes in YAML, e.g.
+    // `!!js "process.env.FLAG !== '1'"`. When the quoted body contains a
+    // recognizable operator or env reference, evaluate the inner expression.
     if expression.starts_with('"') && expression.ends_with('"') && expression.len() >= 2 {
+        let inner = &expression[1..expression.len() - 1];
+        let looks_like_expression = inner.contains("process.env")
+            || inner.contains("$")
+            || inner.contains("==")
+            || inner.contains("!=")
+            || inner.contains("&&")
+            || inner.contains("||");
+        if looks_like_expression {
+            return evaluate_expression(inner, vars, path);
+        }
+    }
+    if expression.starts_with('"') && expression.ends_with('"') && expression.len() >= 2 {
+        return Ok(Value::String(
+            expression[1..expression.len() - 1].to_string(),
+        ));
+    }
+    if expression.starts_with('\'') && expression.ends_with('\'') && expression.len() >= 2 {
         return Ok(Value::String(
             expression[1..expression.len() - 1].to_string(),
         ));
@@ -1224,6 +1256,22 @@ fn evaluate_member_access(
         .get(name)
         .cloned()
         .unwrap_or(Value::String(head.to_string()));
+
+    // DSH-style `process.env.FOO` / `env.FOO` lookups resolve against the
+    // VarTable's `env.FOO` entries (populated by `VarTable::from_env`).
+    if (head == "process" && tail.starts_with(".env.")) || head == "env" {
+        let env_name = if head == "process" {
+            &tail[".env.".len()..]
+        } else {
+            &tail[1..]
+        };
+        let key = format!("env.{env_name}");
+        return Ok(Some(
+            vars.get(&key)
+                .cloned()
+                .unwrap_or(Value::String(String::new())),
+        ));
+    }
 
     let mut rest = tail;
     while !rest.is_empty() {
