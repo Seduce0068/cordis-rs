@@ -1195,3 +1195,47 @@ async fn agent_loop_injects_system_prompt_and_goal() {
     assert!(requests[0].messages[0].content.contains("active"));
     assert_eq!(requests[0].messages[1].role, "user");
 }
+
+#[tokio::test]
+async fn tool_result_pruner_keeps_head_and_tail() {
+    use cordis_rs::core_services::{PrunerConfig, ToolResultPruner};
+
+    let pruner = ToolResultPruner::new(PrunerConfig {
+        head_chars: 4,
+        tail_chars: 4,
+        threshold_chars: 40,
+    })
+    .unwrap();
+
+    // Within budget: untouched.
+    assert!(pruner.prune_text("short").is_none());
+
+    // Over budget: head and tail preserved, middle replaced by a marker.
+    let pruned = pruner
+        .prune_text("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ")
+        .unwrap();
+    assert!(pruned.text.starts_with("abc"));
+    assert!(pruned.text.ends_with("GHIJ"));
+    assert!(pruned.text.contains("truncated"));
+    assert!(pruned.removed_chars > 0);
+    assert!(pruned.text.chars().count() < 40);
+
+    // Recursive over a JSON tool result.
+    let value = serde_json::json!({
+        "stdout": "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ",
+        "meta": { "count": 1 },
+    });
+    let result = pruner.prune_json(&value);
+    assert!(result["stdout"].as_str().unwrap().contains("truncated"));
+    assert_eq!(result["meta"]["count"], 1);
+
+    // Invalid config is rejected at construction.
+    assert!(
+        ToolResultPruner::new(PrunerConfig {
+            head_chars: 100,
+            tail_chars: 100,
+            threshold_chars: 20,
+        })
+        .is_err()
+    );
+}

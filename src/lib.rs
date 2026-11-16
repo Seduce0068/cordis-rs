@@ -101,6 +101,9 @@ pub mod core_services {
         ChatMessage, LlmProvider, LlmRequest, LlmResponse, LlmService, StreamChunk, echo_provider,
         from_async_text, provide as provide_llm,
     };
+    pub use crate::services::pruner::{
+        PruneError, PrunedText, PrunerConfig, ToolResultPruner, provide as provide_pruner,
+    };
     pub use crate::services::sessions::{
         CheckpointCursor, ProjectionFold, Session, SessionEvent as LoggedSessionEvent,
         SessionHeader, SessionProjectionRegistry, SessionStore, provide as provide_sessions,
