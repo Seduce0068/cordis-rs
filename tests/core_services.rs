@@ -462,3 +462,49 @@ async fn tool_fs_read_write_edit_through_shared_seams() {
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[tokio::test]
+async fn job_registry_lifecycle_output_and_owner_fencing() {
+    use cordis_rs::core_services::{JobError, JobStatus, provide_jobs};
+
+    let ctx = Context::root("jobs-service");
+    let jobs = provide_jobs(&ctx).await.unwrap();
+
+    let handle = jobs.start(Some("agent-1".to_string())).unwrap();
+    let id = handle.id();
+    assert_eq!(handle.status(), JobStatus::Running);
+    assert_eq!(
+        jobs.view(id, Some("agent-1")).unwrap().status,
+        JobStatus::Running
+    );
+
+    handle.append(b"hello ");
+    handle.append(b"world");
+    let (text, end) = jobs.read(id, 0, Some("agent-1")).unwrap();
+    assert_eq!(text, "hello world");
+    assert_eq!(end, 11);
+    let (tail, _) = jobs.read(id, 6, Some("agent-1")).unwrap();
+    assert_eq!(tail, "world");
+
+    assert!(matches!(
+        jobs.view(id, Some("agent-2")),
+        Err(JobError::NotOwner { .. })
+    ));
+    assert!(matches!(
+        jobs.view(999, Some("agent-1")),
+        Err(JobError::NotFound(999))
+    ));
+
+    handle.settle(JobStatus::Succeeded);
+    assert_eq!(handle.status(), JobStatus::Succeeded);
+    assert!(jobs.wait(id, Some("agent-1"), 50).unwrap());
+    assert!(matches!(
+        jobs.kill(id, Some("agent-1")),
+        Err(JobError::AlreadyTerminal(_))
+    ));
+
+    let listed = jobs.list(Some("agent-1"));
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].status, JobStatus::Succeeded);
+    assert!(jobs.list(Some("agent-2")).is_empty());
+}

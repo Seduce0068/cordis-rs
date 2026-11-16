@@ -56,6 +56,9 @@ pub mod core_services {
         FileSystem, FsEditOutcome, FsInfo, FsWriteOutcome, ReadWindow, WriteOperation,
         provide as provide_fs,
     };
+    pub use crate::services::jobs::{
+        JobError, JobHandle, JobRegistry, JobStatus, JobView, provide as provide_jobs,
+    };
     pub use crate::services::llm::{
         ChatMessage, LlmProvider, LlmRequest, LlmResponse, LlmService, StreamChunk, echo_provider,
         provide as provide_llm,

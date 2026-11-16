@@ -11,3 +11,5 @@ pub mod llm;
 pub mod agent_loop;
 
 pub mod fs;
+
+pub mod jobs;
