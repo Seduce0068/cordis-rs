@@ -203,3 +203,99 @@ async fn command_feedback_records_log_only_event() {
     assert_eq!(events[0].event_type, "feedback/record");
     assert_eq!(events[0].data["text"], serde_json::json!("great response"));
 }
+
+#[tokio::test]
+async fn llm_registry_streams_and_agent_loop_uses_tools() {
+    use std::sync::Arc as StdArc;
+
+    use cordis_rs::core_services::{
+        AgentLoop, LlmProvider, StreamChunk, ToolCall, ToolDefinition, ToolOutput, echo_provider,
+        provide_llm, provide_tools,
+    };
+
+    let ctx = Context::root("agent-loop");
+    let (registry, _pipeline) = provide_tools(&ctx).await.unwrap();
+    let llm = provide_llm(&ctx).await.unwrap();
+
+    let _tool = registry.register(ToolDefinition::new(
+        "echo",
+        "echo input",
+        StdArc::new(|args, _exec| {
+            Box::pin(async move {
+                let text = args
+                    .get("text")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                Ok(ToolOutput::text(format!("echo:{text}")))
+            })
+        }),
+    ));
+
+    // Provider that returns a tool call on the first turn and a final answer
+    // after seeing the tool result.
+    let first = StdArc::new(std::sync::atomic::AtomicBool::new(true));
+    let flag = first.clone();
+    let provider = LlmProvider::new(
+        "scripted",
+        "scripted-1",
+        StdArc::new(move |request| {
+            let has_tool_result = request
+                .messages
+                .iter()
+                .any(|m| m.content.starts_with("echo:"));
+            let flag = flag.clone();
+            let text = if !has_tool_result && flag.swap(false, std::sync::atomic::Ordering::SeqCst)
+            {
+                "call echo".to_string()
+            } else {
+                "done".to_string()
+            };
+            Box::pin(futures::stream::iter(vec![
+                StreamChunk::Text(text),
+                StreamChunk::Done,
+            ]))
+        }),
+    );
+    let _provider = llm.register(provider);
+    assert!(llm.set_default("scripted"));
+    assert_eq!(llm.names(), ["scripted"]);
+
+    // Verify streaming with a separate keyless provider so the scripted flag
+    // remains intact for the agent loop below.
+    let _echo_registration = llm.register(echo_provider("echo"));
+    let response = llm
+        .stream(
+            Some("echo"),
+            cordis_rs::core_services::LlmRequest {
+                model: String::new(),
+                messages: vec![cordis_rs::core_services::ChatMessage::user("hi")],
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.text, "hi");
+
+    let step_count = std::sync::atomic::AtomicUsize::new(0);
+    let parser = StdArc::new(move |text: &str| {
+        step_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if text == "call echo" {
+            vec![ToolCall::new(
+                "echo",
+                serde_json::json!({ "text": "hello" }),
+            )]
+        } else {
+            Vec::new()
+        }
+    });
+    let loop_ = AgentLoop::new(llm.clone(), registry.clone())
+        .with_max_steps(4)
+        .with_call_parser(parser);
+    let run = loop_.run("start").await.unwrap();
+    assert_eq!(run.steps.len(), 2);
+    assert_eq!(run.final_text, "done");
+    assert_eq!(run.steps[0].tool_results.len(), 1);
+    assert!(run.steps[0].tool_results[0].as_ref().unwrap().rendered[0].starts_with("echo:hello"));
+
+    assert!(llm.names().contains(&"echo".to_string()));
+}

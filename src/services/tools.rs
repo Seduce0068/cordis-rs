@@ -56,9 +56,10 @@ pub struct ToolOutput {
 
 impl ToolOutput {
     pub fn text(text: impl Into<String>) -> Self {
+        let text = text.into();
         Self {
-            content: serde_json::Value::String(text.into()),
-            rendered: Vec::new(),
+            content: serde_json::Value::String(text.clone()),
+            rendered: vec![text],
         }
     }
 }

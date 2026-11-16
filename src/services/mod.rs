@@ -5,3 +5,7 @@ pub mod tools;
 pub mod sessions;
 
 pub mod commands;
+
+pub mod llm;
+
+pub mod agent_loop;

@@ -39,9 +39,14 @@ pub mod plugin_ports {
 
 /// Core service implementations.
 pub mod core_services {
+    pub use crate::services::agent_loop::{AgentLoop, AgentRun, AgentStep, CallParser, ToolCall};
     pub use crate::services::commands::{
         CommandDefinition, CommandHandler, CommandInvocation, CommandRegistry, CommandResult,
         provide as provide_commands,
+    };
+    pub use crate::services::llm::{
+        ChatMessage, LlmProvider, LlmRequest, LlmResponse, LlmService, StreamChunk, echo_provider,
+        provide as provide_llm,
     };
     pub use crate::services::sessions::{
         ProjectionFold, Session, SessionEvent as LoggedSessionEvent, SessionHeader,
