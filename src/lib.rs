@@ -72,7 +72,7 @@ pub mod core_services {
     };
     pub use crate::services::llm::{
         ChatMessage, LlmProvider, LlmRequest, LlmResponse, LlmService, StreamChunk, echo_provider,
-        provide as provide_llm,
+        from_async_text, provide as provide_llm,
     };
     pub use crate::services::sessions::{
         ProjectionFold, Session, SessionEvent as LoggedSessionEvent, SessionHeader,

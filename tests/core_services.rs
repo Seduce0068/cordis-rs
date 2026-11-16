@@ -697,3 +697,34 @@ async fn agent_loop_records_session_events_and_checkpoints() {
 
     let _ = ChatMessage::user("unused");
 }
+
+#[tokio::test]
+async fn async_text_provider_wraps_external_backend() {
+    use cordis_rs::core_services::{ChatMessage, LlmRequest, from_async_text, provide_llm};
+
+    let ctx = Context::root("async-llm");
+    let llm = provide_llm(&ctx).await.unwrap();
+    let provider = from_async_text("external", "external-1", |request: LlmRequest| async move {
+        let last = request
+            .messages
+            .last()
+            .map(|m| m.content.clone())
+            .unwrap_or_default();
+        Ok::<_, String>(format!("echo:{last}"))
+    });
+    let _p = llm.register(provider);
+    llm.set_default("external");
+
+    let response = llm
+        .stream(
+            None,
+            LlmRequest {
+                model: String::new(),
+                messages: vec![ChatMessage::user("payload")],
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.text, "echo:payload");
+    assert_eq!(response.model, "external-1");
+}

@@ -59,7 +59,7 @@ pub struct LlmResponse {
 }
 
 pub type StreamHandler = Arc<
-    dyn Fn(LlmRequest) -> Pin<Box<dyn futures::Stream<Item = StreamChunk> + Send + Unpin + 'static>>
+    dyn Fn(LlmRequest) -> Pin<Box<dyn futures::Stream<Item = StreamChunk> + Send + 'static>>
         + Send
         + Sync,
 >;
@@ -178,6 +178,35 @@ impl LlmService {
         }
         Ok(LlmResponse { text, model })
     }
+}
+
+/// Build a provider from a host-supplied async function that returns one text
+/// response. Useful for external backends (ACP, HTTP) that produce a whole
+/// answer rather than a token stream.
+pub fn from_async_text<F, Fut>(
+    name: impl Into<String>,
+    model: impl Into<String>,
+    f: F,
+) -> LlmProvider
+where
+    F: Fn(LlmRequest) -> Fut + Send + Sync + 'static,
+    Fut: std::future::Future<Output = std::result::Result<String, String>> + Send + 'static,
+{
+    LlmProvider::new(
+        name,
+        model,
+        Arc::new(move |request| {
+            let future = f(request);
+            use futures::StreamExt;
+            futures::stream::once(async move {
+                match future.await {
+                    Ok(text) => StreamChunk::Text(text),
+                    Err(error) => StreamChunk::Text(format!("error: {error}")),
+                }
+            })
+            .boxed()
+        }),
+    )
 }
 
 /// A simple provider that echoes the last user message (keyless tests/demos).
