@@ -453,3 +453,44 @@ entries:
         ]))
     );
 }
+
+#[test]
+fn js_comparisons_and_ternary_are_evaluated() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let mut vars = VarTable::new();
+    vars.insert("mode", Value::String("fast".to_string()));
+    vars.insert("count", Value::Integer(3));
+    vars.insert("empty", Value::String(String::new()));
+
+    let yaml = r#"
+entries:
+  - id: t1
+    plugin: demo/a
+    config:
+      flag: !!js mode == "fast"
+      not_flag: !!js mode != "slow"
+      ge: !!js count >= 3
+      lt: !!js count < 3
+      chosen: !!js mode == "fast" ? "yes" : "no"
+      fallback: !!js empty ? "non-empty" : "empty"
+      numeric: !!js count > 10 ? 10 : count
+"#;
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let config = composition.entries[0].config.clone();
+    let map = match config {
+        Value::Object(map) => map,
+        _ => panic!("expected object config"),
+    };
+    assert_eq!(map.get("flag"), Some(&Value::Bool(true)));
+    assert_eq!(map.get("not_flag"), Some(&Value::Bool(true)));
+    assert_eq!(map.get("ge"), Some(&Value::Bool(true)));
+    assert_eq!(map.get("lt"), Some(&Value::Bool(false)));
+    assert_eq!(map.get("chosen"), Some(&Value::String("yes".to_string())));
+    assert_eq!(
+        map.get("fallback"),
+        Some(&Value::String("empty".to_string()))
+    );
+    assert_eq!(map.get("numeric"), Some(&Value::Integer(3)));
+}

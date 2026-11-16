@@ -897,15 +897,58 @@ fn evaluate_expression(
 ) -> Result<Value, LoaderError> {
     let expression = expression.trim();
 
-    // Bare reference.
-    if let Some(name) = reference_name(expression) {
-        return vars
-            .get(name)
-            .cloned()
-            .ok_or_else(|| LoaderError::UnresolvedReference {
+    // Ternary: `condition ? when_true : when_false`. The condition is
+    // evaluated first, so references and comparisons work on both sides.
+    if let Some((condition, rest)) = split_top_level_once(expression, '?') {
+        let (when_true, when_false) =
+            split_top_level_once(rest, ':').ok_or_else(|| LoaderError::InvalidExpression {
+                path: path.to_string(),
+                expression: expression.to_string(),
+                reason: "ternary needs `:`".to_string(),
+            })?;
+        let truthy = expression_truthy(&evaluate_expression(condition, vars, path)?);
+        let selected = if truthy { when_true } else { when_false };
+        return evaluate_expression(selected.trim(), vars, path);
+    }
+
+    // Comparisons: `==`, `!=`, `>=`, `<=`, `>`, `<`. Operands are evaluated
+    // as expressions and compared structurally; the result is a Bool.
+    for operator in ["==", "!=", ">=", "<=", ">", "<"] {
+        if let Some((left, right)) = split_once_top_level(expression, operator) {
+            let left_value = evaluate_expression(left.trim(), vars, path)?;
+            let right_value = evaluate_expression(right.trim(), vars, path)?;
+            return Ok(Value::Bool(compare_values(
+                &left_value,
+                operator,
+                &right_value,
+            )?));
+        }
+    }
+
+    // Bare reference: `$name` or a plain identifier inside `!!js`.
+    let bare_name = reference_name(expression).or_else(|| {
+        (!expression.is_empty()
+            && expression
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-')
+            && expression
+                .chars()
+                .next()
+                .is_some_and(|ch| ch.is_ascii_alphabetic()))
+        .then_some(expression)
+    });
+    if let Some(name) = bare_name {
+        if let Some(value) = vars.get(name) {
+            return Ok(value.clone());
+        }
+        // `$name` must resolve; a plain identifier that is not a variable is
+        // kept as a literal string (e.g. `fast`).
+        if name.starts_with('$') || name.chars().all(|ch| ch.is_ascii_uppercase() || ch == '_') {
+            return Err(LoaderError::UnresolvedReference {
                 path: path.to_string(),
                 name: name.to_string(),
             });
+        }
     }
 
     // `${name}` interpolation: replace every occurrence with a textual form.
@@ -963,6 +1006,103 @@ fn evaluate_expression(
         return Ok(Value::Array(items));
     }
     Ok(Value::String(expression.to_string()))
+}
+
+/// Split at the first top-level occurrence of `separator`, ignoring quoted
+/// strings and nested brackets. Used for ternaries and comparisons.
+fn split_once_top_level<'a>(input: &'a str, separator: &str) -> Option<(&'a str, &'a str)> {
+    let bytes = input.as_bytes();
+    let separator_bytes = separator.as_bytes();
+    let mut depth = 0usize;
+    let mut quote: Option<char> = None;
+    let mut index = 0usize;
+    while index < bytes.len() {
+        let ch = bytes[index] as char;
+        match ch {
+            '"' | '\'' => {
+                if quote == Some(ch) {
+                    quote = None;
+                } else if quote.is_none() {
+                    quote = Some(ch);
+                }
+            }
+            '[' | '{' | '(' if quote.is_none() => depth += 1,
+            ']' | '}' | ')' if quote.is_none() => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+        if quote.is_none() && depth == 0 && bytes[index..].starts_with(separator_bytes) {
+            return Some((&input[..index], &input[index + separator.len()..]));
+        }
+        index += 1;
+    }
+    None
+}
+
+fn split_top_level_once(input: &str, separator: char) -> Option<(&str, &str)> {
+    let mut depth = 0usize;
+    let mut quote: Option<char> = None;
+    for (index, ch) in input.char_indices() {
+        match ch {
+            '"' | '\'' => {
+                if quote == Some(ch) {
+                    quote = None;
+                } else if quote.is_none() {
+                    quote = Some(ch);
+                }
+            }
+            '[' | '{' | '(' if quote.is_none() => depth += 1,
+            ']' | '}' | ')' if quote.is_none() => depth = depth.saturating_sub(1),
+            c if c == separator && quote.is_none() && depth == 0 => {
+                return Some((&input[..index], &input[index + c.len_utf8()..]));
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn expression_truthy(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Bool(value) => *value,
+        Value::Integer(value) => *value != 0,
+        Value::Number(value) => *value != 0.0,
+        Value::String(value) => !value.is_empty(),
+        Value::Array(items) => !items.is_empty(),
+        Value::Object(map) => !map.is_empty(),
+        Value::Reference(name) => !name.is_empty(),
+    }
+}
+
+fn compare_values(left: &Value, operator: &str, right: &Value) -> Result<bool, LoaderError> {
+    let equal = left == right;
+    match operator {
+        "==" => Ok(equal),
+        "!=" => Ok(!equal),
+        ">" | "<" | ">=" | "<=" => {
+            let ordering = match (left, right) {
+                (Value::Integer(a), Value::Integer(b)) => a.cmp(b),
+                (Value::Number(a), Value::Number(b)) => a
+                    .partial_cmp(b)
+                    .ok_or_else(|| LoaderError::Structure("non-comparable numbers".to_string()))?,
+                (Value::String(a), Value::String(b)) => a.cmp(b),
+                _ => {
+                    return Err(LoaderError::Structure(format!(
+                        "cannot compare {left:?} and {right:?}"
+                    )));
+                }
+            };
+            Ok(match operator {
+                ">" => ordering.is_gt(),
+                "<" => ordering.is_lt(),
+                ">=" => ordering.is_ge(),
+                _ => ordering.is_le(),
+            })
+        }
+        _ => Err(LoaderError::Structure(format!(
+            "unknown operator {operator}"
+        ))),
+    }
 }
 
 fn split_flow(input: &str) -> Vec<&str> {
