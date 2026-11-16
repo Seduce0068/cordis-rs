@@ -728,3 +728,31 @@ async fn async_text_provider_wraps_external_backend() {
     assert_eq!(response.text, "echo:payload");
     assert_eq!(response.model, "external-1");
 }
+
+#[tokio::test]
+async fn checkpoint_cursor_appends_only_new_events() {
+    use cordis_rs::core_services::{CheckpointCursor, Session};
+
+    let session = Session::new("session-cursor", None);
+    let cursor = CheckpointCursor::new();
+
+    session.append("first", serde_json::json!({}));
+    assert_eq!(cursor.pending(&session).len(), 1);
+    let first = cursor.pending(&session);
+    cursor.commit(first.len());
+    assert_eq!(cursor.written(), 1);
+    assert!(cursor.pending(&session).is_empty());
+
+    session.append("second", serde_json::json!({}));
+    session.append("third", serde_json::json!({}));
+    let pending = cursor.pending(&session);
+    assert_eq!(pending.len(), 2);
+    assert_eq!(pending[0].event_type, "second");
+    cursor.commit(pending.len());
+    assert_eq!(cursor.written(), 3);
+    assert!(cursor.pending(&session).is_empty());
+
+    // Re-checkpointing an unchanged session writes nothing.
+    assert!(cursor.pending(&session).is_empty());
+    assert_eq!(cursor.written(), 3);
+}

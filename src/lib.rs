@@ -75,8 +75,8 @@ pub mod core_services {
         from_async_text, provide as provide_llm,
     };
     pub use crate::services::sessions::{
-        ProjectionFold, Session, SessionEvent as LoggedSessionEvent, SessionHeader,
-        SessionProjectionRegistry, SessionStore, provide as provide_sessions,
+        CheckpointCursor, ProjectionFold, Session, SessionEvent as LoggedSessionEvent,
+        SessionHeader, SessionProjectionRegistry, SessionStore, provide as provide_sessions,
     };
     pub use crate::services::shell::{
         Shell, ShellError, ShellRequest, ShellResult, ShellSpec, provide as provide_shell,

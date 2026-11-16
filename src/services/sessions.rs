@@ -192,6 +192,41 @@ impl SessionProjectionRegistry {
     }
 }
 
+/// Tracks how many session events have already been persisted. A checkpoint
+/// hook uses this to append only the newly committed tail instead of
+/// re-scanning the whole log on every step.
+#[derive(Default, Clone)]
+pub struct CheckpointCursor {
+    written: Arc<std::sync::Mutex<usize>>,
+}
+
+impl CheckpointCursor {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Events committed since the last `commit` call.
+    pub fn pending(&self, session: &Session) -> Vec<SessionEvent> {
+        let events = session.events();
+        let written = *self.written.lock().expect("checkpoint cursor poisoned");
+        if written >= events.len() {
+            Vec::new()
+        } else {
+            events[written..].to_vec()
+        }
+    }
+
+    /// Advance the cursor by the number of events successfully persisted.
+    pub fn commit(&self, count: usize) {
+        let mut written = self.written.lock().expect("checkpoint cursor poisoned");
+        *written = written.saturating_add(count);
+    }
+
+    pub fn written(&self) -> usize {
+        *self.written.lock().expect("checkpoint cursor poisoned")
+    }
+}
+
 /// Mount both services on a context.
 pub async fn provide(ctx: &crate::Context) -> Result<(SessionStore, SessionProjectionRegistry)> {
     let sessions = SessionStore::default();

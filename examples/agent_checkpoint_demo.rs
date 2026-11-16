@@ -10,8 +10,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use cordis_rs::Context;
 use cordis_rs::core_services::{
-    AgentLoop, CheckpointHook, LlmProvider, Session, StreamChunk, ToolCall, provide_llm,
-    provide_tools,
+    AgentLoop, CheckpointCursor, CheckpointHook, LlmProvider, Session, StreamChunk, ToolCall,
+    provide_llm, provide_tools,
 };
 use cordis_rs::plugin_ports::mount_session_persistence_jsonl;
 
@@ -50,19 +50,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let session = Session::new("session-1", Some("/tmp".to_string()));
 
-    // The checkpoint hook writes only newly committed events. A real host
-    // would use a cursor; here the whole log is small, so rewriting is fine.
-    let persisted = Arc::new(std::sync::Mutex::new(0usize));
+    // The checkpoint hook appends only the newly committed tail, tracked by
+    // a durable cursor. No event is written twice, even across many steps.
+    let cursor = CheckpointCursor::new();
     let hook: CheckpointHook = {
         let handle = handle.clone();
-        let persisted = persisted.clone();
+        let cursor = cursor.clone();
         Arc::new(move |s: &Session| {
-            let events = s.events();
-            // Append only events not yet persisted, identified by seq > count.
-            for event in events.iter().skip(*persisted.lock().unwrap()) {
+            let pending = cursor.pending(s);
+            let count = pending.len();
+            for event in &pending {
                 handle.append(event)?;
             }
-            *persisted.lock().unwrap() = events.len();
+            cursor.commit(count);
             Ok(())
         })
     };
