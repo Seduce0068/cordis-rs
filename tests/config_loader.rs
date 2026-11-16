@@ -529,3 +529,51 @@ entries:
     assert_eq!(map.get("combined"), Some(&Value::String("ok".to_string())));
     assert_eq!(map.get("inequality"), Some(&Value::Bool(true)));
 }
+
+#[test]
+fn js_member_access_resolves_indices_and_length() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let mut vars = VarTable::new();
+    vars.insert(
+        "items",
+        Value::Array(vec![
+            Value::String("alpha".to_string()),
+            Value::String("beta".to_string()),
+        ]),
+    );
+    vars.insert("name", Value::String("hello".to_string()));
+    vars.insert(
+        "obj",
+        Value::Object({
+            let mut map = std::collections::BTreeMap::new();
+            map.insert("key".to_string(), Value::Integer(42));
+            map
+        }),
+    );
+
+    let yaml = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      first: !!js $items[0]
+      second: !!js $items[1]
+      count: !!js $items.length
+      name_len: !!js $name.length
+      obj_key: !!js $obj.key
+      out_of_range: !!js $items[9]
+"#;
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let map = match &composition.entries[0].config {
+        Value::Object(map) => map.clone(),
+        _ => panic!("expected object"),
+    };
+    assert_eq!(map.get("first"), Some(&Value::String("alpha".to_string())));
+    assert_eq!(map.get("second"), Some(&Value::String("beta".to_string())));
+    assert_eq!(map.get("count"), Some(&Value::Integer(2)));
+    assert_eq!(map.get("name_len"), Some(&Value::Integer(5)));
+    assert_eq!(map.get("obj_key"), Some(&Value::Integer(42)));
+    assert_eq!(map.get("out_of_range"), Some(&Value::Null));
+}

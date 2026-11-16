@@ -945,6 +945,12 @@ fn evaluate_expression(
         return Ok(Value::Bool(!truthy));
     }
 
+    // Member access: `$name[0]` (array index) or `$name.length` / `[0].length`.
+    // Applied left-to-right so chains such as `$items[1].length` work.
+    if let Some(result) = evaluate_member_access(expression, vars, path)? {
+        return Ok(result);
+    }
+
     // Bare reference: `$name` or a plain identifier inside `!!js`.
     let bare_name = reference_name(expression).or_else(|| {
         (!expression.is_empty()
@@ -1123,6 +1129,94 @@ fn compare_values(left: &Value, operator: &str, right: &Value) -> Result<bool, L
             "unknown operator {operator}"
         ))),
     }
+}
+
+/// Evaluate `$name[0]`, `$name.length`, `$name.0` and chains thereof.
+/// Returns `Ok(None)` when the expression has no member access at all.
+fn evaluate_member_access(
+    expression: &str,
+    vars: &VarTable,
+    path: &str,
+) -> Result<Option<Value>, LoaderError> {
+    // Split the leading identifier from the rest of the chain.
+    let bytes = expression.as_bytes();
+    let mut end = 0usize;
+    while end < bytes.len() {
+        let ch = bytes[end] as char;
+        if ch.is_ascii_alphanumeric() || ch == '_' || ch == '-' || (ch == '$' && end == 0) {
+            end += 1;
+        } else {
+            break;
+        }
+    }
+    if end == 0 || end == expression.len() {
+        return Ok(None);
+    }
+    let head = &expression[..end];
+    let tail = &expression[end..];
+    if !tail.starts_with('[') && !tail.starts_with('.') {
+        return Ok(None);
+    }
+
+    let name = head.strip_prefix('$').unwrap_or(head);
+    let mut value = vars
+        .get(name)
+        .cloned()
+        .unwrap_or(Value::String(head.to_string()));
+
+    let mut rest = tail;
+    while !rest.is_empty() {
+        if let Some(after_open) = rest.strip_prefix('[') {
+            let close = after_open
+                .find(']')
+                .ok_or_else(|| LoaderError::InvalidExpression {
+                    path: path.to_string(),
+                    expression: expression.to_string(),
+                    reason: "unterminated [".to_string(),
+                })?;
+            let index_text = after_open[..close].trim();
+            let index: usize = index_text
+                .parse()
+                .map_err(|_| LoaderError::InvalidExpression {
+                    path: path.to_string(),
+                    expression: expression.to_string(),
+                    reason: format!("invalid array index {index_text:?}"),
+                })?;
+            value = match value {
+                Value::Array(items) => items.get(index).cloned().unwrap_or(Value::Null),
+                Value::Object(map) => map.get(index_text).cloned().unwrap_or(Value::Null),
+                _ => Value::Null,
+            };
+            rest = &after_open[close + 1..];
+        } else if let Some(after_dot) = rest.strip_prefix('.') {
+            let mut prop_end = 0usize;
+            for ch in after_dot.chars() {
+                if ch.is_ascii_alphanumeric() || ch == '_' {
+                    prop_end += ch.len_utf8();
+                } else {
+                    break;
+                }
+            }
+            if prop_end == 0 {
+                return Err(LoaderError::InvalidExpression {
+                    path: path.to_string(),
+                    expression: expression.to_string(),
+                    reason: "expected property after '.'".to_string(),
+                });
+            }
+            let property = &after_dot[..prop_end];
+            value = match (&value, property) {
+                (Value::String(text), "length") => Value::Integer(text.chars().count() as i64),
+                (Value::Array(items), "length") => Value::Integer(items.len() as i64),
+                (Value::Object(map), _) => map.get(property).cloned().unwrap_or(Value::Null),
+                _ => Value::Null,
+            };
+            rest = &after_dot[prop_end..];
+        } else {
+            break;
+        }
+    }
+    Ok(Some(value))
 }
 
 fn split_flow(input: &str) -> Vec<&str> {
