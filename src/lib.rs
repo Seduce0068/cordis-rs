@@ -56,7 +56,9 @@ pub mod plugin_ports {
 
 /// Core service implementations.
 pub mod core_services {
-    pub use crate::services::agent_loop::{AgentLoop, AgentRun, AgentStep, CallParser, ToolCall};
+    pub use crate::services::agent_loop::{
+        AgentLoop, AgentRun, AgentStep, CallParser, CheckpointHook, ToolCall,
+    };
     pub use crate::services::commands::{
         CommandDefinition, CommandHandler, CommandInvocation, CommandRegistry, CommandResult,
         provide as provide_commands,

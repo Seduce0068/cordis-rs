@@ -640,3 +640,60 @@ async fn jsonl_persistence_appends_reads_and_restores() {
     let _ = JsonlPersistence::new(&dir);
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[tokio::test]
+async fn agent_loop_records_session_events_and_checkpoints() {
+    use std::sync::Arc as StdArc;
+    use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+
+    use cordis_rs::core_services::{
+        AgentLoop, ChatMessage, LlmProvider, LlmRequest, Session, StreamChunk, ToolCall,
+        provide_llm, provide_tools,
+    };
+
+    let ctx = Context::root("agent-checkpoint");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let llm = provide_llm(&ctx).await.unwrap();
+    let session = Session::new("agent-session", Some("/tmp".to_string()));
+
+    let provider = LlmProvider::new(
+        "one-step",
+        "one-step-1",
+        StdArc::new(|_request: LlmRequest| {
+            Box::pin(futures::stream::iter(vec![
+                StreamChunk::Text("done".to_string()),
+                StreamChunk::Done,
+            ]))
+        }),
+    );
+    let _p = llm.register(provider);
+    llm.set_default("one-step");
+    let _echo = llm.register(cordis_rs::core_services::echo_provider("echo"));
+
+    let checkpoints = StdArc::new(AtomicUsize::new(0));
+    let counter = checkpoints.clone();
+    let hook: cordis_rs::core_services::CheckpointHook = StdArc::new(move |s: &Session| {
+        counter.fetch_add(1, AtomicOrdering::SeqCst);
+        assert!(!s.events().is_empty());
+        Ok(())
+    });
+
+    let loop_ = AgentLoop::new(llm, tools)
+        .with_session(session.clone())
+        .with_checkpoint(hook)
+        .with_call_parser(StdArc::new(|_text: &str| Vec::<ToolCall>::new()));
+    let run = loop_.run("hi").await.unwrap();
+    assert_eq!(run.final_text, "done");
+
+    let types: Vec<String> = session.events().into_iter().map(|e| e.event_type).collect();
+    assert!(types.contains(&"turn/start".to_string()));
+    assert!(types.contains(&"user/message".to_string()));
+    assert!(types.contains(&"assistant/message".to_string()));
+    assert!(types.contains(&"step/start".to_string()));
+    assert!(types.contains(&"step/end".to_string()));
+    assert!(types.contains(&"turn/end".to_string()));
+    // one step-end + one turn-end checkpoint
+    assert_eq!(checkpoints.load(AtomicOrdering::SeqCst), 2);
+
+    let _ = ChatMessage::user("unused");
+}

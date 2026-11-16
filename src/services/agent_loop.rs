@@ -12,6 +12,7 @@ use std::sync::Arc;
 use crate::Result;
 use crate::core_services::{ToolArgs, ToolError, ToolExecContext, ToolOutput, ToolRegistry};
 use crate::services::llm::{ChatMessage, LlmRequest, LlmResponse, LlmService};
+use crate::services::sessions::Session;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ToolCall {
@@ -48,12 +49,23 @@ fn no_calls(_text: &str) -> Vec<ToolCall> {
     Vec::new()
 }
 
+fn session_event(session: &Option<Session>, event_type: &str, data: serde_json::Value) {
+    if let Some(session) = session {
+        session.append(event_type, data);
+    }
+}
+
+/// Called after each committed step so a host can checkpoint the session.
+pub type CheckpointHook = Arc<dyn Fn(&Session) -> crate::Result<()> + Send + Sync>;
+
 pub struct AgentLoop {
     llm: LlmService,
     tools: ToolRegistry,
     model: Option<String>,
     max_steps: usize,
     parse_calls: CallParser,
+    session: Option<Session>,
+    checkpoint: Option<CheckpointHook>,
 }
 
 impl AgentLoop {
@@ -64,6 +76,8 @@ impl AgentLoop {
             model: None,
             max_steps: 4,
             parse_calls: Arc::new(no_calls),
+            session: None,
+            checkpoint: None,
         }
     }
 
@@ -82,14 +96,35 @@ impl AgentLoop {
         self
     }
 
+    /// Record turn/step events on this session and derive messages from it.
+    pub fn with_session(mut self, session: Session) -> Self {
+        self.session = Some(session);
+        self
+    }
+
+    /// Checkpoint the session after each committed step.
+    pub fn with_checkpoint(mut self, hook: CheckpointHook) -> Self {
+        self.checkpoint = Some(hook);
+        self
+    }
+
     /// Run one turn: stream, parse calls, execute them, and repeat while the
     /// parser keeps producing calls.
     pub async fn run(&self, prompt: impl Into<String>) -> Result<AgentRun> {
-        let mut messages = vec![ChatMessage::user(prompt)];
+        let prompt = prompt.into();
+        let mut messages = vec![ChatMessage::user(prompt.clone())];
         let mut steps = Vec::new();
         let mut final_text = String::new();
 
-        for _ in 0..self.max_steps {
+        if let Some(session) = &self.session {
+            session.append("turn/start", serde_json::json!({}));
+            session.append("user/message", serde_json::json!({ "text": prompt }));
+        }
+
+        for step_index in 0..self.max_steps {
+            if let Some(session) = &self.session {
+                session.append("step/start", serde_json::json!({ "step": step_index + 1 }));
+            }
             let request = LlmRequest {
                 model: self.model.clone().unwrap_or_default(),
                 messages: messages.clone(),
@@ -98,6 +133,12 @@ impl AgentLoop {
             let calls = (self.parse_calls)(&response.text);
             final_text = response.text.clone();
             messages.push(ChatMessage::assistant(response.text.clone()));
+            if let Some(session) = &self.session {
+                session.append(
+                    "assistant/message",
+                    serde_json::json!({ "text": response.text }),
+                );
+            }
 
             let mut tool_results = Vec::new();
             for call in calls {
@@ -108,6 +149,16 @@ impl AgentLoop {
                     Ok(output) => output.rendered.join("\n"),
                     Err(error) => error.to_string(),
                 };
+                session_event(
+                    &self.session,
+                    "tool/call",
+                    serde_json::json!({ "tool": call.name }),
+                );
+                session_event(
+                    &self.session,
+                    "tool/result",
+                    serde_json::json!({ "text": rendered }),
+                );
                 messages.push(ChatMessage::user(rendered));
             }
 
@@ -115,12 +166,25 @@ impl AgentLoop {
                 response,
                 tool_results,
             });
+            if let Some(session) = &self.session {
+                session.append("step/end", serde_json::json!({ "step": step_index + 1 }));
+                if let Some(checkpoint) = &self.checkpoint {
+                    checkpoint(session)?;
+                }
+            }
             if messages
                 .last()
                 .map(|m| m.role == "assistant")
                 .unwrap_or(true)
             {
                 break;
+            }
+        }
+
+        if let Some(session) = &self.session {
+            session.append("turn/end", serde_json::json!({}));
+            if let Some(checkpoint) = &self.checkpoint {
+                checkpoint(session)?;
             }
         }
 
