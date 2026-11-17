@@ -41,13 +41,13 @@ DSH を GPUI で再実装するにあたり、最大の障壁はプラグイン�
 
 ## 結果
 
-- 全 88 テスト通過、CI green（licensed `v0.1.0` 〜 `v0.64.0`）。
-- コアサービス 28 個を提供（`tools` / `sessions` / `llm` / `agentLoop` /
+- 全 90 テスト通過、CI green（licensed `v0.1.0` 〜 `v0.66.0`）。
+- コアサービス 29 個を提供（`tools` / `sessions` / `llm` / `agentLoop` /
   `fs` / `jobs` / `shell` / `goals` / `systemPrompt` / `compaction` /
-  `approval` / `storage` / `agents` / `otel` / `retry` / `sessionTitles` / `schedule` ほか）。
-- 再利用 port 16 個を移植（tool-fs / tool-bash / tool-todo / tool-subagent /
+  `approval` / `storage` / `agents` / `otel` / `retry` / `sessionTitles` / `schedule` / `planMode` ほか）。
+- 再利用 port 17 個を移植（tool-fs / tool-bash / tool-todo / tool-subagent /
   skill-filesystem / message-feedback / session-persistence-jsonl /
-  llm-deepseek / feedback-producer / command-compact / session-title-all-prompts-llm / tool-schedule ほか）。
+  llm-deepseek / feedback-producer / command-compact / session-title-all-prompts-llm / tool-schedule / tool-exit-plan-mode ほか）。
 - library port として `hook-protocol`（matcher / outcome merge）を追加。
 - 上流 `snapshots/sdk/text-turn/cordis.yml` の 6 エントリすべてを
   Rust ランタイムで読み込み・mount する経路を確立。
