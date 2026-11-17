@@ -62,3 +62,5 @@ pub mod compaction_tool_result_pruner;
 pub mod fs_patch;
 
 pub mod mcp_resources;
+
+pub mod hooks_claude_code;

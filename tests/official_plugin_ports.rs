@@ -1979,3 +1979,57 @@ async fn mcp_resources_registers_three_tools_and_validates_server() {
 
     assert!(registry.unregister("demo"));
 }
+
+#[tokio::test]
+async fn hooks_claude_code_parses_selects_and_maps_phase_one() {
+    use cordis_rs::core_services::{HookOutput, MergedDecision, merge_hook_outputs};
+    use cordis_rs::plugin_ports::{
+        HookEffect, HookEvent, audit_pair, map_outcome, parse_config, select_hooks,
+    };
+
+    let raw = serde_json::json!({
+        "defaultTimeoutMs": 5000,
+        "hooks": {
+            "PreToolUse": [{
+                "matcher": "bash",
+                "hooks": [{ "command": "check.sh" }]
+            }],
+            "Stop": [{ "hooks": [{ "command": "ignored.sh" }] }]
+        }
+    });
+    let config = parse_config(&raw).unwrap();
+    assert_eq!(config.hooks.len(), 1);
+    assert_eq!(config.default_timeout_ms, 5000);
+    assert_eq!(
+        select_hooks(&config, HookEvent::PreToolUse, "bash").len(),
+        1
+    );
+    assert!(select_hooks(&config, HookEvent::PreToolUse, "fs").is_empty());
+
+    let deny = HookOutput {
+        decision: MergedDecision::Deny,
+        reason: Some("blocked".to_string()),
+        stop: false,
+        context: None,
+    };
+    assert_eq!(
+        map_outcome(
+            HookEvent::PreToolUse,
+            &merge_hook_outputs(std::slice::from_ref(&deny))
+        ),
+        HookEffect::Reject("blocked".to_string())
+    );
+    assert_eq!(
+        map_outcome(
+            HookEvent::PostToolUse,
+            &merge_hook_outputs(std::slice::from_ref(&deny))
+        ),
+        HookEffect::Block("blocked".to_string())
+    );
+
+    let pair = audit_pair(HookEvent::PreToolUse, "check.sh", &deny, Some(42));
+    assert_eq!(pair.len(), 2);
+    assert_eq!(pair[0].0, "hook/invoked");
+    assert_eq!(pair[1].0, "hook/result");
+    assert_eq!(pair[1].1["run_event_seq"], 42);
+}

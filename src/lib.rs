@@ -67,6 +67,11 @@ pub mod plugin_ports {
         HARNESS_SOURCE_KEY, HARNESS_SOURCE_PROMPT, WEB_GUI_URL_KEY, WEB_SURFACE_PROMPT,
         harness_context_value, with_harness_context,
     };
+    pub use crate::ports::hooks_claude_code::{
+        AUDIT_INVOKED, AUDIT_RESULT, DEFAULT_TIMEOUT_MS, HookEffect, HookEntry, HookEvent,
+        HooksClaudeCodePlugin, HooksConfig, audit_pair, map_outcome,
+        mount as mount_hooks_claude_code, parse_config, select_hooks,
+    };
     pub use crate::ports::llm_deepseek::{
         DeepSeekConfig, LlmDeepSeek, PROVIDER as DEEPSEEK_PROVIDER, mount as mount_llm_deepseek,
         resolve_api_key,
