@@ -55,6 +55,9 @@ cargo run --example mount_composition
 cargo run --example composition_with_tool_fs
 cargo run --example mount_real_composition
 cargo run --example permission_flow_demo
+
+# 全 example の headless smoke test
+bash scripts/smoke-examples.sh
 ```
 
 `agent_demo` は scripted LLM provider で agent-loop を回し、tool-fs の
