@@ -1768,3 +1768,34 @@ async fn tool_pipeline_approval_gate_is_fail_closed() {
         .unwrap_err();
     assert!(error.to_string().contains("denied"));
 }
+
+#[tokio::test]
+async fn approval_mode_never_denies_even_with_answerer() {
+    use std::sync::Arc as StdArc;
+
+    use cordis_rs::core_services::{
+        ApprovalDecision, ApprovalMode, ApprovalRequest, provide_approval,
+    };
+
+    let ctx = Context::root("approval-mode");
+    let approval = provide_approval(&ctx).await.unwrap();
+
+    let _d = approval.add_answerer(
+        "allow",
+        StdArc::new(|_request| Some(ApprovalDecision::Allow)),
+    );
+    let request = ApprovalRequest::new("tool:bash", "run command");
+
+    // Ask -> answerer allows.
+    assert_eq!(approval.policy(), ApprovalMode::Ask);
+    assert_eq!(
+        approval.request(&request).unwrap().decision,
+        ApprovalDecision::Allow
+    );
+
+    // Never -> answerer is bypassed and the request is denied.
+    approval.set_policy(ApprovalMode::Never);
+    let outcome = approval.request(&request).unwrap();
+    assert_eq!(outcome.decision, ApprovalDecision::Deny);
+    assert_eq!(outcome.answerer.as_deref(), Some("policy:never"));
+}

@@ -63,10 +63,22 @@ impl std::fmt::Display for ApprovalError {
     }
 }
 
+/// Deployment policy for approval prompts, mirroring the `approval/policy`
+/// knob set by `ctx.permissionPresets`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ApprovalMode {
+    /// Ask registered answerers; fail closed if none answers.
+    #[default]
+    Ask,
+    /// Prompts are disabled: every request is denied.
+    Never,
+}
+
 #[derive(Default)]
 struct ApprovalState {
     answerers: Vec<(u64, String, Answerer)>,
     next_id: u64,
+    policy: ApprovalMode,
 }
 
 /// The shared approval seam.
@@ -103,13 +115,29 @@ impl ApprovalService {
         })
     }
 
+    /// Set the approval policy (usually driven by permission presets).
+    pub fn set_policy(&self, policy: ApprovalMode) {
+        self.state.write().expect("approval state poisoned").policy = policy;
+    }
+
+    pub fn policy(&self) -> ApprovalMode {
+        self.state.read().expect("approval state poisoned").policy
+    }
+
     /// Ask the answerers to decide. Returns `Unavailable` when none answers,
-    /// so callers fail closed by default.
+    /// so callers fail closed by default. Under `Never` every request is denied
+    /// without consulting an answerer.
     pub fn request(
         &self,
         req: &ApprovalRequest,
     ) -> std::result::Result<ApprovalOutcome, ApprovalError> {
         let guard = self.state.read().expect("approval state poisoned");
+        if guard.policy == ApprovalMode::Never {
+            return Ok(ApprovalOutcome {
+                decision: ApprovalDecision::Deny,
+                answerer: Some("policy:never".to_string()),
+            });
+        }
         for (_, name, answerer) in guard.answerers.iter().rev() {
             if let Some(decision) = answerer(req) {
                 return Ok(ApprovalOutcome {

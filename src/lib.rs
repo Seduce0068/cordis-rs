@@ -91,7 +91,7 @@ pub mod core_services {
         AgentError, AgentFactory, AgentRecord, AgentRegistry, provide as provide_agents,
     };
     pub use crate::services::approval::{
-        Answerer, ApprovalDecision, ApprovalError, ApprovalOutcome, ApprovalRequest,
+        Answerer, ApprovalDecision, ApprovalError, ApprovalMode, ApprovalOutcome, ApprovalRequest,
         ApprovalService, provide as provide_approval, require_approval,
     };
     pub use crate::services::commands::{
