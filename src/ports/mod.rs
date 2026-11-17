@@ -58,3 +58,5 @@ pub mod timeout_policy;
 pub mod compaction_image_offload;
 
 pub mod compaction_tool_result_pruner;
+
+pub mod fs_patch;

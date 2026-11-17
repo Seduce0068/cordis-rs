@@ -1861,3 +1861,53 @@ async fn compaction_tool_result_pruner_emits_adjacent_shadow_and_replacement() {
     assert_eq!(result.events[1].data["op"], "replace");
     assert!(result.events[1].seq == result.events[0].seq + 1);
 }
+
+#[tokio::test]
+async fn fs_patch_parses_and_applies_codex_style_patch() {
+    use cordis_rs::plugin_ports::{ApplyHunksResult, PatchOperation, apply_hunks, parse_patch};
+
+    let patch =
+        "*** Begin Patch\n*** Update File: hello.txt\n@@ greeting\n-hello\n+hi\n*** End Patch";
+    let ops = parse_patch(patch).unwrap();
+    assert_eq!(ops.len(), 1);
+    let PatchOperation::Update { path, hunks, .. } = &ops[0] else {
+        panic!("expected update");
+    };
+    assert_eq!(path, "hello.txt");
+    assert_eq!(hunks.len(), 1);
+    assert_eq!(hunks[0].context.as_deref(), Some("greeting"));
+    assert_eq!(hunks[0].old_lines, vec!["hello"]);
+    assert_eq!(hunks[0].new_lines, vec!["hi"]);
+
+    let result = apply_hunks("greeting\nhello\n", hunks);
+    assert_eq!(
+        result,
+        ApplyHunksResult::Ok {
+            after: "greeting\nhi\n".to_string()
+        }
+    );
+
+    // Add + delete + heredoc wrapper.
+    let wrapped = "<<EOF\n*** Begin Patch\n*** Add File: new.txt\n+one\n+two\n*** Delete File: old.txt\n*** End Patch\nEOF";
+    let ops = parse_patch(wrapped).unwrap();
+    assert_eq!(ops.len(), 2);
+    let PatchOperation::Add { content, .. } = &ops[0] else {
+        panic!("expected add");
+    };
+    assert_eq!(content, "one\ntwo\n");
+    assert!(matches!(ops[1], PatchOperation::Delete { .. }));
+
+    // Malformed patch reports the original line number.
+    let error = parse_patch("not a patch\n*** End Patch").unwrap_err();
+    assert_eq!(error.line_number, 1);
+
+    // Unmatched hunk returns a structured failure (not a panic).
+    let failure = apply_hunks("other\ntext\n", hunks);
+    match failure {
+        ApplyHunksResult::Failure { failure } => {
+            assert_eq!(failure.stage, "context");
+            assert_eq!(failure.pattern, vec!["greeting"]);
+        }
+        _ => panic!("expected failure"),
+    }
+}
