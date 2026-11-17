@@ -38,7 +38,7 @@ pub mod plugin_ports {
         feedback_events, mount as mount_command_feedback, record_feedback,
     };
     pub use crate::ports::command_goal::{
-        CommandGoal, USAGE as GOAL_USAGE, mount as mount_command_goal,
+        CommandGoal, DEFAULT_MAX_GOAL_ROUNDS, USAGE as GOAL_USAGE, mount as mount_command_goal,
     };
     pub use crate::ports::compaction_image_offload::{
         CompactionImageOffload, Decision, EVENT_TYPE, IMAGE_OFFLOAD_PROJECTION_KEY,
@@ -73,8 +73,8 @@ pub mod plugin_ports {
         mount as mount_hooks_claude_code, parse_config, select_hooks,
     };
     pub use crate::ports::llm_deepseek::{
-        DeepSeekConfig, LlmDeepSeek, PROVIDER as DEEPSEEK_PROVIDER, mount as mount_llm_deepseek,
-        resolve_api_key,
+        CredentialError, DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL, DeepSeekConfig, LlmDeepSeek,
+        PROVIDER as DEEPSEEK_PROVIDER, mount as mount_llm_deepseek, resolve_api_key,
     };
     pub use crate::ports::mcp_resources::{
         LIST_RESOURCES, LIST_TEMPLATES, MCP_RESOURCES_SERVICE, McpResourceRegistry,
@@ -142,13 +142,12 @@ pub mod plugin_ports {
     pub use crate::ports::tool_todo::{
         Counts, MountedTodo, RawTodo, SessionEvent, SessionProjections, TodoItem, TodoStatus,
         TodoWriteArgs, TodoWriteResult, ToolExecution, ToolFailure, ToolTodo, Tools, describe,
-        mount, to_todo_list,
+        mount as mount_tool_todo, to_todo_list, tool_failure_error,
     };
     pub use crate::ports::tool_working_directory::{
         DESCRIPTION as WORKING_DIRECTORY_DESCRIPTION, ToolWorkingDirectory,
         execute as execute_working_directory, mount as mount_working_directory,
     };
-    pub use crate::services::working_directory::WorkingDirectory;
 }
 
 /// Core service implementations.

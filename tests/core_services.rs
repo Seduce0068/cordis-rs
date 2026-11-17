@@ -305,10 +305,10 @@ async fn llm_registry_streams_and_agent_loop_uses_tools() {
 
 #[tokio::test]
 async fn working_directory_tool_reads_and_changes_cwd() {
-    use cordis_rs::core_services::{ToolExecContext, ToolRegistry, provide_tools};
-    use cordis_rs::plugin_ports::{
-        WorkingDirectory, execute_working_directory, mount_working_directory,
+    use cordis_rs::core_services::{
+        ToolExecContext, ToolRegistry, WorkingDirectory, provide_tools,
     };
+    use cordis_rs::plugin_ports::{execute_working_directory, mount_working_directory};
 
     let ctx = Context::root("working-directory-port");
     let (registry, _pipeline) = provide_tools(&ctx).await.unwrap();
