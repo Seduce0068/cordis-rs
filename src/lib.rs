@@ -120,6 +120,10 @@ pub mod core_services {
         ActiveAtToken, FileReferences, ReferenceKind, active_at_token, format_file_mention,
         provide as provide_file_references,
     };
+    pub use crate::services::file_search::{
+        DEFAULT_EXCLUDED_DIRECTORIES, DEFAULT_MAX_ENTRIES, DEFAULT_MAX_RESULTS,
+        FileSearchCandidate, FileSearchConfig, WorkspaceFileSearch, provide as provide_file_search,
+    };
     pub use crate::services::fs::{
         FileSystem, FsEditOutcome, FsInfo, FsWriteOutcome, ReadWindow, WriteOperation,
         provide as provide_fs,

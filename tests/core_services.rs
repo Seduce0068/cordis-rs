@@ -2524,3 +2524,33 @@ async fn file_reference_formats_and_detects_mentions() {
 
     assert!(active_at_token("no mention", 2).is_none());
 }
+
+#[tokio::test]
+async fn workspace_file_search_indexes_and_filters() {
+    use cordis_rs::core_services::WorkspaceFileSearch;
+
+    let dir = std::env::temp_dir().join(format!("file-search-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(dir.join("src"));
+    let _ = std::fs::create_dir_all(dir.join("node_modules"));
+    std::fs::write(dir.join("src/main.rs"), "").unwrap();
+    std::fs::write(dir.join("src/lib.rs"), "").unwrap();
+    std::fs::write(dir.join("node_modules/ignored.js"), "").unwrap();
+
+    let search = WorkspaceFileSearch::new(dir.clone(), Default::default()).unwrap();
+    let all = search.search("");
+    assert!(all.iter().any(|entry| entry.path == "src/main.rs"));
+    assert!(!all.iter().any(|entry| entry.path.contains("node_modules")));
+
+    let src = search.search("src/");
+    assert_eq!(src.len(), 2);
+    assert!(src.iter().all(|entry| !entry.is_directory));
+
+    // Invalid config is rejected.
+    let config = cordis_rs::core_services::FileSearchConfig {
+        max_results: 0,
+        ..Default::default()
+    };
+    assert!(WorkspaceFileSearch::new(&dir, config).is_err());
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}

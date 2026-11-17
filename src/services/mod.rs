@@ -67,3 +67,5 @@ pub mod time_context;
 pub mod session_reference;
 
 pub mod file_reference;
+
+pub mod file_search;
