@@ -206,6 +206,10 @@ pub mod core_services {
     pub use crate::services::timeout_policy::{
         TimeoutPolicy, TimeoutResult, provide as provide_timeout_policy, tool_timeout_result,
     };
+    pub use crate::services::tmux_context::{
+        READING_PREFIX, TmuxContext, TmuxLocation, format_reading, is_changed, parse_location,
+        provide as provide_tmux_context,
+    };
     pub use crate::services::token_meter::{
         TokenMeasurement, TokenMeter, estimate_message, estimate_text,
         provide as provide_token_meter,

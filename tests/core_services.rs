@@ -2577,3 +2577,30 @@ async fn harness_dev_context_injects_runtime_values() {
     );
     assert!(harness_context_value(&context, "missing").is_none());
 }
+
+#[tokio::test]
+async fn tmux_context_parses_and_formats_locations() {
+    use cordis_rs::core_services::{TmuxContext, TmuxLocation, format_reading, parse_location};
+
+    let raw = "main\\t0\\tshell\\t1\\t%3\\t1\\t0\\t=,80,24,0,0,0";
+    let location = parse_location(raw).unwrap();
+    assert_eq!(location.session_name, "main");
+    assert_eq!(location.window_name, "shell");
+    assert_eq!(location.pane_id, "%3");
+    assert!(parse_location("only\\ttwo").is_err());
+
+    let line = format_reading(4, 2, &location, "2026-11-18T00:00:00+09:00");
+    assert!(line.contains("turn 4, step 2"));
+    assert!(line.contains("session=main"));
+    assert!(line.contains("window=0:shell"));
+
+    let mut context = TmuxContext::new();
+    assert!(context.should_inject(&location));
+    context.mark_injected(location.clone());
+    assert!(!context.should_inject(&location));
+    let moved = TmuxLocation {
+        window_name: "editor".to_string(),
+        ..location
+    };
+    assert!(context.should_inject(&moved));
+}
