@@ -17,3 +17,14 @@ tokio = { version = "=1.48.0", features = ["sync", "rt"] }
 
 [dev-dependencies]
 tokio = { version = "=1.48.0", features = ["macros", "rt", "rt-multi-thread", "sync", "time"] }
+
+[profile.dev]
+# debuginfo は line tables のみに抑制し、バックトレースは保持する。
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+# 依存クレートの debuginfo は生成しない。
+debug = false
+
+[profile.release]
+strip = true
