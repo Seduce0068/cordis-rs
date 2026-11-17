@@ -1873,3 +1873,22 @@ async fn command_compact_port_compacts_active_session() {
         .unwrap();
     assert!(matches!(with_args, CommandResult::Error { .. }));
 }
+
+#[tokio::test]
+async fn retry_policy_decides_and_computes_backoff() {
+    use cordis_rs::core_services::{RetryDecision, provide_retry};
+
+    let ctx = Context::root("retry");
+    let policy = provide_retry(&ctx).await.unwrap();
+
+    assert_eq!(policy.should_retry(429, 0), RetryDecision::Retry);
+    assert_eq!(policy.should_retry(500, 2), RetryDecision::Retry);
+    assert_eq!(policy.should_retry(400, 0), RetryDecision::Stop);
+    assert_eq!(policy.should_retry(429, 3), RetryDecision::Stop); // budget used
+
+    let first = policy.backoff_ms(1, 0.0);
+    let mid = policy.backoff_ms(1, 0.5);
+    let last = policy.backoff_ms(1, 1.0);
+    assert!(first <= mid && mid <= last);
+    assert!(policy.backoff_ms(9, 0.5) <= policy.max_delay_ms);
+}
