@@ -41,10 +41,10 @@ DSH を GPUI で再実装するにあたり、最大の障壁はプラグイン�
 
 ## 結果
 
-- 全 97 テスト通過、CI green（licensed `v0.1.0` 〜 `v0.73.0`）。
-- コアサービス 35 個を提供（`tools` / `sessions` / `llm` / `agentLoop` /
+- 全 98 テスト通過、CI green（licensed `v0.1.0` 〜 `v0.74.0`）。
+- コアサービス 36 個を提供（`tools` / `sessions` / `llm` / `agentLoop` /
   `fs` / `jobs` / `shell` / `goals` / `systemPrompt` / `compaction` /
-  `approval` / `storage` / `agents` / `otel` / `retry` / `sessionTitles` / `schedule` / `planMode` / `credentials` / `timeoutPolicy` / `pluginInventory` / `timeContext` / `sessionReferences` / `fileReferences` ほか）。
+  `approval` / `storage` / `agents` / `otel` / `retry` / `sessionTitles` / `schedule` / `planMode` / `credentials` / `timeoutPolicy` / `pluginInventory` / `timeContext` / `sessionReferences` / `fileReferences` / `fileSearch` ほか）。
 - 再利用 port 18 個を移植（tool-fs / tool-bash / tool-todo / tool-subagent /
   skill-filesystem / message-feedback / session-persistence-jsonl /
   llm-deepseek / feedback-producer / command-compact / session-title-all-prompts-llm / tool-schedule / tool-exit-plan-mode / agent-instructions ほか）。
