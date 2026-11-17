@@ -2604,3 +2604,35 @@ async fn tmux_context_parses_and_formats_locations() {
     };
     assert!(context.should_inject(&moved));
 }
+
+#[tokio::test]
+async fn repeat_reminder_detects_consecutive_identical_calls() {
+    use cordis_rs::core_services::{
+        ReminderConfig, RepeatToolReminder, canonicalize, validate_thresholds,
+    };
+
+    assert!(validate_thresholds(&[3, 5]).is_ok());
+    assert!(validate_thresholds(&[]).is_err());
+    assert!(validate_thresholds(&[1]).is_err());
+    assert!(validate_thresholds(&[3, 3]).is_err());
+
+    // Deep key-sort makes argument order irrelevant.
+    let a = serde_json::json!({ "b": 2, "a": 1 });
+    let b = serde_json::json!({ "a": 1, "b": 2 });
+    assert_eq!(canonicalize(&a), canonicalize(&b));
+
+    let mut detector = RepeatToolReminder::new(ReminderConfig {
+        thresholds: vec![3],
+        ..Default::default()
+    })
+    .unwrap();
+    for _ in 0..2 {
+        assert!(detector.observe("bash", &a).is_none());
+    }
+    let reminder = detector.observe("bash", &b).unwrap();
+    assert_eq!(reminder.run_length, 3);
+    assert!(!reminder.detailed);
+
+    // A different call resets the chain.
+    assert!(detector.observe("fs", &a).is_none());
+}

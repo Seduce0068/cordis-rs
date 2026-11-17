@@ -71,3 +71,5 @@ pub mod file_reference;
 pub mod file_search;
 
 pub mod tmux_context;
+
+pub mod repeat_reminder;

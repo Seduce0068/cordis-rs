@@ -158,6 +158,10 @@ pub mod core_services {
     pub use crate::services::pruner::{
         PruneError, PrunedText, PrunerConfig, ToolResultPruner, provide as provide_pruner,
     };
+    pub use crate::services::repeat_reminder::{
+        DEFAULT_THRESHOLDS, Reminder, ReminderConfig, RepeatToolReminder, canonicalize,
+        provide as provide_repeat_reminder, sort_json_value, validate_thresholds,
+    };
     pub use crate::services::retry::{RetryDecision, RetryPolicy, provide as provide_retry};
     pub use crate::services::schedule::{
         ScheduleError, ScheduleRecord, ScheduleService, ScheduleStatus, provide as provide_schedule,
