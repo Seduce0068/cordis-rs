@@ -2636,3 +2636,58 @@ async fn repeat_reminder_detects_consecutive_identical_calls() {
     // A different call resets the chain.
     assert!(detector.observe("fs", &a).is_none());
 }
+
+#[tokio::test]
+async fn cancelled_exec_context_skips_tool_body() {
+    use cordis_rs::core_services::{ToolError, ToolExecContext, ToolOutput, provide_tools};
+    use std::sync::Arc as StdArc;
+    use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+
+    let ctx = Context::root("tool-cancel");
+    let (tools, pipeline) = provide_tools(&ctx).await.unwrap();
+    let calls = StdArc::new(AtomicUsize::new(0));
+    let counter = calls.clone();
+    let _tool = registry_register(&tools, "tracked", move || {
+        let counter = counter.clone();
+        Box::pin(async move {
+            counter.fetch_add(1, AtomicOrdering::SeqCst);
+            Ok(ToolOutput::text("should not run"))
+        })
+            as cordis_rs::events::BoxFuture<'static, std::result::Result<ToolOutput, ToolError>>
+    });
+
+    let exec = ToolExecContext {
+        signal_cancelled: true,
+        ..ToolExecContext::anonymous()
+    };
+    let error = pipeline
+        .run(&tools, "tracked", serde_json::json!({}), exec)
+        .await
+        .unwrap_err();
+    assert!(matches!(error, ToolError::Cancelled(_)));
+    assert_eq!(calls.load(AtomicOrdering::SeqCst), 0);
+}
+
+fn registry_register<F>(
+    registry: &cordis_rs::core_services::ToolRegistry,
+    name: &str,
+    factory: F,
+) -> cordis_rs::context::Disposer
+where
+    F: Fn() -> cordis_rs::events::BoxFuture<
+            'static,
+            std::result::Result<
+                cordis_rs::core_services::ToolOutput,
+                cordis_rs::core_services::ToolError,
+            >,
+        > + Send
+        + Sync
+        + 'static,
+{
+    use std::sync::Arc;
+    registry.register(ToolDefinition::new(
+        name,
+        name,
+        Arc::new(move |_args, _exec| factory()),
+    ))
+}

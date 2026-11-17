@@ -18,7 +18,7 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 ## 実装したもの
 
 | 機能 | 対応 |
-|---|---|
+| --- | --- |
 | Context / スコープ | ルート + 子 + `isolate`（isolate は親へのフォールバックなし） |
 | サービスレジストリ | `provide` / `get` / `require`（通知駆動の待機）/ `remove_service` |
 | 5 つの dispatch モード | `emit` / `parallel` / `serial` / `bail` / `waterfall`（next 一回限り + veto） |

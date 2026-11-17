@@ -366,6 +366,10 @@ impl ToolPipeline {
             });
         }
 
+        // A cancelled execution must never reach the tool body.
+        if exec.signal_cancelled {
+            return Err(ToolError::Cancelled("execution was cancelled".to_string()));
+        }
         let mut output = next(args, exec).await?;
         for observer in post {
             output = observer(output).await?;
