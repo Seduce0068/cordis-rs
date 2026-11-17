@@ -2415,3 +2415,34 @@ entries:
     assert!(!snapshot.entries[0].enabled);
     assert!(snapshot.entries[1].enabled);
 }
+
+#[tokio::test]
+async fn time_context_formats_samples_and_respects_refresh_interval() {
+    use cordis_rs::core_services::{
+        TimeContext, TimeContextConfig, format_sample, has_utc_offset, provide_time_context,
+        validate_refresh_interval,
+    };
+
+    let ctx = Context::root("time-context");
+    let _service = provide_time_context(&ctx).await.unwrap();
+    assert!(validate_refresh_interval(1000).is_ok());
+
+    let line = format_sample(7, 3, "2026-11-17T21:56:29+09:00").unwrap();
+    assert_eq!(
+        line,
+        "Time sampled while preparing turn 7, step 3: 2026-11-17T21:56:29+09:00\n"
+    );
+    assert!(format_sample(1, 1, "2026-11-17T12:56:29Z").is_ok());
+    assert!(format_sample(1, 1, "2026-11-17T12:56:29").is_err());
+    assert!(has_utc_offset("2026-11-17T12:56:29-05:00"));
+    assert!(!has_utc_offset("no-offset"));
+
+    let mut throttled = TimeContext::new(TimeContextConfig {
+        refresh_interval_ms: 1000,
+    })
+    .unwrap();
+    assert!(throttled.should_inject(10_000));
+    throttled.mark_injected(10_000);
+    assert!(!throttled.should_inject(10_500));
+    assert!(throttled.should_inject(11_000));
+}

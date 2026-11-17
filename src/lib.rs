@@ -181,6 +181,10 @@ pub mod core_services {
         EventLogOptions, EventLogReporter, EventRecord, OTel, TelemetryError,
         provide as provide_otel,
     };
+    pub use crate::services::time_context::{
+        TimeContext, TimeContextConfig, format_sample, has_utc_offset,
+        provide as provide_time_context, validate_refresh_interval,
+    };
     pub use crate::services::timeout_policy::{
         TimeoutPolicy, TimeoutResult, provide as provide_timeout_policy, tool_timeout_result,
     };
