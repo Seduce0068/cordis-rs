@@ -1892,3 +1892,51 @@ async fn retry_policy_decides_and_computes_backoff() {
     assert!(first <= mid && mid <= last);
     assert!(policy.backoff_ms(9, 0.5) <= policy.max_delay_ms);
 }
+
+#[tokio::test]
+async fn tool_pipeline_retries_retryable_errors() {
+    use std::sync::Arc as StdArc;
+    use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+
+    use cordis_rs::core_services::{
+        RetryPolicy, ToolDefinition, ToolError, ToolExecContext, ToolOutput, provide_tools,
+    };
+
+    let ctx = Context::root("tool-retry");
+    let (registry, pipeline) = provide_tools(&ctx).await.unwrap();
+    let calls = StdArc::new(AtomicUsize::new(0));
+    let counter = calls.clone();
+    let _tool = registry.register(ToolDefinition::new(
+        "flaky",
+        "flaky",
+        StdArc::new(move |_args, _exec| {
+            let counter = counter.clone();
+            Box::pin(async move {
+                if counter.fetch_add(1, AtomicOrdering::SeqCst) == 0 {
+                    Err(ToolError::Execution("HTTP 429 rate limited".to_string()))
+                } else {
+                    Ok(ToolOutput::text("ok"))
+                }
+            })
+        }),
+    ));
+
+    pipeline.with_retry(RetryPolicy {
+        max_retries: 2,
+        initial_delay_ms: 1,
+        max_delay_ms: 1,
+        ..Default::default()
+    });
+
+    let output = pipeline
+        .run(
+            &registry,
+            "flaky",
+            serde_json::json!({}),
+            ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(output.rendered, ["ok"]);
+    assert_eq!(calls.load(AtomicOrdering::SeqCst), 2);
+}

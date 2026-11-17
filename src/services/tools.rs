@@ -211,6 +211,7 @@ struct PipelineState {
     middleware: Vec<ToolMiddleware>,
     post: Vec<ToolPostExecute>,
     approval: Option<crate::services::approval::ApprovalService>,
+    retry: Option<crate::services::retry::RetryPolicy>,
 }
 
 /// Shared execution pipeline. Registered hooks are reversible effects.
@@ -224,6 +225,11 @@ impl ToolPipeline {
     /// With no answerer registered the request is denied (upstream default).
     pub fn with_approval(&self, approval: crate::services::approval::ApprovalService) {
         self.state.write().expect("tool pipeline poisoned").approval = Some(approval);
+    }
+
+    /// Retry tool executions on retryable HTTP-style errors.
+    pub fn with_retry(&self, retry: crate::services::retry::RetryPolicy) {
+        self.state.write().expect("tool pipeline poisoned").retry = Some(retry);
     }
 
     pub fn use_middleware(&self, hook: ToolMiddleware) -> Disposer {
@@ -288,18 +294,17 @@ impl ToolPipeline {
             .post
             .clone();
 
-        let approval = self
-            .state
-            .read()
-            .expect("tool pipeline poisoned")
-            .approval
-            .clone();
+        let (approval, retry) = {
+            let state = self.state.read().expect("tool pipeline poisoned");
+            (state.approval.clone(), state.retry.clone())
+        };
         let registry = registry.clone();
         let tool_name = name.to_string();
         let mut next: ToolNext = Arc::new(move |args, exec| {
             let registry = registry.clone();
             let tool_name = tool_name.clone();
             let approval = approval.clone();
+            let retry = retry.clone();
             Box::pin(async move {
                 if let Some(approval) = approval {
                     use crate::services::approval::{ApprovalDecision, ApprovalRequest};
@@ -321,7 +326,32 @@ impl ToolPipeline {
                         }
                     }
                 }
-                registry.invoke(&tool_name, args, exec).await
+                let mut attempt = 0;
+                loop {
+                    match registry
+                        .invoke(&tool_name, args.clone(), exec.clone())
+                        .await
+                    {
+                        Ok(output) => return Ok(output),
+                        Err(error) => {
+                            let decision = retry
+                                .as_ref()
+                                .map(|policy| {
+                                    policy.should_retry_message(&error.to_string(), attempt)
+                                })
+                                .unwrap_or(crate::services::retry::RetryDecision::Stop);
+                            if decision == crate::services::retry::RetryDecision::Stop {
+                                return Err(error);
+                            }
+                            let delay = retry
+                                .as_ref()
+                                .map(|policy| policy.backoff_ms(attempt + 1, 0.5))
+                                .unwrap_or(0);
+                            tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
+                            attempt += 1;
+                        }
+                    }
+                }
             })
         });
         for hook in hooks.into_iter().rev() {

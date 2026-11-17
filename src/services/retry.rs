@@ -51,6 +51,34 @@ impl RetryPolicy {
         }
     }
 
+    /// Extract an HTTP status code from an error message (e.g. `429`).
+    pub fn error_code(error: &crate::Error) -> Option<u32> {
+        let text = error.to_string();
+        for token in text.split(|ch: char| !ch.is_ascii_digit()) {
+            if token.len() == 3
+                && let Ok(code) = token.parse::<u32>()
+                && (100..600).contains(&code)
+            {
+                return Some(code);
+            }
+        }
+        None
+    }
+
+    /// Decide from a harness error. Unknown codes are not retried.
+    pub fn should_retry_error(&self, error: &crate::Error, retry: u32) -> RetryDecision {
+        match Self::error_code(error) {
+            Some(code) => self.should_retry(code, retry),
+            None => RetryDecision::Stop,
+        }
+    }
+
+    /// Decide from a tool error message carrying an HTTP-style code.
+    pub fn should_retry_message(&self, message: &str, retry: u32) -> RetryDecision {
+        let error = crate::Error::Other(message.to_string());
+        self.should_retry_error(&error, retry)
+    }
+
     /// Deterministic backoff for a retry number (1-based). `random` supplies
     /// a value in `[0, 1)` for jitter; passing `0.5` yields the midpoint.
     pub fn backoff_ms(&self, retry: u32, random: f64) -> u64 {
