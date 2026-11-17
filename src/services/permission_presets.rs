@@ -101,6 +101,8 @@ pub struct PresetSpec {
 struct RegistryState {
     presets: BTreeMap<String, PresetSpec>,
     state: PermissionState,
+    /// When set, switching a preset also updates the approval gate policy.
+    approval: Option<crate::services::approval::ApprovalService>,
 }
 
 /// The permission preset registry.
@@ -136,6 +138,7 @@ impl Default for PermissionPresets {
                     sandbox: SandboxMode::WorkspaceWrite,
                     approval: ApprovalPolicy::Never,
                 },
+                approval: None,
             })),
         }
     }
@@ -144,6 +147,14 @@ impl Default for PermissionPresets {
 impl PermissionPresets {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Bind an approval service so switching presets updates its mode.
+    pub fn bind_approval(&self, approval: crate::services::approval::ApprovalService) {
+        self.state
+            .write()
+            .expect("permission presets poisoned")
+            .approval = Some(approval);
     }
 
     /// Switch to a preset, writing both knobs. Unknown presets are rejected.
@@ -161,7 +172,17 @@ impl PermissionPresets {
             sandbox: spec.sandbox,
             approval: spec.approval,
         };
-        Ok(guard.state.clone())
+        let snapshot = guard.state.clone();
+        let approval = guard.approval.clone();
+        drop(guard);
+        if let Some(approval) = approval {
+            use crate::services::approval::ApprovalMode;
+            approval.set_policy(match snapshot.approval {
+                ApprovalPolicy::Ask => ApprovalMode::Ask,
+                ApprovalPolicy::Never => ApprovalMode::Never,
+            });
+        }
+        Ok(snapshot)
     }
 
     /// Register a custom preset (e.g. the Auto review preset).

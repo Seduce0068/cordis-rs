@@ -1799,3 +1799,23 @@ async fn approval_mode_never_denies_even_with_answerer() {
     assert_eq!(outcome.decision, ApprovalDecision::Deny);
     assert_eq!(outcome.answerer.as_deref(), Some("policy:never"));
 }
+
+#[tokio::test]
+async fn switching_preset_updates_approval_mode() {
+    use cordis_rs::core_services::{ApprovalMode, provide_approval, provide_permission_presets};
+
+    let ctx = Context::root("preset-approval");
+    let approval = provide_approval(&ctx).await.unwrap();
+    let presets = provide_permission_presets(&ctx).await.unwrap();
+    presets.bind_approval(approval.clone());
+
+    // danger-full-access has approval=ask in the upstream spec.
+    presets.switch("danger-full-access").unwrap();
+    assert_eq!(approval.policy(), ApprovalMode::Ask);
+
+    // read-only and workspace-write both use approval=never.
+    presets.switch("read-only").unwrap();
+    assert_eq!(approval.policy(), ApprovalMode::Never);
+    presets.switch("workspace-write").unwrap();
+    assert_eq!(approval.policy(), ApprovalMode::Never);
+}
