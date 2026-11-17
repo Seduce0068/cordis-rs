@@ -2105,3 +2105,41 @@ async fn title_provider_frames_messages_and_parses_output() {
     );
     assert!(title_from_output("   \n  ").is_none());
 }
+
+#[tokio::test]
+async fn session_title_llm_port_generates_and_stores_title() {
+    use cordis_rs::core_services::{
+        LlmRequest, TitleProviderConfig, provide_llm, provide_session_titles,
+    };
+    use cordis_rs::plugin_ports::{SessionTitleLlm, mount_session_title_llm};
+
+    let ctx = Context::root("title-llm-port");
+    let llm = provide_llm(&ctx).await.unwrap();
+    let titles = provide_session_titles(&ctx).await.unwrap();
+    let config = TitleProviderConfig::default();
+    mount_session_title_llm(&ctx, config.clone()).await.unwrap();
+
+    let provider = cordis_rs::core_services::from_async_text(
+        "titles",
+        "titles-1",
+        |_request: LlmRequest| async { Ok::<_, String>("**Ported Plugins**\nextra".to_string()) },
+    );
+    let _p = llm.register(provider);
+    llm.set_default("titles");
+
+    let generator = SessionTitleLlm::new(config);
+    let messages = vec!["How do I port plugins?".to_string()];
+    assert!(
+        generator
+            .generate(&llm, &titles, "s1", &messages)
+            .await
+            .unwrap()
+    );
+    assert_eq!(titles.get("s1").as_deref(), Some("Ported Plugins"));
+    assert!(
+        !generator
+            .generate(&llm, &titles, "empty", &[])
+            .await
+            .unwrap()
+    );
+}

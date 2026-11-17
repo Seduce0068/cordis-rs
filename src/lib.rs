@@ -55,6 +55,7 @@ pub mod plugin_ports {
         JsonlPersistence, JsonlSessionHandle, PersistedEvent, PersistenceError,
         mount as mount_session_persistence_jsonl,
     };
+    pub use crate::ports::session_title_llm::{SessionTitleLlm, mount as mount_session_title_llm};
     pub use crate::ports::skill_filesystem::{
         SkillFilesystem, SkillFsConfig, discover as discover_skills,
         mount as mount_skill_filesystem,
