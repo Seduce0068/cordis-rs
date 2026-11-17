@@ -59,6 +59,9 @@ cargo run --example permission_flow_demo
 
 # 全 example の headless smoke test
 bash scripts/smoke-examples.sh
+
+# fmt / check / clippy / test / smoke をまとめて実行
+bash scripts/verify.sh
 ```
 
 `agent_demo` は scripted LLM provider で agent-loop を回し、tool-fs の
