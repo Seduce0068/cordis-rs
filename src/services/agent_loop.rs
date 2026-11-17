@@ -200,7 +200,20 @@ impl AgentLoop {
             // upstream's `agent/pre-step` policy listener.
             if let (Some(session), Some(compaction)) = (&self.session, &self.compaction) {
                 use crate::services::compaction::CompactionTrigger;
-                let _ = compaction.maybe_compact(session, CompactionTrigger::Pressure)?;
+                let result = compaction.maybe_compact(session, CompactionTrigger::Pressure)?;
+                if let Some(replacement) = result.replacement {
+                    // Keep the system prefix and the most recent messages,
+                    // replacing the compacted span with one summary message.
+                    let system_count = messages
+                        .iter()
+                        .take_while(|message| message.role == "system")
+                        .count();
+                    let tail_start = messages.len().saturating_sub(result.retain_tail);
+                    let mut compacted: Vec<ChatMessage> = messages[..system_count].to_vec();
+                    compacted.push(replacement);
+                    compacted.extend_from_slice(&messages[tail_start..]);
+                    messages = compacted;
+                }
             }
             if let Some(session) = &self.session {
                 session.append("step/start", serde_json::json!({ "step": step_index + 1 }));

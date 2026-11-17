@@ -26,6 +26,25 @@ pub struct CompactionResult {
     pub pressure: f64,
     pub shadowed_events: usize,
     pub summary: String,
+    /// A single user-role message replacing the compacted span in the next
+    /// LLM request. `None` when nothing was compacted.
+    pub replacement: Option<crate::core_services::ChatMessage>,
+    /// Number of most-recent messages to keep verbatim after the replacement.
+    pub retain_tail: usize,
+}
+
+impl CompactionResult {
+    fn blank(trigger: CompactionTrigger, pressure: f64) -> Self {
+        Self {
+            compacted: false,
+            trigger,
+            pressure,
+            shadowed_events: 0,
+            summary: String::new(),
+            replacement: None,
+            retain_tail: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -93,13 +112,7 @@ impl CompactionEngine {
         if trigger != CompactionTrigger::Manual
             && measurement.pressure < self.config.pressure_threshold
         {
-            return Ok(CompactionResult {
-                compacted: false,
-                trigger,
-                pressure: measurement.pressure,
-                shadowed_events: 0,
-                summary: String::new(),
-            });
+            return Ok(CompactionResult::blank(trigger, measurement.pressure));
         }
 
         // Build a bounded summary from the visible message text.
@@ -140,12 +153,19 @@ impl CompactionEngine {
             }),
         );
 
+        let replacement = crate::core_services::ChatMessage::user(format!(
+            "<compacted-summary>\n{}\n</compacted-summary>",
+            summary
+        ));
+        let retain_tail = 2usize.min(parts.len().saturating_sub(1));
         Ok(CompactionResult {
             compacted: true,
             trigger,
             pressure: measurement.pressure,
             shadowed_events: shadowed,
             summary,
+            replacement: Some(replacement),
+            retain_tail,
         })
     }
 }

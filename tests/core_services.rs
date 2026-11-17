@@ -2905,3 +2905,69 @@ async fn agent_loop_retry_budget_resets_between_steps() {
     // Two steps, each with one failure + one success = 4 provider calls.
     assert_eq!(calls.load(AtomicOrdering::SeqCst), 4);
 }
+
+#[tokio::test]
+async fn compaction_shortens_next_request_messages() {
+    use cordis_rs::core_services::{
+        AgentLoop, CompactionConfig, CompactionEngine, LlmRequest, Session, TokenMeter,
+        provide_llm, provide_tools,
+    };
+    use std::sync::Arc as StdArc;
+    use std::sync::Mutex as StdMutex;
+
+    let ctx = Context::root("compaction-messages");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let llm = provide_llm(&ctx).await.unwrap();
+    let session = Session::new("compact-msg", None);
+
+    // Seed enough history so pressure triggers at the first step boundary.
+    for i in 0..8 {
+        session.append(
+            "user/message",
+            serde_json::json!({ "text": format!("old message {i}") }),
+        );
+    }
+
+    let engine = CompactionEngine::new(
+        CompactionConfig {
+            pressure_threshold: 0.0, // always compact
+            head_chars: 4,
+            tail_chars: 4,
+        },
+        TokenMeter::new(1),
+    )
+    .unwrap();
+
+    let seen: StdArc<StdMutex<Vec<usize>>> = StdArc::new(StdMutex::new(Vec::new()));
+    let capture = seen.clone();
+    let provider = cordis_rs::core_services::from_async_text(
+        "capture",
+        "capture-1",
+        move |request: LlmRequest| {
+            let capture = capture.clone();
+            async move {
+                capture.lock().unwrap().push(request.messages.len());
+                Ok::<_, String>("done".to_string())
+            }
+        },
+    );
+    let _p = llm.register(provider);
+    llm.set_default("capture");
+
+    let loop_ = AgentLoop::new(llm, tools)
+        .with_session(session)
+        .with_compaction(engine)
+        .with_call_parser(StdArc::new(|_text: &str| Vec::new()));
+    loop_.run("fresh prompt").await.unwrap();
+
+    let lengths = seen.lock().unwrap();
+    assert!(!lengths.is_empty());
+    assert!(
+        lengths[0] < 8,
+        "first request should be compacted: {lengths:?}"
+    );
+    assert!(
+        lengths.iter().any(|n| *n <= 3),
+        "summary + tail: {lengths:?}"
+    );
+}
