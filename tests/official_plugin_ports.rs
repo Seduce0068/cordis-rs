@@ -1474,3 +1474,84 @@ async fn tool_session_list_registers_paginated_read_tools() {
     assert_eq!(sessions.content["limit"], 5);
     let _ = sessions;
 }
+
+#[tokio::test]
+async fn tool_str_replace_editor_handles_four_commands() {
+    use cordis_rs::core_services::{ToolExecContext, provide_fs, provide_tools};
+    use cordis_rs::plugin_ports::mount_tool_str_replace_editor;
+
+    let ctx = Context::root("str-replace-editor");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    provide_fs(&ctx).await.unwrap();
+    mount_tool_str_replace_editor(&ctx).await.unwrap();
+    assert!(tools.names().contains(&"str_replace_editor".to_string()));
+
+    let dir = std::env::temp_dir().join(format!("str-replace-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let path = dir.join("sample.txt");
+    let _ = std::fs::remove_file(&path);
+    let path_str = path.to_string_lossy().to_string();
+    let exec = || ToolExecContext::agent("a");
+
+    let created = tools
+        .invoke(
+            "str_replace_editor",
+            serde_json::json!({ "command": "create", "path": path_str, "file_text": "alpha\nbeta\ngamma" }),
+            exec(),
+        )
+        .await
+        .unwrap();
+    assert!(created.rendered[0].contains("Created"));
+    assert!(
+        tools
+            .invoke(
+                "str_replace_editor",
+                serde_json::json!({ "command": "create", "path": path_str, "file_text": "dup" }),
+                exec(),
+            )
+            .await
+            .is_err()
+    );
+
+    let viewed = tools
+        .invoke(
+            "str_replace_editor",
+            serde_json::json!({ "command": "view", "path": path_str, "view_range": [2, 3] }),
+            exec(),
+        )
+        .await
+        .unwrap();
+    assert!(viewed.rendered[0].contains("beta"));
+    assert!(!viewed.rendered[0].contains("alpha"));
+
+    let replaced = tools
+        .invoke(
+            "str_replace_editor",
+            serde_json::json!({ "command": "str_replace", "path": path_str, "old_str": "beta", "new_str": "BETA" }),
+            exec(),
+        )
+        .await
+        .unwrap();
+    assert!(replaced.rendered[0].contains("Updated"));
+    assert!(tools
+        .invoke(
+            "str_replace_editor",
+            serde_json::json!({ "command": "str_replace", "path": path_str, "old_str": "missing", "new_str": "x" }),
+            exec(),
+        )
+        .await
+        .is_err());
+
+    let inserted = tools
+        .invoke(
+            "str_replace_editor",
+            serde_json::json!({ "command": "insert", "path": path_str, "insert_line": 1, "new_str": "inserted" }),
+            exec(),
+        )
+        .await
+        .unwrap();
+    assert!(inserted.rendered[0].contains("Inserted"));
+    assert!(std::fs::read_to_string(&path).unwrap().contains("inserted"));
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}

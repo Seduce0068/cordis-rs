@@ -44,3 +44,5 @@ pub mod tool_goal;
 pub mod fs_observation_policy;
 
 pub mod tool_session_list;
+
+pub mod tool_str_replace_editor;

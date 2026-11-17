@@ -93,6 +93,9 @@ pub mod plugin_ports {
     pub use crate::ports::tool_session_query::{
         ToolSessionQuery, ToolSessionQueryConfig, mount as mount_tool_session_query,
     };
+    pub use crate::ports::tool_str_replace_editor::{
+        ToolStrReplaceEditor, mount as mount_tool_str_replace_editor,
+    };
     pub use crate::ports::tool_subagent::{
         ToolSubagent, ToolSubagentConfig, mount as mount_tool_subagent,
     };
