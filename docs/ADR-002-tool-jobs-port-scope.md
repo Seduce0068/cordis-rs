@@ -1,7 +1,7 @@
 ---
 type: Reference
-title: ADR-002 tool-jobs port の実装範囲
-description: tool-jobs port で意図的に移植しなかった機能とその理由
+title: ADR-002 プラグイン port の実装範囲と意図的差分
+description: tool-jobs / pruner port で意図的に移植しなかった機能とその理由
 tags: [cordis-rs, adr, plugin-port, jobs]
 resource: https://github.com/Seduce0068/cordis-rs
 generated: 2026-11-18T06:38:40+09:00
@@ -35,7 +35,20 @@ status: accepted
   ツールは `session_id` 引数を caller として渡す。upstream の sessionId fence に比べると
   分離は弱く、producer 側の owner を `exec.session` に変更するのが今後の改善点である。
 
+## 補遺: compaction-tool-result-pruner の注入 seam
+
+レビューで、ローカル `CompactionEngine` は自前の `ToolResultPruner` を保持し、
+共有 `toolResultPruner` サービスを注入する seam が無いことが判明した。
+今回の port では (b) の方針を採り、`prune_session` が `tool/result` イベントを
+直接 prune して shadow-price → replacement の隣接列を append する。
+`CompactionEngine::with_pruner()` の追加は `src/services/compaction.rs` を伴うため別案件とする。
+
+また、元イベントと置換イベントの両方が残るため、素朴な projection / token meter は
+二重カウントしうる。置換イベントには `sourceEventSeqs` と `op: replace` を付与して
+後から元を除外できるようにしてあるが、pressure 再判定は `TokenMeter` 側の責務であり、
+本 port は character budget を token budget とみなさない。
+
 ## 検証
 
 `cargo fmt --all --check` / `cargo check --all-targets` / `cargo clippy --all-targets -- -D warnings` /
-`cargo test --all-targets`（125 tests）および GitHub Actions が成功していること。
+`cargo test --all-targets`（128 tests）および GitHub Actions が成功していること。

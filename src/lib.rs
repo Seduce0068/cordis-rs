@@ -46,6 +46,11 @@ pub mod plugin_ports {
         mount as mount_compaction_image_offload, offload_payload, select_oldest,
         select_oldest_after, validate_payload,
     };
+    pub use crate::ports::compaction_tool_result_pruner::{
+        CompactionToolResultPruner, PruneSessionResult, REPLACEMENT_EVENT, SERVICE_NAME,
+        SHADOW_PRICE_EVENT, measure_content, mount as mount_compaction_tool_result_pruner,
+        provide as provide_tool_result_pruner, prune_content, prune_session,
+    };
     pub use crate::ports::feedback_producer::{
         FeedbackProducer, ProducerOutcome, TurnStopping, TurnStoppingEvent,
         mount as mount_feedback_producer, produce, turn_stopping_event,

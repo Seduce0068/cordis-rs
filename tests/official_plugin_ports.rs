@@ -1801,3 +1801,63 @@ async fn compaction_image_offload_selects_and_validates() {
         Decision::Noop
     );
 }
+
+#[tokio::test]
+async fn compaction_tool_result_pruner_emits_adjacent_shadow_and_replacement() {
+    use cordis_rs::core_services::{
+        PrunerConfig, provide_agents, provide_sessions, provide_token_meter,
+    };
+    use cordis_rs::plugin_ports::{
+        REPLACEMENT_EVENT, SHADOW_PRICE_EVENT, measure_content,
+        mount_compaction_tool_result_pruner, provide_tool_result_pruner, prune_content,
+        prune_session,
+    };
+
+    let ctx = Context::root("pruner-port");
+    provide_agents(&ctx).await.unwrap();
+    provide_token_meter(&ctx).await.unwrap();
+    let (_sessions, _) = provide_sessions(&ctx).await.unwrap();
+    mount_compaction_tool_result_pruner(&ctx).await.unwrap();
+    let pruner = provide_tool_result_pruner(
+        &ctx,
+        PrunerConfig {
+            head_chars: 8,
+            tail_chars: 8,
+            threshold_chars: 60,
+        },
+    )
+    .await
+    .unwrap();
+
+    let long = "a".repeat(80);
+    let blocks = vec![serde_json::json!({ "type": "text", "text": long })];
+    assert_eq!(measure_content(&blocks), 80);
+    let pruned_blocks = prune_content(&pruner, &blocks);
+    assert!(pruned_blocks[0]["text"].as_str().unwrap().len() < 80);
+    let short = vec![serde_json::json!({ "type": "text", "text": "tiny" })];
+    assert_eq!(prune_content(&pruner, &short), short);
+
+    let session = ctx
+        .require::<cordis_rs::core_services::SessionStore>("sessions")
+        .await
+        .unwrap();
+    let session = session
+        .create(Some("prune-session".to_string()), None)
+        .unwrap();
+    session.append(
+        REPLACEMENT_EVENT,
+        serde_json::json!({ "text": "z".repeat(80) }),
+    );
+    let result = prune_session(&pruner, &session);
+    assert_eq!(result.pruned, 1);
+    assert!(result.chars_removed > 0);
+    assert_eq!(result.events.len(), 2);
+    assert_eq!(result.events[0].event_type, SHADOW_PRICE_EVENT);
+    assert_eq!(result.events[1].event_type, REPLACEMENT_EVENT);
+    assert_eq!(
+        result.events[1].data["sourceEventSeqs"][0],
+        result.events[0].data["sourceEventSeqs"][0]
+    );
+    assert_eq!(result.events[1].data["op"], "replace");
+    assert!(result.events[1].seq == result.events[0].seq + 1);
+}
