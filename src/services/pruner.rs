@@ -7,6 +7,10 @@
 
 use crate::Result;
 
+/// Fixed marker inserted in place of the removed middle span.
+/// Matches upstream `PRUNE_MARKER` (37 code points).
+pub const PRUNE_MARKER: &str = "\n\n[... tool result middle pruned ...]\n\n";
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrunerConfig {
     /// Characters kept at the start of the text.
@@ -20,9 +24,9 @@ pub struct PrunerConfig {
 impl Default for PrunerConfig {
     fn default() -> Self {
         Self {
-            head_chars: 2000,
-            tail_chars: 2000,
-            threshold_chars: 8000,
+            head_chars: 4096,
+            tail_chars: 1024,
+            threshold_chars: 8192,
         }
     }
 }
@@ -57,8 +61,8 @@ pub struct ToolResultPruner {
 
 impl ToolResultPruner {
     pub fn new(config: PrunerConfig) -> std::result::Result<Self, PruneError> {
-        let marker_len = "[… truncated …]".chars().count();
-        if config.head_chars + config.tail_chars + marker_len >= config.threshold_chars {
+        let marker_len = PRUNE_MARKER.chars().count();
+        if config.head_chars + config.tail_chars + marker_len > config.threshold_chars {
             return Err(PruneError::InvalidConfig);
         }
         Ok(Self { config })
@@ -77,8 +81,7 @@ impl ToolResultPruner {
         let head_text: String = points[..head].iter().collect();
         let tail_text: String = points[tail_start..].iter().collect();
         let removed = tail_start.saturating_sub(head);
-        let marker = format!("[… truncated {removed} chars …]");
-        let rendered = format!("{head_text}{marker}{tail_text}");
+        let rendered = format!("{head_text}{PRUNE_MARKER}{tail_text}");
         Some(PrunedText {
             text: rendered,
             removed_chars: removed,

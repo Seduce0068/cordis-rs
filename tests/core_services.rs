@@ -1204,9 +1204,9 @@ async fn tool_result_pruner_keeps_head_and_tail() {
     use cordis_rs::core_services::{PrunerConfig, ToolResultPruner};
 
     let pruner = ToolResultPruner::new(PrunerConfig {
-        head_chars: 4,
-        tail_chars: 4,
-        threshold_chars: 40,
+        head_chars: 8,
+        tail_chars: 8,
+        threshold_chars: 60,
     })
     .unwrap();
 
@@ -1215,21 +1215,26 @@ async fn tool_result_pruner_keeps_head_and_tail() {
 
     // Over budget: head and tail preserved, middle replaced by a marker.
     let pruned = pruner
-        .prune_text("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ")
+        .prune_text("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
         .unwrap();
-    assert!(pruned.text.starts_with("abc"));
-    assert!(pruned.text.ends_with("GHIJ"));
-    assert!(pruned.text.contains("truncated"));
+    assert!(pruned.text.starts_with("abcdefgh"));
+    assert!(pruned.text.contains("STUVWXYZ"));
+    assert!(pruned.text.contains("[... tool result middle pruned ...]"));
     assert!(pruned.removed_chars > 0);
-    assert!(pruned.text.chars().count() < 40);
+    assert!(pruned.text.chars().count() < 60);
 
     // Recursive over a JSON tool result.
     let value = serde_json::json!({
-        "stdout": "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ",
+        "stdout": "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         "meta": { "count": 1 },
     });
     let result = pruner.prune_json(&value);
-    assert!(result["stdout"].as_str().unwrap().contains("truncated"));
+    assert!(
+        result["stdout"]
+            .as_str()
+            .unwrap()
+            .contains("[... tool result middle pruned ...]")
+    );
     assert_eq!(result["meta"]["count"], 1);
 
     // Invalid config is rejected at construction.
