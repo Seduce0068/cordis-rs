@@ -2691,3 +2691,67 @@ where
         Arc::new(move |_args, _exec| factory()),
     ))
 }
+
+#[tokio::test]
+async fn tool_goal_registers_three_tools_with_cas() {
+    use cordis_rs::core_services::{ToolExecContext, provide_agents, provide_goals, provide_tools};
+    use cordis_rs::plugin_ports::mount_tool_goal;
+
+    let ctx = Context::root("tool-goal");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let store = provide_goals(&ctx).await.unwrap();
+    provide_agents(&ctx).await.unwrap();
+    mount_tool_goal(&ctx).await.unwrap();
+
+    let mut names = tools.names();
+    names.sort();
+    assert_eq!(names, ["create_goal", "get_goal", "update_goal"]);
+
+    let human = ToolExecContext::agent("human");
+    let created = tools
+        .invoke(
+            "create_goal",
+            serde_json::json!({ "objective": "ship the port", "max_goal_rounds": 10 }),
+            human.clone(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(created.content["goal"]["objective"], "ship the port");
+    let revision = created.content["goal"]["revision"].as_u64().unwrap();
+
+    // Stale revision is rejected via CAS.
+    let stale = tools
+        .invoke(
+            "update_goal",
+            serde_json::json!({ "goal_id": revision + 1, "action": "edit", "objective": "new" }),
+            human.clone(),
+        )
+        .await;
+    assert!(
+        stale.is_err()
+            || matches!(
+                stale.unwrap().content["error"],
+                serde_json::Value::String(_)
+            )
+    );
+
+    let read = tools
+        .invoke("get_goal", serde_json::json!({}), human)
+        .await
+        .unwrap();
+    assert_eq!(read.content["goal"]["objective"], "ship the port");
+    assert_eq!(store.get().unwrap().objective, "ship the port");
+
+    // A goal round cannot create, but may complete.
+    let round = ToolExecContext::agent("agent");
+    assert!(
+        tools
+            .invoke(
+                "create_goal",
+                serde_json::json!({ "objective": "no" }),
+                round,
+            )
+            .await
+            .is_err()
+    );
+}
