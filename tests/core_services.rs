@@ -2048,3 +2048,31 @@ async fn hook_protocol_regex_matcher_and_diagnostics() {
     // Literal mode accepts any pattern without regex validation.
     assert!(matcher_diagnostic(Some("["), true).is_none());
 }
+
+#[tokio::test]
+async fn session_titles_keep_generated_and_fallback_titles() {
+    use cordis_rs::core_services::{SessionTitles, provide_session_titles};
+
+    let ctx = Context::root("session-titles");
+    let titles: SessionTitles = provide_session_titles(&ctx).await.unwrap();
+
+    let messages = vec!["How do I port plugins?".to_string()];
+    titles.derive_from_messages("s1", &messages, 12);
+    assert_eq!(titles.get("s1").as_deref(), Some("How do I por"));
+
+    // An existing title is not overwritten by the fallback.
+    titles.derive_from_messages("s1", &["Different question".to_string()], 20);
+    assert_eq!(titles.get("s1").as_deref(), Some("How do I por"));
+
+    // A generated title replaces it, using the first non-empty line.
+    assert!(titles.set_generated("s1", "\n  Rust plugin port  \nextra", 30));
+    assert_eq!(titles.get("s1").as_deref(), Some("Rust plugin port"));
+
+    // Empty provider output is ignored.
+    assert!(!titles.set_generated("s2", "  \n  ", 30));
+    assert!(titles.get("s2").is_none());
+
+    titles.set("s3", "  trimmed  ");
+    assert_eq!(titles.get("s3").as_deref(), Some("trimmed"));
+    assert_eq!(titles.list().len(), 2);
+}

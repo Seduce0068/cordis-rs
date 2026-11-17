@@ -49,3 +49,5 @@ pub mod telemetry;
 pub mod retry;
 
 pub mod hook_protocol;
+
+pub mod session_titles;
