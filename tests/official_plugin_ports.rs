@@ -1555,3 +1555,32 @@ async fn tool_str_replace_editor_handles_four_commands() {
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[tokio::test]
+async fn time_context_plugin_registers_projection() {
+    use cordis_rs::core_services::{Session, provide_agents, provide_sessions};
+    use cordis_rs::plugin_ports::{TimeContextPluginConfig, mount_time_context};
+
+    let ctx = Context::root("time-context-port");
+    provide_agents(&ctx).await.unwrap();
+    let (sessions, projections) = provide_sessions(&ctx).await.unwrap();
+    mount_time_context(
+        &ctx,
+        TimeContextPluginConfig {
+            refresh_interval_ms: 1000,
+            time_zone: Some("Asia/Tokyo".to_string()),
+        },
+    )
+    .await
+    .unwrap();
+
+    let session = sessions.create(Some("tc-1".to_string()), None).unwrap();
+    session.append("turn/start", serde_json::json!({}));
+    session.append("user/message", serde_json::json!({ "text": "hi" }));
+    let view = projections.view("timeContext", &session);
+    assert!(view.is_some());
+    let view = view.unwrap();
+    assert_eq!(view["turns"], 1);
+    assert_eq!(view["messages"], 1);
+    let _ = Session::new("unused", None);
+}
