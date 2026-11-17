@@ -71,6 +71,10 @@ pub mod plugin_ports {
         DeepSeekConfig, LlmDeepSeek, PROVIDER as DEEPSEEK_PROVIDER, mount as mount_llm_deepseek,
         resolve_api_key,
     };
+    pub use crate::ports::mcp_resources::{
+        LIST_RESOURCES, LIST_TEMPLATES, MCP_RESOURCES_SERVICE, McpResourceRegistry,
+        McpResourcesPlugin, READ_RESOURCE, ResourceProvider, mount as mount_mcp_resources,
+    };
     pub use crate::ports::message_feedback::{
         FeedbackError, FeedbackItem, MessageFeedback, MessageFeedbackConfig, MessageFeedbackPlugin,
         Rating, mount as mount_message_feedback,

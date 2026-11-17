@@ -1911,3 +1911,71 @@ async fn fs_patch_parses_and_applies_codex_style_patch() {
         _ => panic!("expected failure"),
     }
 }
+
+#[tokio::test]
+async fn mcp_resources_registers_three_tools_and_validates_server() {
+    use cordis_rs::core_services::{ToolError, ToolExecContext, provide_tools};
+    use cordis_rs::plugin_ports::{LIST_RESOURCES, READ_RESOURCE, mount_mcp_resources};
+
+    let ctx = Context::root("mcp-resources-port");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let registry = mount_mcp_resources(&ctx).await.unwrap();
+
+    let mut names = tools.names();
+    names.sort();
+    assert_eq!(
+        names,
+        [
+            "list_mcp_resource_templates",
+            "list_mcp_resources",
+            "read_mcp_resource"
+        ]
+    );
+
+    // Unregistered server fails as InvalidArgs before dispatch.
+    let error = tools
+        .invoke(
+            LIST_RESOURCES,
+            serde_json::json!({ "server": "missing" }),
+            ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(error, ToolError::InvalidArgs(_)));
+
+    registry.register(
+        "demo".to_string(),
+        std::sync::Arc::new(|method, params| {
+            let resources = serde_json::json!([{ "uri": "file:///a", "name": "a" }]);
+            Ok(match method {
+                "resources/list" => serde_json::json!({ "resources": resources }),
+                "resources/read" => serde_json::json!({ "contents": [{ "uri": params["uri"] }] }),
+                _ => serde_json::json!({}),
+            })
+        }),
+    );
+    assert_eq!(registry.servers(), vec!["demo"]);
+
+    let list = tools
+        .invoke(
+            LIST_RESOURCES,
+            serde_json::json!({ "server": "demo" }),
+            ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(list.content["resources"].as_array().unwrap().len(), 1);
+
+    let read = tools
+        .invoke(
+            READ_RESOURCE,
+            serde_json::json!({ "server": "demo", "uri": "file:///a" }),
+            ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(read.content["contents"][0]["uri"], "file:///a");
+    assert!(read.rendered[0].contains("file:///a"));
+
+    assert!(registry.unregister("demo"));
+}
