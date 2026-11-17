@@ -877,3 +877,72 @@ entries:
         Some(&Value::String("no interpolation".to_string()))
     );
 }
+
+#[test]
+fn js_nullish_coalescing_keeps_falsy_values() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let mut vars = VarTable::new();
+    vars.insert("empty", Value::String(String::new()));
+    vars.insert("zero", Value::Integer(0));
+
+    let yaml = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      set: !!js process.env.DEMO_GREETING ?? 'Hello'
+      missing: !!js process.env.DSH_NOT_SET ?? 'fallback'
+      falsy: !!js $empty ?? 'unused'
+      zero: !!js $zero ?? 'unused'
+      mixed: !!js $empty ?? (process.env.DSH_NOT_SET ? 'a' : 'b')
+"#;
+    let vars = vars.with_env_value("DEMO_GREETING", "Hi");
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let map = match &composition.entries[0].config {
+        Value::Object(map) => map.clone(),
+        _ => panic!("expected object"),
+    };
+    assert_eq!(map.get("set"), Some(&Value::String("Hi".to_string())));
+    assert_eq!(
+        map.get("missing"),
+        Some(&Value::String("fallback".to_string()))
+    );
+    assert_eq!(map.get("falsy"), Some(&Value::String(String::new())));
+    assert_eq!(map.get("zero"), Some(&Value::Integer(0)));
+    assert_eq!(map.get("mixed"), Some(&Value::String(String::new())));
+}
+
+#[test]
+fn js_process_globals_concatenate_with_strings() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let yaml = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      cwd: !!js process.cwd()
+      joined: !!js process.cwd() + '/native-helper.mjs'
+      exec: !!js process.execPath
+"#;
+    let vars = VarTable::new().with_home_path("/tmp/dsh-home");
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let map = match &composition.entries[0].config {
+        Value::Object(map) => map.clone(),
+        _ => panic!("expected object"),
+    };
+    assert_eq!(
+        map.get("cwd"),
+        Some(&Value::String("/tmp/dsh-home".to_string()))
+    );
+    assert_eq!(
+        map.get("joined"),
+        Some(&Value::String(
+            "/tmp/dsh-home/native-helper.mjs".to_string()
+        ))
+    );
+    assert!(matches!(map.get("exec"), Some(Value::String(_))));
+}

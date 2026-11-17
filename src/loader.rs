@@ -989,6 +989,22 @@ fn evaluate_helper_call(
                 home.join(argument).to_string_lossy().to_string(),
             )))
         }
+        "process.cwd" => {
+            let home = vars
+                .home_path
+                .as_ref()
+                .ok_or_else(|| LoaderError::InvalidExpression {
+                    path: path.to_string(),
+                    expression: expression.to_string(),
+                    reason: "process.cwd requires VarTable::with_home_path".to_string(),
+                })?;
+            Ok(Some(Value::String(home.to_string_lossy().to_string())))
+        }
+        "process.execPath" => Ok(Some(Value::String(
+            std::env::current_exe()
+                .map(|path| path.to_string_lossy().to_string())
+                .unwrap_or_default(),
+        ))),
         "String" => Ok(Some(Value::String(argument.to_string()))),
         "Number" => argument
             .parse::<i64>()
@@ -1174,6 +1190,17 @@ fn evaluate_expression(
 ) -> Result<Value, LoaderError> {
     let expression = expression.trim();
 
+    // Nullish coalescing `??` has lower precedence than `||` but must be
+    // consumed before the single-`?` ternary check below. Only null/undefined
+    // (both represented by Value::Null here) take the right-hand side.
+    if let Some((left, right)) = split_once_top_level(expression, "??") {
+        let left_value = evaluate_expression(left.trim(), vars, path)?;
+        if left_value == Value::Null {
+            return evaluate_expression(right.trim(), vars, path);
+        }
+        return Ok(left_value);
+    }
+
     // Ternary: `condition ? when_true : when_false`. The condition is
     // evaluated first, so references and comparisons work on both sides.
     if let Some((condition, rest)) = split_top_level_once(expression, '?') {
@@ -1215,6 +1242,17 @@ fn evaluate_expression(
             let right_value = evaluate_expression(right.trim(), vars, path)?;
             if let Some(result) = arithmetic(&left_value, operator, &right_value) {
                 return Ok(result);
+            }
+            // JS `+` concatenates when either side is a string.
+            if operator == "+"
+                && (matches!(left_value, Value::String(_))
+                    || matches!(right_value, Value::String(_)))
+            {
+                return Ok(Value::String(format!(
+                    "{}{}",
+                    value_to_text(&left_value),
+                    value_to_text(&right_value)
+                )));
             }
         }
     }
@@ -1532,6 +1570,18 @@ fn evaluate_member_access(
         };
         let key = format!("env.{env_name}");
         return Ok(Some(vars.get(&key).cloned().unwrap_or(Value::Null)));
+    }
+
+    // Allowlisted process properties without a call (e.g. `process.execPath`).
+    if head == "process" && tail.starts_with('.') {
+        let property = &tail[1..];
+        if property == "execPath" {
+            return Ok(Some(Value::String(
+                std::env::current_exe()
+                    .map(|path| path.to_string_lossy().to_string())
+                    .unwrap_or_default(),
+            )));
+        }
     }
 
     let mut rest = tail;
