@@ -27,9 +27,9 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 | Plugin | `Plugin` trait + `FunctionPlugin`、`inject` による依存宣言 |
 | Config 検証 | 型・必須・範囲・デフォルト適用、フィールド名付きエラー |
 | Loader | 軽量 YAML（`entries:` / `name:` / `insert:` / `!!js` 式）、Composition の部分 mount |
-| コアサービス | `tools` / `sessions` / `sessionProjections` / `commands` / `llm` / `agentLoop` / `fs` / `jobs` / `shell` / `skills` / `subagents` / `workingDirectory` / `messageFeedback` |
-| 再利用 port | `command-compact` / `command-goal` / `command-feedback` / `tool-todo` / `tool-fs` / `tool-bash` / `tool-working-directory` / `tool-subagent` / `skill-filesystem` / `message-feedback` / `session-persistence-jsonl` / `llm-deepseek` / `feedback-producer` |
-| GPUI 連携 | 別リポジトリ `dsh-gpui-client-poc`：todo / fs / agent / prompt / 実 composition / plugin トグル UI |
+| コアサービス（25） | `tools` / `sessions` / `sessionProjections` / `commands` / `llm` / `agentLoop` / `fs` / `jobs` / `shell` / `skills` / `subagents` / `workingDirectory` / `messageFeedback` / `goals` / `systemPrompt` / `toolResultPruner` / `tokenMeter` / `compaction` / `approval` / `permissionPresets` / `sessionQuery` / `workspace` / `storage` / `agents` / `otel` |
+| 再利用 port（13） | `command-goal` / `command-feedback` / `tool-todo` / `tool-fs` / `tool-bash` / `tool-working-directory` / `tool-subagent` / `tool-session-query` / `skill-filesystem` / `message-feedback` / `session-persistence-jsonl` / `llm-deepseek` / `feedback-producer`（`command-compact` は `tests/official_plugin_port.rs` にデモあり） |
+| GPUI 連携 | 別リポジトリ `dsh-gpui-client-poc`：todo / fs / agent / prompt / 実 composition / plugin トグル / 実 composition トグル / ACP ストリーム UI |
 
 ### 意図的な差分
 
@@ -37,7 +37,7 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 - `serial` / `bail` の戻り値は `Option<R>`。`Some(0)` / `Some(String::new())` は bail。
   upstream の `false` だけは非 bail という差がある。
 - Schemastery の完全な DSL とファイル監視 HMR は対象外（Config 検証と YAML Loader は独自実装済み）。
-- `!!js` は変数参照・補間・比較・論理・三項・member access・`process.env`・`dshHomePath` をサポート。任意の JavaScript は評価しない。
+- `!!js` は変数参照・補間・比較（`===` 含む）・算術・論理・三項・member access・文字列メソッド（`includes` / `startsWith` / `endsWith`）・配列／オブジェクト／テンプレートリテラル・`process.env`・`dshHomePath` をサポート。任意の JavaScript は評価しない。
 - `emit` は試験の決定性のため await する（`emit_detached` で fire-and-forget も提供）。
 
 ## 検証
@@ -77,7 +77,7 @@ JSONL に永続化し、restore までを検証するデモです。
 テストは `tests/cordis.rs`（ランタイム）、`tests/config_loader.rs`（Loader / `!!js`）、
 `tests/core_services.rs`（コアサービス・port）、`tests/official_plugin_port.rs`
 （`dsh-command-compact`）、`tests/official_plugin_ports.rs`（`command-goal` / `tool-todo`）
-に分かれています（全 54 件）。
+に分かれています（全 74 件）。
 
 `mount_real_composition` は上流 `snapshots/sdk/text-turn/cordis.yml` の
 6 エントリすべてを fiber として起動します。
