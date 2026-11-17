@@ -53,6 +53,7 @@ cargo run --example load_cordis_yml
 cargo run --example mount_composition
 cargo run --example composition_with_tool_fs
 cargo run --example mount_real_composition
+cargo run --example permission_flow_demo
 ```
 
 `agent_demo` は scripted LLM provider で agent-loop を回し、tool-fs の
@@ -73,6 +74,10 @@ JSONL に永続化し、restore までを検証するデモです。
 
 `mount_real_composition` は実 DSH fixture を読み込み、port が存在する
 エントリだけを fiber として起動し、未対応のものをレポートします。
+
+`permission_flow_demo` は preset 切替 → approval mode → tool 実行の
+権限フローを検証します（read-only / workspace-write は deny、
+danger-full-access は allow）。
 
 テストは `tests/cordis.rs`（ランタイム）、`tests/config_loader.rs`（Loader / `!!js`）、
 `tests/core_services.rs`（コアサービス・port）、`tests/official_plugin_port.rs`
