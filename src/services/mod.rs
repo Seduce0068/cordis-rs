@@ -59,3 +59,5 @@ pub mod plan_mode;
 pub mod credentials;
 
 pub mod timeout_policy;
+
+pub mod plugin_inventory;

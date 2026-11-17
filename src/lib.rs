@@ -138,6 +138,10 @@ pub mod core_services {
         provide as provide_permission_presets,
     };
     pub use crate::services::plan_mode::{PlanMode, PlanModeEvent, provide as provide_plan_mode};
+    pub use crate::services::plugin_inventory::{
+        PluginEntryView, PluginInventory, PluginInventorySnapshot,
+        provide as provide_plugin_inventory,
+    };
     pub use crate::services::pruner::{
         PruneError, PrunedText, PrunerConfig, ToolResultPruner, provide as provide_pruner,
     };

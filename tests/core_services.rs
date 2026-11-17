@@ -2379,3 +2379,39 @@ async fn timeout_policy_resolves_budgets_and_detects_expiry() {
     assert_eq!(result.message, "tool call timed out after 250ms");
     assert!(policy.check(None, 500).is_none());
 }
+
+#[tokio::test]
+async fn plugin_inventory_projects_composition_entries() {
+    use cordis_rs::core_services::provide_plugin_inventory;
+    use cordis_rs::loader::{Composition, CompositionState};
+
+    let ctx = Context::root("plugin-inventory");
+    let inventory = provide_plugin_inventory(&ctx).await.unwrap();
+    assert!(inventory.list().entries.is_empty());
+
+    let yaml = r#"
+entries:
+  - id: a
+    plugin: demo/a
+    config: {}
+  - id: b
+    plugin: demo/b
+    disabled: true
+    config: {}
+"#;
+    inventory.set_composition(Composition::parse(yaml).unwrap());
+    let snapshot = inventory.list();
+    assert_eq!(snapshot.entries.len(), 2);
+    assert_eq!(snapshot.entries[0].entry_id, "a");
+    assert!(snapshot.entries[0].enabled);
+    assert!(!snapshot.entries[1].enabled);
+
+    // Overrides are reflected on the next read (no cache).
+    let mut state = CompositionState::new();
+    state.set("a", false);
+    state.set("b", true);
+    inventory.set_state(state);
+    let snapshot = inventory.list();
+    assert!(!snapshot.entries[0].enabled);
+    assert!(snapshot.entries[1].enabled);
+}
