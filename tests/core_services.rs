@@ -1664,3 +1664,36 @@ async fn agent_registry_creates_and_lists_agents() {
     assert!(registry.get("a-1").is_some());
     assert!(registry.get("missing").is_none());
 }
+
+#[tokio::test]
+async fn otel_event_channels_batch_and_bound_records() {
+    use cordis_rs::core_services::{EventLogOptions, TelemetryError, provide_otel};
+    use std::collections::HashMap;
+
+    let ctx = Context::root("otel");
+    let otel = provide_otel(&ctx).await.unwrap();
+    assert!(otel.channel_names().is_empty());
+
+    let (reporter, _disposer) = otel.event_channel(
+        "diagnostics",
+        EventLogOptions {
+            max_events: 3,
+            batch_size: 2,
+        },
+    );
+    assert_eq!(otel.channel_names(), ["diagnostics"]);
+
+    let mut attrs = HashMap::new();
+    attrs.insert("kind".to_string(), "test".to_string());
+    assert!(!reporter.record("tick", attrs.clone()).unwrap());
+    assert!(reporter.record("tick", attrs.clone()).unwrap()); // batch boundary (2 ticks)
+    assert!(!reporter.record("tick", attrs.clone()).unwrap());
+    reporter.record("tick", attrs.clone()).unwrap();
+    assert_eq!(reporter.events().len(), 3); // bounded by max_events
+    assert_eq!(reporter.count("tick"), 4);
+    assert!(reporter.record("", attrs).is_err());
+    assert!(matches!(
+        reporter.record("", HashMap::new()),
+        Err(TelemetryError::InvalidName)
+    ));
+}

@@ -147,6 +147,10 @@ pub mod core_services {
         AssembleContext, PromptAssembly, PromptError, PromptSection, SystemPrompt,
         provide as provide_system_prompt,
     };
+    pub use crate::services::telemetry::{
+        EventLogOptions, EventLogReporter, EventRecord, OTel, TelemetryError,
+        provide as provide_otel,
+    };
     pub use crate::services::token_meter::{
         TokenMeasurement, TokenMeter, estimate_message, estimate_text,
         provide as provide_token_meter,

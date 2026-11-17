@@ -43,3 +43,5 @@ pub mod workspace;
 pub mod storage;
 
 pub mod agents;
+
+pub mod telemetry;
