@@ -177,6 +177,9 @@ pub mod core_services {
         EventLogOptions, EventLogReporter, EventRecord, OTel, TelemetryError,
         provide as provide_otel,
     };
+    pub use crate::services::timeout_policy::{
+        TimeoutPolicy, TimeoutResult, provide as provide_timeout_policy, tool_timeout_result,
+    };
     pub use crate::services::token_meter::{
         TokenMeasurement, TokenMeter, estimate_message, estimate_text,
         provide as provide_token_meter,

@@ -2353,3 +2353,29 @@ async fn credentials_resolve_store_then_env_without_exposing_values() {
     let missing = credential_ref("$MISSING").unwrap();
     assert!(!provider.describe(&missing).configured);
 }
+
+#[tokio::test]
+async fn timeout_policy_resolves_budgets_and_detects_expiry() {
+    use cordis_rs::core_services::{TimeoutPolicy, provide_timeout_policy};
+
+    let ctx = Context::root("timeout-policy");
+    let policy: TimeoutPolicy = provide_timeout_policy(&ctx).await.unwrap();
+
+    // No declaration and no fallback -> no timeout.
+    assert_eq!(policy.timeout_of(None), None);
+    assert!(!policy.is_expired(None, 100_000));
+
+    let policy = TimeoutPolicy {
+        default_timeout_ms: Some(1000),
+    };
+    assert_eq!(policy.timeout_of(None), Some(1000));
+    assert_eq!(policy.timeout_of(Some(250)), Some(250)); // declaration wins
+    assert_eq!(policy.timeout_of(Some(0)), None); // zero is not a budget
+
+    assert!(!policy.is_expired(None, 999));
+    assert!(policy.is_expired(None, 1000));
+    let result = policy.check(Some(250), 300).unwrap();
+    assert!(result.timed_out);
+    assert_eq!(result.message, "tool call timed out after 250ms");
+    assert!(policy.check(None, 500).is_none());
+}
