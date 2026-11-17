@@ -1539,3 +1539,38 @@ async fn session_query_tool_searches_and_traces() {
         .unwrap();
     assert_eq!(result.content["events"].as_array().unwrap().len(), 2);
 }
+
+#[tokio::test]
+async fn workspace_registry_orders_and_attaches_sessions() {
+    use cordis_rs::core_services::{WorkspaceError, provide_workspace};
+
+    let ctx = Context::root("workspace");
+    let registry = provide_workspace(&ctx).await.unwrap();
+
+    let w1 = registry.create("w1", "/home/user/project-a").unwrap();
+    let _w2 = registry.create("w2", "/home/user/project-b").unwrap();
+    assert_eq!(w1.title, "project-a");
+    assert!(matches!(
+        registry.create("w1", "/another"),
+        Err(WorkspaceError::Duplicate(_))
+    ));
+
+    registry.attach("w1", "s1").unwrap();
+    registry.attach("w1", "s1").unwrap(); // idempotent
+    registry.attach("w1", "s2").unwrap();
+    assert_eq!(registry.sessions_in("w1"), ["s1", "s2"]);
+
+    let list = registry.list();
+    assert_eq!(list.len(), 2);
+    assert_eq!(list[0].id, "w1"); // durable registry order
+
+    assert!(matches!(
+        registry.attach("missing", "s1"),
+        Err(WorkspaceError::NotFound(_))
+    ));
+    registry.archive("w1").unwrap();
+    assert!(matches!(
+        registry.attach("w1", "s3"),
+        Err(WorkspaceError::Archived(_))
+    ));
+}

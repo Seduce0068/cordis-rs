@@ -152,4 +152,7 @@ pub mod core_services {
     pub use crate::services::working_directory::{
         WorkingDirectory, provide as provide_working_directory,
     };
+    pub use crate::services::workspace::{
+        WorkspaceError, WorkspaceRecord, WorkspaceRegistry, provide as provide_workspace,
+    };
 }
