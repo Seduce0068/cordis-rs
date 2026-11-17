@@ -978,3 +978,35 @@ entries:
     );
     assert_eq!(map.get("ternary"), Some(&Value::String("yes".to_string())));
 }
+
+#[test]
+fn js_block_scalar_expression_is_folded() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let yaml = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      expr: !!js >-
+        [
+        'a',
+        'b'
+        ]
+      after: sibling
+"#;
+    let vars = VarTable::new()
+        .with_env_value("A", "a")
+        .with_env_value("B", "b");
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let map = match &composition.entries[0].config {
+        Value::Object(map) => map.clone(),
+        _ => panic!("expected object"),
+    };
+    assert!(map.contains_key("expr"));
+    assert_eq!(
+        map.get("after"),
+        Some(&Value::String("sibling".to_string()))
+    );
+}

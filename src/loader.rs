@@ -914,10 +914,53 @@ fn parse_value_after_key(
     depth: usize,
 ) -> Result<Node, LoaderError> {
     if raw_value.is_empty() {
-        parse_nested_or_null(lines, index, indent, limits, depth)
-    } else {
-        parse_inline(raw_value, limits, depth)
+        return parse_nested_or_null(lines, index, indent, limits, depth);
     }
+
+    // Tagged block scalars: `!!js >-` / `!!js |-` fold the following, more
+    // deeply indented lines into a single expression string.
+    let (tagged, remaining) = match raw_value.strip_prefix("!!js") {
+        Some(rest) => (true, rest.trim()),
+        None => (false, raw_value),
+    };
+    if let Some(indicator) = remaining
+        .strip_prefix('>')
+        .or_else(|| remaining.strip_prefix('|'))
+    {
+        let literal = remaining.starts_with('|');
+        let chomp = indicator.ends_with('-');
+        let mut parts: Vec<String> = Vec::new();
+        let mut next = *index + 1;
+        while next < lines.len() && lines[next].indent > indent {
+            eprintln!(
+                "BLOCK consumer: indent={} line_indent={} text={:?}",
+                indent, lines[next].indent, lines[next].text
+            );
+            parts.push(lines[next].text.clone());
+            next += 1;
+        }
+        if parts.is_empty() {
+            return Err(LoaderError::InvalidExpression {
+                path: format!("line {}", lines[*index].number),
+                expression: raw_value.to_string(),
+                reason: "block scalar has no content lines".to_string(),
+            });
+        }
+        *index = next;
+        let text = if literal {
+            parts.join("\n")
+        } else {
+            parts.join(" ")
+        };
+        let text = if chomp { text } else { format!("{text}\n") };
+        return Ok(Node::Scalar(Scalar {
+            raw: text,
+            quoted: false,
+            tagged,
+        }));
+    }
+
+    parse_inline(raw_value, limits, depth)
 }
 
 /// Evaluate known DSH helper calls. Returns `Ok(None)` for other forms.
