@@ -41,13 +41,13 @@ DSH を GPUI で再実装するにあたり、最大の障壁はプラグイン�
 
 ## 結果
 
-- 全 125 テスト通過、CI green（タグ `v0.1.0` 〜 `v0.99.0`）。
+- 全 128 テスト通過、CI green（タグ `v0.1.0` 〜 `v0.102.0`）。
 - コアサービス 38 個を提供（`tools` / `sessions` / `llm` / `agentLoop` /
   `fs` / `jobs` / `shell` / `goals` / `systemPrompt` / `compaction` /
   `approval` / `storage` / `agents` / `otel` / `retry` / `sessionTitles` / `schedule` / `planMode` / `credentials` / `timeoutPolicy` / `pluginInventory` / `timeContext` / `sessionReferences` / `fileReferences` / `fileSearch` / `tmuxContext` / `repeatReminder` ほか）。
-- 再利用 port 26 個を移植（tool-fs / tool-bash / tool-todo / tool-subagent /
+- 再利用 port 29 個を移植（tool-fs / tool-bash / tool-todo / tool-subagent /
   skill-filesystem / message-feedback / session-persistence-jsonl /
-  llm-deepseek / feedback-producer / command-compact / session-title-all-prompts-llm / tool-schedule / tool-exit-plan-mode / agent-instructions / harness-dev-context / tool-goal / fs-observation-policy / tool-session-list / tool-str-replace-editor / time-context / tmux-context / tool-jobs ほか）。
+  llm-deepseek / feedback-producer / command-compact / session-title-all-prompts-llm / tool-schedule / tool-exit-plan-mode / agent-instructions / harness-dev-context / tool-goal / fs-observation-policy / tool-session-list / tool-str-replace-editor / time-context / tmux-context / tool-jobs / timeout-policy / compaction-* ほか）。
 - library port として `hook-protocol`（matcher / outcome merge）を追加。
 - 上流 `snapshots/sdk/text-turn/cordis.yml` の 6 エントリすべてを
   Rust ランタイムで読み込み・mount する経路を確立。
