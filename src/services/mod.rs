@@ -63,3 +63,5 @@ pub mod timeout_policy;
 pub mod plugin_inventory;
 
 pub mod time_context;
+
+pub mod session_reference;

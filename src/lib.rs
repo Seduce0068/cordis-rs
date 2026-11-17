@@ -153,6 +153,11 @@ pub mod core_services {
     pub use crate::services::session_query::{
         SessionHit, SessionQueryEngine, provide as provide_session_query,
     };
+    pub use crate::services::session_reference::{
+        SESSION_REFERENCE_SCHEME, SessionReference, SessionReferences,
+        decode_session_reference_uri, encode_session_reference_uri,
+        format_session_reference_mention, provide as provide_session_references,
+    };
     pub use crate::services::session_titles::{
         SessionTitles, TitleProviderConfig, frame_messages, provide as provide_session_titles,
         title_from_output, title_system_prompt,

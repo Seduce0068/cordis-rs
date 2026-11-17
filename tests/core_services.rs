@@ -2473,3 +2473,25 @@ async fn agent_instructions_register_baseline_sections() {
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[tokio::test]
+async fn session_reference_roundtrips_encoded_uris() {
+    use cordis_rs::core_services::{
+        SessionReference, decode_session_reference_uri, encode_session_reference_uri,
+        format_session_reference_mention,
+    };
+
+    let uri = encode_session_reference_uri("session-123");
+    assert!(uri.starts_with("dsh-session:"));
+    assert_eq!(decode_session_reference_uri(&uri).unwrap(), "session-123");
+
+    let mention = format_session_reference_mention(&SessionReference {
+        session_id: "session-123".to_string(),
+        label: "Prior work".to_string(),
+    });
+    assert!(mention.contains("Prior work"));
+    assert!(mention.contains("dsh-session:"));
+
+    assert!(decode_session_reference_uri("not-a-reference").is_err());
+    assert!(decode_session_reference_uri("dsh-session:!!!").is_err());
+}

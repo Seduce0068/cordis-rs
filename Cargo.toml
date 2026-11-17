@@ -9,6 +9,7 @@ documentation = "https://docs.rs/cordis-rs"
 
 [dependencies]
 async-trait = "0.1"
+base64 = "0.22"
 futures = "0.3"
 regex = "1"
 serde_json = "1"
