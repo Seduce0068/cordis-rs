@@ -111,6 +111,10 @@ pub mod core_services {
         CompactionConfig, CompactionEngine, CompactionResult, CompactionTrigger,
         provide as provide_compaction,
     };
+    pub use crate::services::credentials::{
+        CredentialInfo, CredentialProvider, CredentialRef, ResolvedCredential, credential_ref,
+        provide as provide_credentials,
+    };
     pub use crate::services::fs::{
         FileSystem, FsEditOutcome, FsInfo, FsWriteOutcome, ReadWindow, WriteOperation,
         provide as provide_fs,

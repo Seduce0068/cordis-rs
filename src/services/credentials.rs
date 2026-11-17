@@ -1,0 +1,135 @@
+//! `ctx.credentials`: credential-reference resolution seam.
+//!
+//! Upstream: `packages/credentials/credentials/src/index.ts` in
+//! deepseek-ai/deepseek-harness (MIT), read as untrusted reference data.
+//! Settings carry references (`$ENV_NAME`) to secrets; the provider resolves
+//! them per call from a writable store first, then ambient environment.
+
+use std::collections::BTreeMap;
+use std::sync::{Arc, RwLock};
+
+use crate::Result;
+
+/// A reference to an environment-variable name (`$NAME`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CredentialRef {
+    pub name: String,
+}
+
+/// Parse `$NAME`; valid names are uppercase letters, digits and underscores.
+pub fn credential_ref(value: &str) -> Option<CredentialRef> {
+    let name = value.strip_prefix('$')?;
+    if name.is_empty()
+        || !name
+            .chars()
+            .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_')
+    {
+        return None;
+    }
+    Some(CredentialRef {
+        name: name.to_string(),
+    })
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResolvedCredential {
+    pub value: String,
+    pub source: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CredentialInfo {
+    pub configured: bool,
+    pub source: Option<String>,
+}
+
+#[derive(Default)]
+struct CredentialState {
+    store: BTreeMap<String, String>,
+}
+
+#[derive(Default, Clone)]
+pub struct CredentialProvider {
+    state: Arc<RwLock<CredentialState>>,
+    env: Arc<BTreeMap<String, String>>,
+}
+
+impl CredentialProvider {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Supply ambient environment values without mutating the process env.
+    pub fn with_env(mut self, env: BTreeMap<String, String>) -> Self {
+        self.env = Arc::new(env);
+        self
+    }
+
+    /// Store a non-empty value in the writable source.
+    pub fn set(&self, name: impl Into<String>, value: impl Into<String>) -> bool {
+        let value = value.into();
+        if value.is_empty() {
+            return false;
+        }
+        self.state
+            .write()
+            .expect("credential state poisoned")
+            .store
+            .insert(name.into(), value);
+        true
+    }
+
+    pub fn unset(&self, name: &str) {
+        self.state
+            .write()
+            .expect("credential state poisoned")
+            .store
+            .remove(name);
+    }
+
+    /// Resolve per call: stored value wins, then ambient environment.
+    pub fn resolve(&self, reference: &CredentialRef) -> Option<ResolvedCredential> {
+        if let Some(value) = self
+            .state
+            .read()
+            .expect("credential state poisoned")
+            .store
+            .get(&reference.name)
+            .cloned()
+            .filter(|value| !value.is_empty())
+        {
+            return Some(ResolvedCredential {
+                value,
+                source: "store".to_string(),
+            });
+        }
+        self.env
+            .get(&reference.name)
+            .cloned()
+            .filter(|v| !v.is_empty())
+            .map(|value| ResolvedCredential {
+                value,
+                source: "env".to_string(),
+            })
+    }
+
+    /// Describe without exposing the value.
+    pub fn describe(&self, reference: &CredentialRef) -> CredentialInfo {
+        match self.resolve(reference) {
+            Some(resolved) => CredentialInfo {
+                configured: true,
+                source: Some(resolved.source),
+            },
+            None => CredentialInfo {
+                configured: false,
+                source: None,
+            },
+        }
+    }
+}
+
+pub async fn provide(ctx: &crate::Context) -> Result<CredentialProvider> {
+    let provider = CredentialProvider::new();
+    ctx.provide("credentials", provider.clone()).await?;
+    Ok(provider)
+}

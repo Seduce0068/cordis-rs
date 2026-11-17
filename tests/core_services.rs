@@ -2314,3 +2314,42 @@ async fn exit_plan_mode_tool_gates_on_plan_state() {
     assert!(validate_plan("# ok").is_ok());
     assert!(validate_plan("bad").is_err());
 }
+
+#[tokio::test]
+async fn credentials_resolve_store_then_env_without_exposing_values() {
+    use cordis_rs::core_services::{credential_ref, provide_credentials};
+    use std::collections::BTreeMap;
+
+    let ctx = Context::root("credentials");
+    let mut env = BTreeMap::new();
+    env.insert("DEEPSEEK_API_KEY".to_string(), "env-secret".to_string());
+    let mut provider = provide_credentials(&ctx).await.unwrap();
+    provider = provider.with_env(env);
+
+    // Grammar: only uppercase/digit/underscore segments after `$`.
+    assert!(credential_ref("$DEEPSEEK_API_KEY").is_some());
+    assert!(credential_ref("DEEPSEEK_API_KEY").is_none());
+    assert!(credential_ref("$lower").is_none());
+
+    let reference = credential_ref("$DEEPSEEK_API_KEY").unwrap();
+    let resolved = provider.resolve(&reference).unwrap();
+    assert_eq!(resolved.value, "env-secret");
+    assert_eq!(resolved.source, "env");
+
+    // Stored value takes precedence; describe never exposes it.
+    assert!(provider.set("DEEPSEEK_API_KEY", "stored-secret"));
+    let resolved = provider.resolve(&reference).unwrap();
+    assert_eq!(resolved.value, "stored-secret");
+    assert_eq!(resolved.source, "store");
+    let info = provider.describe(&reference);
+    assert!(info.configured);
+    assert_eq!(info.source.as_deref(), Some("store"));
+
+    // Empty writes are rejected and unset falls back to env.
+    assert!(!provider.set("DEEPSEEK_API_KEY", ""));
+    provider.unset("DEEPSEEK_API_KEY");
+    assert_eq!(provider.resolve(&reference).unwrap().source, "env");
+
+    let missing = credential_ref("$MISSING").unwrap();
+    assert!(!provider.describe(&missing).configured);
+}

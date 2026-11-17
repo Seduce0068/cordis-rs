@@ -55,3 +55,5 @@ pub mod session_titles;
 pub mod schedule;
 
 pub mod plan_mode;
+
+pub mod credentials;
