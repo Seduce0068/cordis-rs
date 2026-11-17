@@ -19,6 +19,7 @@ pub enum Lifecycle {
     Active = 2,
     Unloading = 3,
     Unloaded = 4,
+    Failed = 5,
 }
 
 impl From<u8> for Lifecycle {
@@ -28,7 +29,8 @@ impl From<u8> for Lifecycle {
             1 => Self::Loading,
             2 => Self::Active,
             3 => Self::Unloading,
-            _ => Self::Unloaded,
+            4 => Self::Unloaded,
+            _ => Self::Failed,
         }
     }
 }

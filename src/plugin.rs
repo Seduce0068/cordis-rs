@@ -148,7 +148,7 @@ impl Fiber {
             self.0.ctx.dispose_effects().await?;
             *self.0.state.lock().expect("fiber state poisoned") = Lifecycle::Pending;
             self.0.ctx.set_lifecycle(Lifecycle::Pending);
-        } else if state == Lifecycle::Pending && resolved {
+        } else if matches!(state, Lifecycle::Pending | Lifecycle::Failed) && resolved {
             *self.0.state.lock().expect("fiber state poisoned") = Lifecycle::Loading;
             self.0.ctx.set_lifecycle(Lifecycle::Loading);
             match self.0.plugin.apply(&self.0.ctx).await {
@@ -157,7 +157,11 @@ impl Fiber {
                     self.0.ctx.set_lifecycle(Lifecycle::Active);
                 }
                 Err(error) => {
-                    *self.0.state.lock().expect("fiber state poisoned") = Lifecycle::Unloaded;
+                    // Clean up any effects the failed apply already registered.
+                    let _ = self.0.ctx.dispose_effects().await;
+                    *self.0.state.lock().expect("fiber state poisoned") = Lifecycle::Failed;
+                    // Keep the context lifecycle Unloaded: require()/effect()
+                    // guards only treat Unloading/Unloaded as closed.
                     self.0.ctx.set_lifecycle(Lifecycle::Unloaded);
                     return Err(Error::Plugin(self.0.name.clone(), error.to_string()));
                 }

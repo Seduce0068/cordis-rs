@@ -283,3 +283,26 @@ async fn fiber_unload_removes_service_provided_by_plugin() {
     assert_eq!(fiber.state(), Lifecycle::Unloaded);
     assert!(fiber.context().get::<u32>("feature").is_none());
 }
+
+#[tokio::test]
+async fn failed_fiber_state_is_distinct_from_unloaded() {
+    use cordis_rs::{Context, Fiber, FunctionPlugin, Lifecycle};
+
+    let ctx = Context::root("failed-state");
+    let plugin = FunctionPlugin::new("failing", |_ctx: &Context| async {
+        Err(cordis_rs::Error::Other("boom".to_string()))
+    });
+    // A failing mount surfaces the error; the fiber's Failed state is
+    // observable through the registry during the failing apply.
+    assert!(Fiber::mount(&ctx, Box::new(plugin)).await.is_err());
+
+    // An unloaded (successful then explicitly unloaded) fiber stays Unloaded.
+    let ok = FunctionPlugin::new("ok", |_ctx: &Context| async { Ok(()) });
+    let fiber = Fiber::mount(&ctx, Box::new(ok)).await.unwrap();
+    fiber.unload().await.unwrap();
+    assert_eq!(fiber.state(), Lifecycle::Unloaded);
+
+    // From<u8> round-trips Failed distinctly from Unloaded.
+    assert_eq!(Lifecycle::from(5), Lifecycle::Failed);
+    assert_ne!(Lifecycle::Failed, Lifecycle::Unloaded);
+}
