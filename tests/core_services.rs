@@ -1574,3 +1574,48 @@ async fn workspace_registry_orders_and_attaches_sessions() {
         Err(WorkspaceError::Archived(_))
     ));
 }
+
+#[tokio::test]
+async fn storage_hub_validates_domains_and_routes_backends() {
+    use cordis_rs::core_services::{DomainSpec, MemoryBackend, StorageError, provide_storage};
+
+    let ctx = Context::root("storage");
+    let hub = provide_storage(&ctx).await.unwrap();
+    hub.register_backend("mem", MemoryBackend::new());
+    hub.define_domain(DomainSpec::new("prefs", vec!["theme".to_string()]));
+
+    // Valid record writes and reads back.
+    hub.write(
+        "prefs",
+        "mem",
+        "user-1",
+        serde_json::json!({ "theme": "dark", "lang": "ja" }),
+    )
+    .unwrap();
+    let value = hub.read("prefs", "mem", "user-1").unwrap();
+    assert_eq!(value["theme"], "dark");
+
+    // Missing required field is rejected before any write.
+    assert!(matches!(
+        hub.write(
+            "prefs",
+            "mem",
+            "user-2",
+            serde_json::json!({ "lang": "en" })
+        ),
+        Err(StorageError::InvalidRecord { .. })
+    ));
+    assert!(matches!(
+        hub.read("prefs", "mem", "user-2"),
+        Err(StorageError::NotFound(_))
+    ));
+
+    assert!(matches!(
+        hub.read("unknown", "mem", "k"),
+        Err(StorageError::UnknownDomain(_))
+    ));
+    assert!(matches!(
+        hub.read("prefs", "missing", "k"),
+        Err(StorageError::UnknownBackend(_))
+    ));
+}

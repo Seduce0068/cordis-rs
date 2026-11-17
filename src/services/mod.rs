@@ -39,3 +39,5 @@ pub mod permission_presets;
 pub mod session_query;
 
 pub mod workspace;
+
+pub mod storage;

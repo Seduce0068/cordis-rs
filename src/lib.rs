@@ -133,6 +133,9 @@ pub mod core_services {
     pub use crate::services::skills::{
         Skill, SkillCatalog, SkillProvider, SkillRegistry, provide as provide_skills,
     };
+    pub use crate::services::storage::{
+        DomainSpec, MemoryBackend, StorageError, StorageHub, provide as provide_storage,
+    };
     pub use crate::services::subagents::{
         SubagentError, SubagentRegistry, SubagentRequest, SubagentResult,
         provide as provide_subagents,
