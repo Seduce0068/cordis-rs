@@ -47,3 +47,5 @@ pub mod agents;
 pub mod telemetry;
 
 pub mod retry;
+
+pub mod hook_protocol;

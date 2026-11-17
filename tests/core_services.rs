@@ -1988,3 +1988,43 @@ async fn agent_loop_retries_retryable_llm_errors() {
 
     let _ = StreamChunk::Done;
 }
+
+#[tokio::test]
+async fn hook_protocol_merges_most_restrictive_outcome() {
+    use cordis_rs::core_services::{
+        HookOutput, MergedDecision, is_match_all, matches, merge_hook_outputs,
+    };
+
+    let outputs = vec![
+        HookOutput {
+            decision: MergedDecision::Allow,
+            reason: Some("looks fine".to_string()),
+            stop: false,
+            context: Some("ctx-a".to_string()),
+        },
+        HookOutput {
+            decision: MergedDecision::Deny,
+            reason: Some("blocked by policy".to_string()),
+            stop: true,
+            context: None,
+        },
+        HookOutput {
+            decision: MergedDecision::Ask,
+            reason: Some("please confirm".to_string()),
+            stop: false,
+            context: None,
+        },
+    ];
+    let merged = merge_hook_outputs(&outputs);
+    assert_eq!(merged.decision, MergedDecision::Deny);
+    assert_eq!(merged.reasons, ["blocked by policy"]);
+    assert!(merged.stop);
+    assert_eq!(merged.contexts, ["ctx-a"]);
+
+    assert!(merge_hook_outputs(&[]).decision == MergedDecision::None);
+    assert!(is_match_all(None));
+    assert!(is_match_all(Some("*")));
+    assert!(matches(Some("*"), "anything", false));
+    assert!(matches(Some("a|b"), "b", true));
+    assert!(!matches(Some("a|b"), "c", true));
+}
