@@ -73,25 +73,27 @@ async fn waterfall_mutates_shared_args_and_allows_veto() {
     let _first = event.on_waterfall(&ctx, |args, next| {
         Box::pin(async move {
             args.lock().unwrap().push_str("-outer");
-            let result = next(args).await;
-            format!("[{result}]")
+            let result = next(args).await?;
+            Ok(format!("[{result}]"))
         })
     });
 
     let value = event
         .waterfall(&ctx, "base".to_string(), |args| args.clone())
-        .await;
+        .await
+        .unwrap();
     assert_eq!(value, "[base-outer]");
 
     let _veto = event.on_waterfall(&ctx, |args, _next| {
         Box::pin(async move {
             args.lock().unwrap().push_str("-veto");
-            "vetoed".to_string()
+            Ok("vetoed".to_string())
         })
     });
     let value = event
         .waterfall(&ctx, "base".to_string(), |args| args.clone())
-        .await;
+        .await
+        .unwrap();
     // The outer listener still wraps the veto and formats its result.
     assert_eq!(value, "[vetoed]");
 }
@@ -305,4 +307,27 @@ async fn failed_fiber_state_is_distinct_from_unloaded() {
     // From<u8> round-trips Failed distinctly from Unloaded.
     assert_eq!(Lifecycle::from(5), Lifecycle::Failed);
     assert_ne!(Lifecycle::Failed, Lifecycle::Unloaded);
+}
+
+#[tokio::test]
+async fn waterfall_double_next_returns_error_instead_of_panicking() {
+    use std::sync::{Arc, Mutex};
+
+    let ctx = Context::root("waterfall-double-next");
+    let event: Event<String, String> = Event::new("double-next");
+    let shared: Arc<Mutex<String>> = Arc::new(Mutex::new("base".to_string()));
+    let _double = event.on_waterfall(&ctx, move |_args, next| {
+        let shared = shared.clone();
+        Box::pin(async move {
+            let _first = next(shared.clone()).await;
+            let _second = next(shared).await; // discarded future must still be caught
+            Ok("done".to_string())
+        })
+    });
+
+    let result = event
+        .waterfall(&ctx, "base".to_string(), |args| args.clone())
+        .await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("multiple times"));
 }

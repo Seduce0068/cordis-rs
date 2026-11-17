@@ -16,7 +16,7 @@
 //! `Some(0)` / `Some(String::new())` therefore bail, matching upstream.
 //! `Some(false)` is detected via `Any` downcast and treated as non-bail.
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
@@ -31,9 +31,9 @@ use crate::context::{Context, Disposer};
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 pub type Shared<A> = Arc<Mutex<A>>;
 
-pub type Next<A, R> = Arc<dyn Fn(Shared<A>) -> BoxFuture<'static, R> + Send + Sync>;
+pub type Next<A, R> = Arc<dyn Fn(Shared<A>) -> BoxFuture<'static, Result<R>> + Send + Sync>;
 pub type WaterfallListener<A, R> =
-    Arc<dyn Fn(Shared<A>, Next<A, R>) -> BoxFuture<'static, R> + Send + Sync>;
+    Arc<dyn Fn(Shared<A>, Next<A, R>) -> BoxFuture<'static, Result<R>> + Send + Sync>;
 pub type EmitListener<A> = Arc<dyn Fn(A) -> BoxFuture<'static, ()> + Send + Sync>;
 pub type SerialListener<A, R> = Arc<dyn Fn(A) -> BoxFuture<'static, Option<R>> + Send + Sync>;
 pub type BailListener<A, R> = Arc<dyn Fn(A) -> Option<R> + Send + Sync>;
@@ -135,7 +135,7 @@ where
     /// Register an around-middleware listener. Returns a one-shot disposer.
     pub fn on_waterfall<F>(&self, ctx: &Context, listener: F) -> Disposer
     where
-        F: Fn(Shared<A>, Next<A, R>) -> BoxFuture<'static, R> + Send + Sync + 'static,
+        F: Fn(Shared<A>, Next<A, R>) -> BoxFuture<'static, Result<R>> + Send + Sync + 'static,
     {
         let listener: WaterfallListener<A, R> = Arc::new(listener);
         let registry = ctx.event_registry().clone();
@@ -152,8 +152,9 @@ where
     ///
     /// Each listener may mutate the shared argument before and/or after
     /// calling `next`. Not calling `next` vetoes the rest of the chain.
-    /// Calling `next` twice panics, as upstream throws `next() called multiple times`.
-    pub async fn waterfall<F>(&self, ctx: &Context, args: A, terminal: F) -> R
+    /// Calling `next` twice returns `Err`, as upstream throws
+    /// `next() called multiple times` (catchable rather than a panic).
+    pub async fn waterfall<F>(&self, ctx: &Context, args: A, terminal: F) -> Result<R>
     where
         F: Fn(&A) -> R + Send + Sync + 'static,
     {
@@ -162,36 +163,47 @@ where
             let terminal = terminal.clone();
             Box::pin(async move {
                 let guard = shared.lock().expect("event args poisoned");
-                terminal(&guard)
-            }) as BoxFuture<'static, R>
+                Ok(terminal(&guard))
+            }) as BoxFuture<'static, Result<R>>
         });
 
+        // One flag per chain so a discarded second future is still detected
+        // after the chain completes (reviewer hardening).
+        let double_called = Arc::new(AtomicBool::new(false));
         let listeners: Vec<WaterfallListener<A, R>> = ctx
             .event_registry()
             .snapshot(self.key::<WaterfallListener<A, R>>());
         for listener in listeners.into_iter().rev() {
             let listener = listener.clone();
             let inner = next.clone();
+            let double_called = double_called.clone();
             next = Arc::new(move |shared: Shared<A>| {
                 let listener = listener.clone();
                 let inner = inner.clone();
                 let shared = shared.clone();
+                let double_called = double_called.clone();
                 Box::pin(async move {
                     let called = Arc::new(AtomicBool::new(false));
                     let inner = inner.clone();
                     let guarded: Next<A, R> = Arc::new(move |next_shared| {
-                        assert!(
-                            !called.swap(true, Ordering::SeqCst),
-                            "next() called multiple times"
-                        );
+                        if called.swap(true, Ordering::SeqCst) {
+                            double_called.store(true, Ordering::SeqCst);
+                            return Box::pin(async {
+                                Err(Error::Other("next() called multiple times".to_string()))
+                            }) as BoxFuture<'static, Result<R>>;
+                        }
                         inner(next_shared)
                     });
                     listener(shared, guarded).await
-                }) as BoxFuture<'static, R>
+                }) as BoxFuture<'static, Result<R>>
             });
         }
 
-        next(Arc::new(Mutex::new(args))).await
+        let result = next(Arc::new(Mutex::new(args))).await;
+        if double_called.load(Ordering::SeqCst) {
+            return Err(Error::Other("next() called multiple times".to_string()));
+        }
+        result
     }
 
     /// Register a serial listener. Returning `Some` bails the chain.
