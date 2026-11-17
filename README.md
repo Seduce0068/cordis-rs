@@ -28,7 +28,7 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 | Config 検証 | 型・必須・範囲・デフォルト適用、フィールド名付きエラー |
 | Loader | 軽量 YAML（`entries:` / `name:` / `insert:` / `!!js` 式）、Composition の部分 mount |
 | コアサービス（25） | `tools` / `sessions` / `sessionProjections` / `commands` / `llm` / `agentLoop` / `fs` / `jobs` / `shell` / `skills` / `subagents` / `workingDirectory` / `messageFeedback` / `goals` / `systemPrompt` / `toolResultPruner` / `tokenMeter` / `compaction` / `approval` / `permissionPresets` / `sessionQuery` / `workspace` / `storage` / `agents` / `otel` |
-| 再利用 port（13） | `command-goal` / `command-feedback` / `tool-todo` / `tool-fs` / `tool-bash` / `tool-working-directory` / `tool-subagent` / `tool-session-query` / `skill-filesystem` / `message-feedback` / `session-persistence-jsonl` / `llm-deepseek` / `feedback-producer`（`command-compact` は `tests/official_plugin_port.rs` にデモあり） |
+| 再利用 port（14） | `command-compact` / `command-goal` / `command-feedback` / `tool-todo` / `tool-fs` / `tool-bash` / `tool-working-directory` / `tool-subagent` / `tool-session-query` / `skill-filesystem` / `message-feedback` / `session-persistence-jsonl` / `llm-deepseek` / `feedback-producer` |
 | GPUI 連携 | 別リポジトリ `dsh-gpui-client-poc`：todo / fs / agent / prompt / 実 composition / plugin トグル / 実 composition トグル / ACP ストリーム UI |
 
 ### 意図的な差分

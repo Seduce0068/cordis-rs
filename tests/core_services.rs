@@ -1086,6 +1086,7 @@ async fn goal_store_enforces_revisions_and_command_registers() {
         )
         .await
         .unwrap();
+    eprintln!("RESULT={:?}", result);
     assert!(matches!(result, CommandResult::Success { .. }));
 
     store.clear();
@@ -1818,4 +1819,57 @@ async fn switching_preset_updates_approval_mode() {
     assert_eq!(approval.policy(), ApprovalMode::Never);
     presets.switch("workspace-write").unwrap();
     assert_eq!(approval.policy(), ApprovalMode::Never);
+}
+
+#[tokio::test]
+async fn command_compact_port_compacts_active_session() {
+    use cordis_rs::core_services::{
+        CommandInvocation, CommandRegistry, CommandResult, CompactionConfig, CompactionEngine,
+        TokenMeter, provide_commands, provide_sessions,
+    };
+    use cordis_rs::plugin_ports::mount_command_compact;
+
+    let ctx = Context::root("command-compact-port");
+    let commands: CommandRegistry = provide_commands(&ctx).await.unwrap();
+    let (sessions, _) = provide_sessions(&ctx).await.unwrap();
+    let session = sessions.create(Some("compact-cmd".to_string()), None);
+    session.append(
+        "user/message",
+        serde_json::json!({ "text": "keep this line" }),
+    );
+
+    // A high threshold: automatic compaction would not fire, but /compact forces it.
+    let engine = CompactionEngine::new(
+        CompactionConfig {
+            pressure_threshold: 0.99,
+            head_chars: 4,
+            tail_chars: 4,
+        },
+        TokenMeter::new(1000),
+    )
+    .unwrap();
+    ctx.provide("compaction", engine).await.unwrap();
+    mount_command_compact(&ctx, sessions.clone()).await.unwrap();
+
+    assert!(commands.names().contains(&"/compact".to_string()));
+    let result = commands
+        .invoke(
+            "/compact",
+            CommandInvocation::new("").with_session("compact-cmd"),
+        )
+        .await
+        .unwrap();
+    assert!(matches!(result, CommandResult::Success { .. }));
+    assert!(
+        session
+            .events()
+            .iter()
+            .any(|event| event.event_type == "compaction/checkpoint")
+    );
+
+    let with_args = commands
+        .invoke("/compact", CommandInvocation::new("extra"))
+        .await
+        .unwrap();
+    assert!(matches!(with_args, CommandResult::Error { .. }));
 }

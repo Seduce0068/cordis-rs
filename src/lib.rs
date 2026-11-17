@@ -29,6 +29,9 @@ pub use plugin::{Fiber, FunctionPlugin, Plugin};
 
 /// Reusable ports of official DSH plugin implementations.
 pub mod plugin_ports {
+    pub use crate::ports::command_compact::{
+        CommandCompact, USAGE as COMMAND_COMPACT_USAGE, mount as mount_command_compact,
+    };
     pub use crate::ports::command_feedback::{
         CommandFeedback, FEEDBACK_CATEGORIES, FeedbackRecord, USAGE as FEEDBACK_USAGE,
         feedback_events, mount as mount_command_feedback, record_feedback,

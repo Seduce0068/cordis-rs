@@ -15,6 +15,8 @@ use crate::services::token_meter::{TokenMeasurement, TokenMeter};
 pub enum CompactionTrigger {
     Pressure,
     ContextOverflow,
+    /// Explicit user request (`/compact`), bypassing the pressure threshold.
+    Manual,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -73,6 +75,14 @@ impl CompactionEngine {
         self.meter.measure(session)
     }
 
+    /// Force a compaction regardless of pressure (used by `/compact`).
+    pub fn compact_now(
+        &self,
+        session: &Session,
+    ) -> std::result::Result<CompactionResult, crate::Error> {
+        self.maybe_compact(session, CompactionTrigger::Manual)
+    }
+
     /// Decide whether to compact and, when triggered, append a summary.
     pub fn maybe_compact(
         &self,
@@ -80,7 +90,9 @@ impl CompactionEngine {
         trigger: CompactionTrigger,
     ) -> std::result::Result<CompactionResult, crate::Error> {
         let measurement = self.meter.measure(session);
-        if measurement.pressure < self.config.pressure_threshold {
+        if trigger != CompactionTrigger::Manual
+            && measurement.pressure < self.config.pressure_threshold
+        {
             return Ok(CompactionResult {
                 compacted: false,
                 trigger,
@@ -123,6 +135,7 @@ impl CompactionEngine {
                 "trigger": match trigger {
                     CompactionTrigger::Pressure => "pressure",
                     CompactionTrigger::ContextOverflow => "context-overflow",
+                    CompactionTrigger::Manual => "manual",
                 },
             }),
         );

@@ -26,3 +26,5 @@ pub mod feedback_producer;
 pub mod command_goal;
 
 pub mod tool_session_query;
+
+pub mod command_compact;
