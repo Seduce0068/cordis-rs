@@ -35,6 +35,21 @@ pub type Next<A, R> = Arc<dyn Fn(Shared<A>) -> BoxFuture<'static, Result<R>> + S
 pub type WaterfallListener<A, R> =
     Arc<dyn Fn(Shared<A>, Next<A, R>) -> BoxFuture<'static, Result<R>> + Send + Sync>;
 pub type EmitListener<A> = Arc<dyn Fn(A) -> BoxFuture<'static, ()> + Send + Sync>;
+/// Separate listener type for fallible parallel dispatch. Because `SlotKey`
+/// includes `TypeId<L>`, these occupy a distinct slot from `EmitListener`.
+pub type FallibleEmitListener<A> = Arc<dyn Fn(A) -> BoxFuture<'static, Result<()>> + Send + Sync>;
+
+/// Aggregate of fallible emit listener failures, in registration order.
+#[derive(Debug)]
+pub struct EmitErrors(pub Vec<Error>);
+
+impl std::fmt::Display for EmitErrors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} listener error(s)", self.0.len())
+    }
+}
+
+impl std::error::Error for EmitErrors {}
 pub type SerialListener<A, R> = Arc<dyn Fn(A) -> BoxFuture<'static, Option<R>> + Send + Sync>;
 pub type BailListener<A, R> = Arc<dyn Fn(A) -> Option<R> + Send + Sync>;
 
@@ -337,5 +352,49 @@ where
             async move { listener(args).await }
         });
         futures::future::join_all(futures).await;
+    }
+
+    /// Register a fallible observer. These live in a separate slot, so they
+    /// are dispatched only by `parallel_errors`, never by `emit`/`parallel`.
+    pub fn on_emit_fallible<F>(&self, ctx: &Context, listener: F) -> Disposer
+    where
+        F: Fn(A) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static,
+    {
+        let listener: FallibleEmitListener<A> = Arc::new(listener);
+        let registry = ctx.event_registry().clone();
+        let key = self.key::<FallibleEmitListener<A>>();
+        let id = registry.push::<FallibleEmitListener<A>>(key.clone(), listener.clone());
+        Disposer::new(move || {
+            let registry = registry.clone();
+            let key = key.clone();
+            async move { registry.remove(key, id) }
+        })
+    }
+
+    /// Run fallible observers concurrently and aggregate every failure in
+    /// registration order (upstream `AggregateError` semantics). Panics still
+    /// propagate; only returned errors are collected.
+    pub async fn parallel_errors(
+        &self,
+        ctx: &Context,
+        args: A,
+    ) -> std::result::Result<(), EmitErrors> {
+        let listeners: Vec<FallibleEmitListener<A>> = ctx
+            .event_registry()
+            .snapshot::<FallibleEmitListener<A>>(self.key::<FallibleEmitListener<A>>());
+        let futures = listeners.into_iter().map(|listener| {
+            let args = args.clone();
+            async move { listener(args).await }
+        });
+        let results = futures::future::join_all(futures).await;
+        let errors: Vec<Error> = results
+            .into_iter()
+            .filter_map(std::result::Result::err)
+            .collect();
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(EmitErrors(errors))
+        }
     }
 }

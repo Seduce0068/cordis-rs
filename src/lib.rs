@@ -20,7 +20,7 @@ pub use config::{
 };
 pub use context::{Context, Disposer, EffectScope, Lifecycle};
 pub use error::{Error, Result};
-pub use events::Event;
+pub use events::{EmitErrors, Event, FallibleEmitListener};
 pub use loader::{
     Composition, CompositionState, Entry, LoaderError, MountReport, PluginFactory, PluginRegistry,
     VarTable,

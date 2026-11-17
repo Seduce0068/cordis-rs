@@ -363,3 +363,35 @@ async fn require_untyped_waits_until_a_service_is_registered() {
         .unwrap();
     assert!(matches!(result, Ok(value) if *value == 7));
 }
+
+#[tokio::test]
+async fn parallel_errors_aggregates_all_failures_in_order() {
+    use cordis_rs::Error;
+
+    let ctx = Context::root("parallel-errors");
+    let event: Event<u32, ()> = Event::new("parallel-errors");
+    let _ok = event.on_emit_fallible(&ctx, |_args| Box::pin(async { Ok(()) }));
+    let _first = event.on_emit_fallible(&ctx, |_args| {
+        Box::pin(async { Err(Error::Other("first".to_string())) })
+    });
+    let _second = event.on_emit_fallible(&ctx, |_args| {
+        Box::pin(async { Err(Error::Other("second".to_string())) })
+    });
+
+    let errors = event.parallel_errors(&ctx, 7).await.unwrap_err();
+    assert_eq!(errors.0.len(), 2);
+    assert_eq!(errors.0[0].to_string(), "first");
+    assert_eq!(errors.0[1].to_string(), "second");
+    assert_eq!(errors.to_string(), "2 listener error(s)");
+
+    // Existing emit() does not see fallible listeners (separate slot).
+    let seen = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let flag = seen.clone();
+    let _plain = event.on_emit(&ctx, move |_args| {
+        let flag = flag.clone();
+        Box::pin(async move { flag.store(true, std::sync::atomic::Ordering::SeqCst) })
+    });
+    event.emit(&ctx, 7).await;
+    assert!(seen.load(std::sync::atomic::Ordering::SeqCst));
+    assert!(event.parallel_errors(&ctx, 7).await.is_err());
+}
