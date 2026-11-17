@@ -161,7 +161,7 @@ struct ContextInner {
     services: RwLock<HashMap<String, Arc<dyn Any + Send + Sync>>>,
     events: EventRegistry,
     effects: Arc<Mutex<Vec<Disposer>>>,
-    service_added: Notify,
+    service_added: Arc<Notify>,
     fibers: RwLock<Vec<std::sync::Weak<FiberInner>>>,
 }
 
@@ -180,6 +180,10 @@ impl Context {
     }
 
     fn make(name: impl Into<String>, parent: Option<Context>, isolated: bool) -> Self {
+        let service_added = parent
+            .as_ref()
+            .map(|p| p.inner.service_added.clone())
+            .unwrap_or_else(|| Arc::new(Notify::new()));
         Self {
             inner: Arc::new(ContextInner {
                 name: name.into(),
@@ -189,7 +193,7 @@ impl Context {
                 services: RwLock::new(HashMap::new()),
                 events: EventRegistry::default(),
                 effects: Arc::new(Mutex::new(Vec::new())),
-                service_added: Notify::new(),
+                service_added,
                 fibers: RwLock::new(Vec::new()),
             }),
         }
@@ -211,6 +215,9 @@ impl Context {
         self.inner
             .lifecycle
             .store(lifecycle as u8, Ordering::Release);
+        // A state change can hide services from get_untyped; wake waiters so
+        // require_untyped re-checks instead of blocking forever.
+        self.inner.service_added.notify_waiters();
     }
 
     pub fn event_registry(&self) -> &EventRegistry {
@@ -340,12 +347,19 @@ impl Context {
     }
 
     pub fn get_untyped(&self, name: &str) -> Option<Arc<dyn Any + Send + Sync>> {
-        if let Some(service) = self
-            .inner
-            .services
-            .read()
-            .expect("service registry poisoned")
-            .get(name)
+        // A provider that is unloading/unloaded/failed must not expose its
+        // services; fall through to the parent like a missing entry.
+        let closed = matches!(
+            self.lifecycle(),
+            Lifecycle::Unloading | Lifecycle::Unloaded | Lifecycle::Failed
+        );
+        if !closed
+            && let Some(service) = self
+                .inner
+                .services
+                .read()
+                .expect("service registry poisoned")
+                .get(name)
         {
             return Some(service.clone());
         }
@@ -369,7 +383,10 @@ impl Context {
     /// avoided by arming the notification before re-checking the registry.
     pub async fn require_untyped(&self, name: &str) -> Result<Arc<dyn Any + Send + Sync>> {
         loop {
-            if self.lifecycle() == Lifecycle::Unloading || self.lifecycle() == Lifecycle::Unloaded {
+            if matches!(
+                self.lifecycle(),
+                Lifecycle::Unloading | Lifecycle::Unloaded | Lifecycle::Failed
+            ) {
                 return Err(Error::Unloading);
             }
             let notified = self.inner.service_added.notified();
@@ -409,7 +426,10 @@ impl Context {
         F: FnOnce(EffectScope) -> Fut + Send + 'static,
         Fut: Future<Output = Result<()>> + Send + 'static,
     {
-        if self.lifecycle() == Lifecycle::Unloading || self.lifecycle() == Lifecycle::Unloaded {
+        if matches!(
+            self.lifecycle(),
+            Lifecycle::Unloading | Lifecycle::Unloaded | Lifecycle::Failed
+        ) {
             return Err(Error::Unloading);
         }
         let children: Arc<Mutex<Vec<Disposer>>> = Arc::new(Mutex::new(Vec::new()));

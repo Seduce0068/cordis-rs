@@ -331,3 +331,17 @@ async fn waterfall_double_next_returns_error_instead_of_panicking() {
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("multiple times"));
 }
+
+#[tokio::test]
+async fn unloading_context_hides_its_services_from_children() {
+    use cordis_rs::{Context, Lifecycle};
+
+    let parent = Context::root("strict-get-parent");
+    parent.provide("shared", 7u32).await.unwrap();
+    let child = parent.child("strict-get-child");
+
+    assert_eq!(*child.get::<u32>("shared").unwrap(), 7);
+
+    parent.set_lifecycle(Lifecycle::Unloading);
+    assert!(child.get::<u32>("shared").is_none());
+}
