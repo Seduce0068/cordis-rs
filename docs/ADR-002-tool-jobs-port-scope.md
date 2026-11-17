@@ -1,0 +1,41 @@
+---
+type: Reference
+title: ADR-002 tool-jobs port の実装範囲
+description: tool-jobs port で意図的に移植しなかった機能とその理由
+tags: [cordis-rs, adr, plugin-port, jobs]
+resource: https://github.com/Seduce0068/cordis-rs
+generated: 2026-11-18T06:38:40+09:00
+verified: 2026-11-18T06:38:40+09:00
+status: accepted
+---
+
+## 決定
+
+`@deepseek-ai/dsh-tool-jobs` の Rust port では、3ツール（`job_output` / `job_list` / `job_kill`）、
+ステータス行描画、待機タイムアウト、kill の2分岐、caller による job 分離を実装する。
+一方、completion notice 配信とモデル cursor 追跡は第2段階とし、今回は意図的に除外する。
+
+## 根拠
+
+ローカル `services/jobs.rs` は `start` / `get` / `view` / `list` / `read` / `kill` / `wait` と
+`JobStatus` を提供するが、upstream の `attachController` / `jobs.events.subscribe` /
+`outputLimitBytes` / model cursor に相当する仕組みが無い。
+これらを port 内で簡易キューとして再実装すると、コアサービスの API と二重の状態を持ち、
+不整合の原因になるため、まず3ツールを確定実装し、残りは separate change で扱う。
+
+## 意図的な差分
+
+- **completion notice 配信**: 未実装。settled ジョブの未回収通知は、ローカルでは
+  `job_list` でユーザーが明示的に確認する運用を取る。
+- **user steer による早期終了**: 未実装。ローカル `kill` は状態を反転させるだけで
+  実プロセスを停止しないため、描画文言も "requested cancellation" に留める。
+- **待機の実装**: upstream の非同期 wait に対し、ローカル `wait` は
+  `Condvar::wait_timeout_while` なので `spawn_blocking` で async worker を塞がないようにした。
+- **caller 規約**: 既存 `tool_bash` は owner を固定ラベル `"bash"` で登録するため、
+  ツールは `session_id` 引数を caller として渡す。upstream の sessionId fence に比べると
+  分離は弱く、producer 側の owner を `exec.session` に変更するのが今後の改善点である。
+
+## 検証
+
+`cargo fmt --all --check` / `cargo check --all-targets` / `cargo clippy --all-targets -- -D warnings` /
+`cargo test --all-targets`（125 tests）および GitHub Actions が成功していること。

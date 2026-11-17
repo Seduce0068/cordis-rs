@@ -93,6 +93,10 @@ pub mod plugin_ports {
         BLOCKED_AFTER_CONSECUTIVE_ROUNDS, GoalAuthority, ToolGoal, ToolGoalConfig,
         mount as mount_tool_goal,
     };
+    pub use crate::ports::tool_jobs::{
+        DEFAULT_WAIT_TIMEOUT_MS, INLINE_OUTPUT_BYTES, MAX_WAIT_TIMEOUT_MS, ToolJobs,
+        mount as mount_tool_jobs,
+    };
     pub use crate::ports::tool_schedule::{ToolSchedule, mount as mount_tool_schedule};
     pub use crate::ports::tool_session_list::{
         DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, ToolSessionList,

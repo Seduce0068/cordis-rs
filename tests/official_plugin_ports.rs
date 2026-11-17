@@ -1619,3 +1619,71 @@ async fn tmux_context_projects_samples_and_gates_step_one() {
     assert!(!should_sample(&helper, 2, &location));
     assert!(sample_reading(1, 1, &location, "2026-11-18T05:00:00+09:00").contains("session=main"));
 }
+
+#[tokio::test]
+async fn tool_jobs_registers_three_tools_and_kill_two_branches() {
+    use cordis_rs::core_services::{JobStatus, ToolExecContext, provide_jobs, provide_tools};
+    use cordis_rs::plugin_ports::mount_tool_jobs;
+
+    let ctx = Context::root("tool-jobs-port");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let jobs = provide_jobs(&ctx).await.unwrap();
+    mount_tool_jobs(&ctx).await.unwrap();
+
+    let mut names = tools.names();
+    names.sort();
+    assert_eq!(names, ["job_kill", "job_list", "job_output"]);
+
+    let exec = || ToolExecContext::agent("a");
+    let handle = jobs.start(Some("a".to_string())).unwrap();
+    let id = handle.id();
+    handle.append("first output");
+
+    let list = tools
+        .invoke("job_list", serde_json::json!({ "session_id": "a" }), exec())
+        .await
+        .unwrap();
+    assert_eq!(list.content["jobs"].as_array().unwrap().len(), 1);
+
+    let output = tools
+        .invoke(
+            "job_output",
+            serde_json::json!({ "job_id": id, "session_id": "a" }),
+            exec(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(output.content["job"]["status"], "Running");
+    assert!(output.rendered[1].contains("first output"));
+
+    let killed = tools
+        .invoke(
+            "job_kill",
+            serde_json::json!({ "job_id": id, "session_id": "a" }),
+            exec(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(killed.rendered[0], "cancellation-requested");
+    assert_eq!(handle.status(), JobStatus::Killed);
+
+    let again = tools
+        .invoke(
+            "job_kill",
+            serde_json::json!({ "job_id": id, "session_id": "a" }),
+            exec(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(again.rendered[0], "already-finished");
+
+    let empty = tools
+        .invoke(
+            "job_list",
+            serde_json::json!({ "session_id": "other" }),
+            exec(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(empty.rendered[0], "(no background jobs)");
+}

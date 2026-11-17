@@ -50,3 +50,5 @@ pub mod tool_str_replace_editor;
 pub mod time_context;
 
 pub mod tmux_context;
+
+pub mod tool_jobs;
