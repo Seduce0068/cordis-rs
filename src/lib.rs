@@ -86,6 +86,10 @@ pub mod plugin_ports {
         mount as mount_tool_goal,
     };
     pub use crate::ports::tool_schedule::{ToolSchedule, mount as mount_tool_schedule};
+    pub use crate::ports::tool_session_list::{
+        DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, ToolSessionList,
+        mount as mount_tool_session_list, resolve_page,
+    };
     pub use crate::ports::tool_session_query::{
         ToolSessionQuery, ToolSessionQueryConfig, mount as mount_tool_session_query,
     };

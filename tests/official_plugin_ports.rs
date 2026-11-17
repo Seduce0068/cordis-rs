@@ -1423,3 +1423,54 @@ async fn fs_observation_policy_prevents_unobserved_edits() {
         Err(PolicyError::NotObserved)
     ));
 }
+
+#[tokio::test]
+async fn tool_session_list_registers_paginated_read_tools() {
+    use cordis_rs::core_services::{
+        ToolError, ToolExecContext, provide_session_query, provide_sessions, provide_tools,
+        provide_workspace,
+    };
+    use cordis_rs::plugin_ports::{mount_tool_session_list, resolve_page};
+
+    assert_eq!(resolve_page(None, None).unwrap().limit, 20);
+    assert!(matches!(
+        resolve_page(Some(0), None),
+        Err(ToolError::InvalidArgs(_))
+    ));
+    assert!(matches!(
+        resolve_page(Some(101), None),
+        Err(ToolError::InvalidArgs(_))
+    ));
+
+    let ctx = Context::root("tool-session-list");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    provide_sessions(&ctx).await.unwrap();
+    provide_session_query(&ctx).await.unwrap();
+    provide_workspace(&ctx).await.unwrap();
+    mount_tool_session_list(&ctx).await.unwrap();
+
+    let mut names = tools.names();
+    names.sort();
+    assert_eq!(names, ["list_session", "list_workspace"]);
+
+    let workspaces = tools
+        .invoke(
+            "list_workspace",
+            serde_json::json!({ "limit": 1, "offset": 0 }),
+            ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(workspaces.content["limit"], 1);
+
+    let sessions = tools
+        .invoke(
+            "list_session",
+            serde_json::json!({ "limit": 5 }),
+            ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(sessions.content["limit"], 5);
+    let _ = sessions;
+}
