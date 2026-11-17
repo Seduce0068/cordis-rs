@@ -1750,3 +1750,54 @@ async fn timeout_policy_converts_only_own_timer_to_structured_result() {
         .unwrap();
     assert_eq!(fast_result.rendered[0], "done");
 }
+
+#[tokio::test]
+async fn compaction_image_offload_selects_and_validates() {
+    use cordis_rs::plugin_ports::{
+        Decision, IMAGE_OFFLOAD_REQUIRED_CODE, decide, offload_payload, select_oldest_after,
+        validate_payload,
+    };
+
+    let candidates = [(3u64, vec![0usize, 2]), (7, vec![1]), (9, vec![0])];
+    let done = [(3, vec![0])];
+    let selected = select_oldest_after(&candidates, &done, 2, 0);
+    assert_eq!(selected.len(), 2);
+    assert_eq!(selected[0].seq, 3);
+    assert_eq!(selected[0].image_indexes, vec![2]);
+    assert_eq!(selected[1].seq, 7);
+
+    // Checkpoint boundary skips already-summarized events.
+    let after_checkpoint = select_oldest_after(&candidates, &[], 5, 7);
+    assert_eq!(after_checkpoint.len(), 1);
+    assert_eq!(after_checkpoint[0].seq, 9);
+
+    let payload = offload_payload(&selected);
+    let round_trip = validate_payload(&payload).unwrap();
+    assert_eq!(round_trip, selected);
+
+    // Validation rejects malformed payloads.
+    assert!(validate_payload(&serde_json::json!({})).is_err());
+    assert!(validate_payload(&serde_json::json!({ "targets": [] })).is_err());
+    assert!(
+        validate_payload(&serde_json::json!({ "targets": [{ "seq": -1, "imageIndexes": [0] }] }))
+            .is_err()
+    );
+    assert!(
+        validate_payload(&serde_json::json!({ "targets": [{ "seq": 1, "imageIndexes": [2, 2] }] }))
+            .is_err()
+    );
+
+    assert_eq!(
+        decide(Some(IMAGE_OFFLOAD_REQUIRED_CODE), true, false),
+        Decision::Retry
+    );
+    assert_eq!(
+        decide(Some(IMAGE_OFFLOAD_REQUIRED_CODE), true, true),
+        Decision::SummaryHandled
+    );
+    assert_eq!(decide(Some("OTHER"), true, false), Decision::Noop);
+    assert_eq!(
+        decide(Some(IMAGE_OFFLOAD_REQUIRED_CODE), false, false),
+        Decision::Noop
+    );
+}

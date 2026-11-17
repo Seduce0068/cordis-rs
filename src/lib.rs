@@ -40,6 +40,12 @@ pub mod plugin_ports {
     pub use crate::ports::command_goal::{
         CommandGoal, USAGE as GOAL_USAGE, mount as mount_command_goal,
     };
+    pub use crate::ports::compaction_image_offload::{
+        CompactionImageOffload, Decision, EVENT_TYPE, IMAGE_OFFLOAD_PROJECTION_KEY,
+        IMAGE_OFFLOAD_REQUIRED_CODE, OffloadTarget, decide,
+        mount as mount_compaction_image_offload, offload_payload, select_oldest,
+        select_oldest_after, validate_payload,
+    };
     pub use crate::ports::feedback_producer::{
         FeedbackProducer, ProducerOutcome, TurnStopping, TurnStoppingEvent,
         mount as mount_feedback_producer, produce, turn_stopping_event,
