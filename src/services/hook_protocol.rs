@@ -93,8 +93,8 @@ pub fn is_match_all(matcher: Option<&str>) -> bool {
 }
 
 /// Literal-mode matcher: pipe-separated alternatives, exact match.
-/// Regex mode is intentionally not evaluated here (no regex dependency);
-/// invalid patterns are reported by `matcher_is_valid` at config load time.
+/// Regex-mode uses an unanchored `regex::Regex`; invalid patterns are
+/// non-matches at runtime and rejected by `matcher_diagnostic` at config load.
 pub fn matches(matcher: Option<&str>, query: &str, literal: bool) -> bool {
     if is_match_all(matcher) {
         return true;
@@ -105,10 +105,26 @@ pub fn matches(matcher: Option<&str>, query: &str, literal: bool) -> bool {
     if literal {
         pattern.split('|').any(|alternative| alternative == query)
     } else {
-        // Conservative fallback: treat the pattern as an exact match rather
-        // than silently accepting an unevaluated regex.
-        pattern == query
+        match regex::Regex::new(pattern) {
+            Ok(re) => re.is_match(query),
+            Err(_) => false, // invalid regexes are non-matches at runtime
+        }
     }
+}
+
+/// Validate a matcher before a config bridge accepts it. Returns `None` for
+/// match-all sentinels and valid patterns, otherwise a stable diagnostic.
+pub fn matcher_diagnostic(matcher: Option<&str>, literal: bool) -> Option<String> {
+    if is_match_all(matcher) {
+        return None;
+    }
+    let pattern = matcher?;
+    if literal {
+        return None; // any literal pattern is valid, including empty alternatives
+    }
+    regex::Regex::new(pattern)
+        .err()
+        .map(|error| format!("invalid regex matcher {pattern:?}: {error}"))
 }
 
 pub async fn provide(ctx: &crate::Context) -> Result<()> {

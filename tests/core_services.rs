@@ -2028,3 +2028,23 @@ async fn hook_protocol_merges_most_restrictive_outcome() {
     assert!(matches(Some("a|b"), "b", true));
     assert!(!matches(Some("a|b"), "c", true));
 }
+
+#[tokio::test]
+async fn hook_protocol_regex_matcher_and_diagnostics() {
+    use cordis_rs::core_services::{matcher_diagnostic, matches};
+
+    // Unanchored regex matching.
+    assert!(matches(Some("PreToolUse|Bash"), "tool:Bash", false));
+    assert!(!matches(Some("^Bash$"), "tool:Bash", false));
+    assert!(matches(Some("^tool:Bash$"), "tool:Bash", false));
+
+    // Invalid regexes are non-matches at runtime but diagnosed at config load.
+    assert!(!matches(Some("["), "anything", false));
+    assert!(matcher_diagnostic(Some("["), false).is_some());
+    assert!(matcher_diagnostic(Some("^tool:.*$"), false).is_none());
+    assert!(matcher_diagnostic(None, false).is_none());
+    assert!(matcher_diagnostic(Some("*"), false).is_none());
+
+    // Literal mode accepts any pattern without regex validation.
+    assert!(matcher_diagnostic(Some("["), true).is_none());
+}
