@@ -117,6 +117,9 @@ pub mod core_services {
     pub use crate::services::pruner::{
         PruneError, PrunedText, PrunerConfig, ToolResultPruner, provide as provide_pruner,
     };
+    pub use crate::services::session_query::{
+        SessionHit, SessionQueryEngine, provide as provide_session_query,
+    };
     pub use crate::services::sessions::{
         CheckpointCursor, ProjectionFold, Session, SessionEvent as LoggedSessionEvent,
         SessionHeader, SessionProjectionRegistry, SessionStore, provide as provide_sessions,

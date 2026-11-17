@@ -1446,3 +1446,46 @@ async fn permission_presets_switch_both_knobs() {
     assert!(presets.switch("unknown").is_err());
     assert_eq!(presets.current().sandbox, SandboxMode::DangerFullAccess);
 }
+
+#[tokio::test]
+async fn session_query_indexes_traces_filters_and_searches() {
+    use cordis_rs::core_services::{Session, provide_session_query};
+
+    let ctx = Context::root("session-query");
+    let engine = provide_session_query(&ctx).await.unwrap();
+
+    let s1 = Session::new("s1", None);
+    s1.append(
+        "user/message",
+        serde_json::json!({ "text": "Implement Rust port" }),
+    );
+    s1.append(
+        "assistant/message",
+        serde_json::json!({ "text": "Done, the rust port works" }),
+    );
+    let s2 = Session::new("s2", None);
+    s2.append(
+        "user/message",
+        serde_json::json!({ "text": "Unrelated question" }),
+    );
+
+    engine.index(s1.clone());
+    engine.index(s2);
+    assert_eq!(engine.session_ids(), ["s1", "s2"]);
+
+    let trace = engine.trace("s1");
+    assert_eq!(trace.len(), 2);
+    assert_eq!(trace[0].event_type, "user/message");
+
+    let users = engine.filter("user/message");
+    assert_eq!(users.len(), 2);
+
+    let hits = engine.search("RUST PORT");
+    assert_eq!(hits.len(), 2); // both s1 messages mention the rust port
+    assert!(hits.iter().all(|hit| hit.session_id == "s1"));
+    assert_eq!(hits[0].event_seq, 1);
+
+    assert!(engine.search("").is_empty());
+    assert!(engine.search("nothing").is_empty());
+    assert!(engine.trace("missing").is_empty());
+}
