@@ -272,6 +272,7 @@ impl Context {
             .write()
             .expect("service registry poisoned")
             .remove(name);
+        self.inner.service_added.notify_waiters();
         self.notify_fibers();
         Ok(())
     }
@@ -285,6 +286,7 @@ impl Context {
             .write()
             .expect("service registry poisoned")
             .remove(name);
+        self.inner.service_added.notify_waiters();
         self.drain_dependent_fibers(name).await;
         Ok(())
     }

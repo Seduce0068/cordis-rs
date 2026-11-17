@@ -345,3 +345,21 @@ async fn unloading_context_hides_its_services_from_children() {
     parent.set_lifecycle(Lifecycle::Unloading);
     assert!(child.get::<u32>("shared").is_none());
 }
+
+#[tokio::test]
+async fn require_untyped_waits_until_a_service_is_registered() {
+    use cordis_rs::Context;
+
+    let ctx = Context::root("require-notify");
+    let waiter = ctx.clone();
+    let task = tokio::spawn(async move { waiter.require::<u32>("later").await });
+
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    ctx.provide("later", 7u32).await.unwrap();
+
+    let result = tokio::time::timeout(std::time::Duration::from_secs(2), task)
+        .await
+        .expect("require did not wake after provide")
+        .unwrap();
+    assert!(matches!(result, Ok(value) if *value == 7));
+}
