@@ -65,3 +65,5 @@ pub mod plugin_inventory;
 pub mod time_context;
 
 pub mod session_reference;
+
+pub mod file_reference;

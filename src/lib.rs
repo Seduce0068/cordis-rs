@@ -116,6 +116,10 @@ pub mod core_services {
         CredentialInfo, CredentialProvider, CredentialRef, ResolvedCredential, credential_ref,
         provide as provide_credentials,
     };
+    pub use crate::services::file_reference::{
+        ActiveAtToken, FileReferences, ReferenceKind, active_at_token, format_file_mention,
+        provide as provide_file_references,
+    };
     pub use crate::services::fs::{
         FileSystem, FsEditOutcome, FsInfo, FsWriteOutcome, ReadWindow, WriteOperation,
         provide as provide_fs,

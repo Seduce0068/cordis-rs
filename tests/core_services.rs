@@ -2495,3 +2495,32 @@ async fn session_reference_roundtrips_encoded_uris() {
     assert!(decode_session_reference_uri("not-a-reference").is_err());
     assert!(decode_session_reference_uri("dsh-session:!!!").is_err());
 }
+
+#[tokio::test]
+async fn file_reference_formats_and_detects_mentions() {
+    use cordis_rs::core_services::{ReferenceKind, active_at_token, format_file_mention};
+
+    assert_eq!(
+        format_file_mention("src/main.rs", ReferenceKind::File, false).as_deref(),
+        Some("@src/main.rs")
+    );
+    assert_eq!(
+        format_file_mention("my docs", ReferenceKind::File, false).as_deref(),
+        Some("@\"my docs\"")
+    );
+    assert_eq!(
+        format_file_mention("src", ReferenceKind::Directory, false).as_deref(),
+        Some("@src/")
+    );
+    assert!(format_file_mention("bad\"path", ReferenceKind::File, false).is_none());
+
+    let token = active_at_token("look at @src/ma", 15).unwrap();
+    assert_eq!(token.raw, "src/ma");
+    assert!(!token.quoted);
+
+    let quoted = active_at_token("use @\"my docs", 13).unwrap();
+    assert_eq!(quoted.raw, "my docs");
+    assert!(quoted.quoted);
+
+    assert!(active_at_token("no mention", 2).is_none());
+}
