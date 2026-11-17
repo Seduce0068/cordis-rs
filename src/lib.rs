@@ -129,6 +129,7 @@ pub mod core_services {
         ApprovalPolicy, PermissionPresets, PermissionState, Preset, PresetSpec, SandboxMode,
         provide as provide_permission_presets,
     };
+    pub use crate::services::plan_mode::{PlanMode, PlanModeEvent, provide as provide_plan_mode};
     pub use crate::services::pruner::{
         PruneError, PrunedText, PrunerConfig, ToolResultPruner, provide as provide_pruner,
     };

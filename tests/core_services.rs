@@ -2231,3 +2231,31 @@ async fn tool_schedule_exposes_management_tools() {
         .unwrap();
     assert!(edited.rendered[0].contains("paused"));
 }
+
+#[tokio::test]
+async fn plan_mode_folds_last_session_event() {
+    use cordis_rs::core_services::{PlanMode, provide_plan_mode};
+
+    let ctx = Context::root("plan-mode");
+    let plan: PlanMode = provide_plan_mode(&ctx).await.unwrap();
+
+    // No events -> inactive.
+    assert!(!plan.is_active("s1"));
+
+    let first = plan.enter("s1");
+    assert!(plan.is_active("s1"));
+    let second = plan.exit("s1");
+    assert!(!plan.is_active("s1"));
+    plan.enter("s1");
+    assert!(plan.is_active("s1"));
+
+    let trace = plan.trace("s1");
+    assert_eq!(trace.len(), 3);
+    assert!(trace[0].seq < trace[1].seq && trace[1].seq < trace[2].seq);
+    assert!(trace[0].active && !trace[1].active && trace[2].active);
+    assert_eq!(first.seq, trace[0].seq);
+    assert_eq!(second.seq, trace[1].seq);
+
+    // Sessions are isolated.
+    assert!(!plan.is_active("s2"));
+}
