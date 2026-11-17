@@ -97,9 +97,10 @@ danger-full-access は allow）。
 
 ## ライセンス
 
-MIT。上流 Cordis（MIT、Copyright (c) 2026 DeepSeek）の API 契約を Rust に
-移植しているため、上流ライセンスを継承しています。個人リポジトリの既定は
-AGPL-3.0-or-later ですが、ここでは上流 MIT との互換性を優先しました。
+`AGPL-3.0-or-later`（[LICENSE](LICENSE) を参照）。上流 Cordis（MIT、
+Copyright (c) 2026 DeepSeek）の API 契約を Rust に移植しているため、
+上流の著作権表示と許諾通知は [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
+に保持しています。MIT 互換のコードを AGPL で再配布する形です。
 
 ## 関連
 

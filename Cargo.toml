@@ -3,7 +3,7 @@ name = "cordis-rs"
 version = "0.1.0"
 edition = "2024"
 description = "Cordis-compatible plugin runtime in Rust (DSH GPUI reimplementation PoC)"
-license = "MIT"
+license = "AGPL-3.0-or-later"
 repository = "https://github.com/Seduce0068/cordis-rs"
 documentation = "https://docs.rs/cordis-rs"
 
