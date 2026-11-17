@@ -1489,3 +1489,53 @@ async fn session_query_indexes_traces_filters_and_searches() {
     assert!(engine.search("nothing").is_empty());
     assert!(engine.trace("missing").is_empty());
 }
+
+#[tokio::test]
+async fn session_query_tool_searches_and_traces() {
+    use cordis_rs::core_services::{Session, ToolExecContext, provide_tools};
+    use cordis_rs::plugin_ports::mount_tool_session_query;
+
+    let ctx = Context::root("session-query-tool");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let engine = cordis_rs::core_services::provide_session_query(&ctx)
+        .await
+        .unwrap();
+    let _mounted = mount_tool_session_query(&ctx, Default::default())
+        .await
+        .unwrap();
+
+    let session = Session::new("qa-1", None);
+    session.append(
+        "user/message",
+        serde_json::json!({ "text": "How to port plugins?" }),
+    );
+    session.append(
+        "assistant/message",
+        serde_json::json!({ "text": "Use the Cordis seams" }),
+    );
+    engine.index(session);
+
+    let mut names = tools.names();
+    names.sort();
+    assert_eq!(names, ["session_search", "session_trace"]);
+
+    let result = tools
+        .invoke(
+            "session_search",
+            serde_json::json!({ "query": "port" }),
+            ToolExecContext::agent("agent"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(result.content["hits"].as_array().unwrap().len(), 1);
+
+    let result = tools
+        .invoke(
+            "session_trace",
+            serde_json::json!({ "session_id": "qa-1" }),
+            ToolExecContext::agent("agent"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(result.content["events"].as_array().unwrap().len(), 2);
+}
