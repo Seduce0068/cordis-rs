@@ -146,6 +146,21 @@ impl AgentLoop {
         self
     }
 
+    /// Always close the turn on failure, mirroring upstream's durable
+    /// `turn/end` contract. Cleanup errors are intentionally non-fatal here;
+    /// the original LLM error is what the caller receives.
+    fn finish_turn_with_error(&self, reason: &str) {
+        if let Some(session) = &self.session {
+            session.append(
+                "turn/end",
+                serde_json::json!({ "reason": { "kind": reason } }),
+            );
+            if let Some(checkpoint) = &self.checkpoint {
+                let _ = checkpoint(session);
+            }
+        }
+    }
+
     /// Run one turn: stream, parse calls, execute them, and repeat while the
     /// parser keeps producing calls.
     pub async fn run(&self, prompt: impl Into<String>) -> Result<AgentRun> {
@@ -153,7 +168,6 @@ impl AgentLoop {
         let mut messages = Vec::new();
         let mut steps = Vec::new();
         let mut final_text = String::new();
-        let mut retry_attempt = 0u32;
 
         // Assemble the system prompt with the live goal as a variable.
         if let Some(system_prompt) = &self.system_prompt {
@@ -179,6 +193,9 @@ impl AgentLoop {
         }
 
         for step_index in 0..self.max_steps {
+            // Retry budget is per-step: a retry consumed in one step must not
+            // starve later steps (team review finding).
+            let mut retry_attempt = 0u32;
             // Automatic pressure compaction at the step boundary, mirroring
             // upstream's `agent/pre-step` policy listener.
             if let (Some(session), Some(compaction)) = (&self.session, &self.compaction) {
@@ -206,6 +223,7 @@ impl AgentLoop {
                             .map(|policy| policy.should_retry_error(&error, retry_attempt))
                             .unwrap_or(crate::services::retry::RetryDecision::Stop);
                         if decision == crate::services::retry::RetryDecision::Stop {
+                            self.finish_turn_with_error("llm_error");
                             return Err(error);
                         }
                         let delay = self

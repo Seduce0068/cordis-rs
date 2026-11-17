@@ -2801,3 +2801,107 @@ async fn session_store_rejects_duplicate_ids_and_invalid_forks() {
     assert_eq!(forked.seq(), 2);
     assert_eq!(forked.events().len(), 2);
 }
+
+#[tokio::test]
+async fn agent_loop_closes_turn_on_llm_failure() {
+    use cordis_rs::core_services::{
+        AgentLoop, CheckpointHook, LlmRequest, Session, provide_llm, provide_tools,
+    };
+    use std::sync::Arc as StdArc;
+    use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+
+    let ctx = Context::root("turn-end-failure");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let llm = provide_llm(&ctx).await.unwrap();
+    let session = Session::new("failure-session", None);
+
+    let provider = cordis_rs::core_services::from_async_text(
+        "always-fails",
+        "fails-1",
+        |_request: LlmRequest| async { Err::<String, String>("HTTP 500 error".to_string()) },
+    );
+    let _p = llm.register(provider);
+    llm.set_default("always-fails");
+
+    let cleanup = StdArc::new(AtomicUsize::new(0));
+    let counter = cleanup.clone();
+    let hook: CheckpointHook = StdArc::new(move |_session| {
+        counter.fetch_add(1, AtomicOrdering::SeqCst);
+        Ok(())
+    });
+
+    let run = AgentLoop::new(llm, tools)
+        .with_session(session.clone())
+        .with_checkpoint(hook)
+        .with_call_parser(StdArc::new(|_text: &str| Vec::new()));
+    assert!(run.run("go").await.is_err());
+
+    let ends: Vec<_> = session
+        .events()
+        .into_iter()
+        .filter(|event| event.event_type == "turn/end")
+        .collect();
+    assert_eq!(ends.len(), 1);
+    assert_eq!(ends[0].data["reason"]["kind"], "llm_error");
+    assert_eq!(cleanup.load(AtomicOrdering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn agent_loop_retry_budget_resets_between_steps() {
+    use cordis_rs::core_services::{
+        AgentLoop, LlmRequest, RetryPolicy, provide_llm, provide_tools,
+    };
+    use std::sync::Arc as StdArc;
+    use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+
+    let ctx = Context::root("retry-per-step");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let llm = provide_llm(&ctx).await.unwrap();
+
+    let calls = StdArc::new(AtomicUsize::new(0));
+    let counter = calls.clone();
+    let provider = cordis_rs::core_services::from_async_text(
+        "flaky-per-step",
+        "flaky-1",
+        move |_request: LlmRequest| {
+            let counter = counter.clone();
+            async move {
+                let n = counter.fetch_add(1, AtomicOrdering::SeqCst);
+                // Fail once at the start of each step (calls 0 and 2).
+                if n.is_multiple_of(2) {
+                    Err("HTTP 429 rate limited".to_string())
+                } else {
+                    Ok("ok".to_string())
+                }
+            }
+        },
+    );
+    let _p = llm.register(provider);
+    llm.set_default("flaky-per-step");
+
+    // Step 1 emits a tool call so the loop advances to step 2.
+    let mut step = StdArc::new(AtomicUsize::new(0));
+    let parser_step = step.clone();
+    let loop_ = AgentLoop::new(llm, tools)
+        .with_retry(RetryPolicy {
+            max_retries: 1,
+            initial_delay_ms: 1,
+            max_delay_ms: 1,
+            ..Default::default()
+        })
+        .with_call_parser(StdArc::new(move |_text: &str| {
+            if parser_step.fetch_add(1, AtomicOrdering::SeqCst) == 0 {
+                vec![cordis_rs::core_services::ToolCall {
+                    name: "noop".to_string(),
+                    args: serde_json::json!({}),
+                }]
+            } else {
+                Vec::new()
+            }
+        }));
+    let _ = std::mem::replace(&mut step, StdArc::new(AtomicUsize::new(0)));
+    let run = loop_.run("go").await.unwrap();
+    assert_eq!(run.steps.len(), 2);
+    // Two steps, each with one failure + one success = 4 provider calls.
+    assert_eq!(calls.load(AtomicOrdering::SeqCst), 4);
+}
