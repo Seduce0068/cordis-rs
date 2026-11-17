@@ -210,6 +210,7 @@ pub type ToolPostExecute = Arc<
 struct PipelineState {
     middleware: Vec<ToolMiddleware>,
     post: Vec<ToolPostExecute>,
+    approval: Option<crate::services::approval::ApprovalService>,
 }
 
 /// Shared execution pipeline. Registered hooks are reversible effects.
@@ -219,6 +220,12 @@ pub struct ToolPipeline {
 }
 
 impl ToolPipeline {
+    /// Install a fail-closed approval gate at the innermost execution point.
+    /// With no answerer registered the request is denied (upstream default).
+    pub fn with_approval(&self, approval: crate::services::approval::ApprovalService) {
+        self.state.write().expect("tool pipeline poisoned").approval = Some(approval);
+    }
+
     pub fn use_middleware(&self, hook: ToolMiddleware) -> Disposer {
         let state = self.state.clone();
         let hook_ptr = hook.clone();
@@ -281,12 +288,41 @@ impl ToolPipeline {
             .post
             .clone();
 
+        let approval = self
+            .state
+            .read()
+            .expect("tool pipeline poisoned")
+            .approval
+            .clone();
         let registry = registry.clone();
         let tool_name = name.to_string();
         let mut next: ToolNext = Arc::new(move |args, exec| {
             let registry = registry.clone();
             let tool_name = tool_name.clone();
-            Box::pin(async move { registry.invoke(&tool_name, args, exec).await })
+            let approval = approval.clone();
+            Box::pin(async move {
+                if let Some(approval) = approval {
+                    use crate::services::approval::{ApprovalDecision, ApprovalRequest};
+                    let request = ApprovalRequest::new(
+                        format!("tool:{tool_name}"),
+                        format!("Execute tool {tool_name} with the supplied arguments"),
+                    );
+                    match approval.request(&request) {
+                        Ok(outcome) if outcome.decision == ApprovalDecision::Allow => {}
+                        Ok(_) => {
+                            return Err(ToolError::Execution(format!(
+                                "tool {tool_name} denied by approval policy"
+                            )));
+                        }
+                        Err(error) => {
+                            return Err(ToolError::Execution(format!(
+                                "tool {tool_name} blocked: {error}"
+                            )));
+                        }
+                    }
+                }
+                registry.invoke(&tool_name, args, exec).await
+            })
         });
         for hook in hooks.into_iter().rev() {
             let hook = hook.clone();

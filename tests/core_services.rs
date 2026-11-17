@@ -1697,3 +1697,74 @@ async fn otel_event_channels_batch_and_bound_records() {
         Err(TelemetryError::InvalidName)
     ));
 }
+
+#[tokio::test]
+async fn tool_pipeline_approval_gate_is_fail_closed() {
+    use std::sync::Arc as StdArc;
+
+    use cordis_rs::core_services::{
+        ApprovalDecision, ApprovalService, ToolDefinition, ToolExecContext, ToolOutput,
+        provide_approval, provide_tools,
+    };
+
+    let ctx = Context::root("approval-gate");
+    let (registry, pipeline) = provide_tools(&ctx).await.unwrap();
+    let approval: ApprovalService = provide_approval(&ctx).await.unwrap();
+    pipeline.with_approval(approval.clone());
+
+    let _tool = registry.register(ToolDefinition::new(
+        "echo",
+        "echo",
+        StdArc::new(|_args, _exec| {
+            Box::pin(async { Ok(ToolOutput::text("ok")) })
+                as cordis_rs::events::BoxFuture<
+                    'static,
+                    std::result::Result<ToolOutput, cordis_rs::core_services::ToolError>,
+                >
+        }),
+    ));
+
+    // No answerer -> fail closed.
+    let error = pipeline
+        .run(
+            &registry,
+            "echo",
+            serde_json::json!({}),
+            ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("blocked"));
+
+    // An answerer that allows enables execution.
+    let _d = approval.add_answerer(
+        "allow-all",
+        StdArc::new(|_request| Some(ApprovalDecision::Allow)),
+    );
+    let output = pipeline
+        .run(
+            &registry,
+            "echo",
+            serde_json::json!({}),
+            ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(output.rendered, ["ok"]);
+
+    // An answerer that denies blocks execution.
+    let _d2 = approval.add_answerer(
+        "deny-all",
+        StdArc::new(|_request| Some(ApprovalDecision::Deny)),
+    );
+    let error = pipeline
+        .run(
+            &registry,
+            "echo",
+            serde_json::json!({}),
+            ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("denied"));
+}
