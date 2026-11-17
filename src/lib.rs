@@ -44,6 +44,10 @@ pub mod plugin_ports {
         FeedbackProducer, ProducerOutcome, TurnStopping, TurnStoppingEvent,
         mount as mount_feedback_producer, produce, turn_stopping_event,
     };
+    pub use crate::ports::fs_observation_policy::{
+        FsObservationPolicy, FsObservationPolicyPlugin, Observation, PolicyError, WriteIntent,
+        provide as provide_fs_observation_policy,
+    };
     pub use crate::ports::harness_dev_context::{
         HARNESS_SOURCE_KEY, HARNESS_SOURCE_PROMPT, WEB_GUI_URL_KEY, WEB_SURFACE_PROMPT,
         harness_context_value, with_harness_context,

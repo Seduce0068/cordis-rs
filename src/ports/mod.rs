@@ -40,3 +40,5 @@ pub mod agent_instructions;
 pub mod harness_dev_context;
 
 pub mod tool_goal;
+
+pub mod fs_observation_policy;

@@ -9,6 +9,8 @@
 //! registration, and the human-facing result strings) with small in-test
 //! service stubs, so no new dependency and no `src/*` change is needed.
 
+use cordis_rs::Context;
+
 mod command_goal {
     use std::collections::HashMap;
     use std::future::Future;
@@ -1370,4 +1372,54 @@ mod tool_todo {
         );
         assert_eq!(projections.todos_view(), Some(result.todos));
     }
+}
+
+#[tokio::test]
+async fn fs_observation_policy_prevents_unobserved_edits() {
+    use cordis_rs::plugin_ports::{
+        FsObservationPolicy, Observation, PolicyError, WriteIntent, provide_fs_observation_policy,
+    };
+
+    let ctx = Context::root("fs-observation");
+    let policy: FsObservationPolicy = provide_fs_observation_policy(&ctx).await.unwrap();
+
+    // No observation -> both intents rejected.
+    assert!(matches!(
+        policy.edit_intent("agent-1", "/tmp/a.txt"),
+        Err(PolicyError::NotObserved)
+    ));
+    assert!(matches!(
+        policy.write_intent("agent-1", "/tmp/a.txt"),
+        Err(PolicyError::NotObserved)
+    ));
+
+    // Absent observation -> create intent, edit denied.
+    policy.observe("agent-1", "/tmp/a.txt", Observation::Absent);
+    assert_eq!(
+        policy.write_intent("agent-1", "/tmp/a.txt").unwrap(),
+        WriteIntent::CreateIfAbsent
+    );
+    assert!(matches!(
+        policy.edit_intent("agent-1", "/tmp/a.txt"),
+        Err(PolicyError::NotFound)
+    ));
+
+    // Present observation -> versioned replace and edit version.
+    policy.observe("agent-1", "/tmp/a.txt", Observation::Present { version: 7 });
+    assert_eq!(
+        policy.write_intent("agent-1", "/tmp/a.txt").unwrap(),
+        WriteIntent::ReplaceIfVersion { version: 7 }
+    );
+    assert_eq!(policy.edit_intent("agent-1", "/tmp/a.txt").unwrap(), 7);
+
+    // Owner isolation and clear.
+    assert!(matches!(
+        policy.edit_intent("agent-2", "/tmp/a.txt"),
+        Err(PolicyError::NotObserved)
+    ));
+    policy.clear();
+    assert!(matches!(
+        policy.edit_intent("agent-1", "/tmp/a.txt"),
+        Err(PolicyError::NotObserved)
+    ));
 }
