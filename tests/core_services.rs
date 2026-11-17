@@ -2259,3 +2259,58 @@ async fn plan_mode_folds_last_session_event() {
     // Sessions are isolated.
     assert!(!plan.is_active("s2"));
 }
+
+#[tokio::test]
+async fn exit_plan_mode_tool_gates_on_plan_state() {
+    use cordis_rs::core_services::{ToolExecContext, provide_plan_mode, provide_tools};
+    use cordis_rs::plugin_ports::{EXIT_PLAN_MODE, mount_tool_exit_plan_mode, validate_plan};
+
+    let ctx = Context::root("exit-plan-tool");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let plan = provide_plan_mode(&ctx).await.unwrap();
+    mount_tool_exit_plan_mode(&ctx).await.unwrap();
+    assert!(tools.names().contains(&EXIT_PLAN_MODE.to_string()));
+
+    let exec = ToolExecContext::agent("a");
+    let mut with_session = exec.clone();
+    with_session.session = Some("s1".to_string());
+
+    // Not in plan mode -> informational response, state unchanged.
+    let result = tools
+        .invoke(
+            EXIT_PLAN_MODE,
+            serde_json::json!({ "plan": "# Plan", "approved": true }),
+            with_session.clone(),
+        )
+        .await
+        .unwrap();
+    assert!(result.rendered[0].contains("PLAN_NOT_ACTIVE"));
+
+    plan.enter("s1");
+    // Invalid plan text is rejected.
+    let result = tools
+        .invoke(
+            EXIT_PLAN_MODE,
+            serde_json::json!({ "plan": "not markdown", "approved": true }),
+            with_session.clone(),
+        )
+        .await
+        .unwrap();
+    assert!(result.rendered[0].contains("non-empty"));
+    assert!(plan.is_active("s1"));
+
+    // Approved call exits plan mode.
+    let result = tools
+        .invoke(
+            EXIT_PLAN_MODE,
+            serde_json::json!({ "plan": "# Plan\nsteps", "approved": true }),
+            with_session,
+        )
+        .await
+        .unwrap();
+    assert!(result.rendered[0].contains("Plan approved"));
+    assert!(!plan.is_active("s1"));
+
+    assert!(validate_plan("# ok").is_ok());
+    assert!(validate_plan("bad").is_err());
+}

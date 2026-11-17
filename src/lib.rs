@@ -64,6 +64,10 @@ pub mod plugin_ports {
         BashArgs, DESCRIPTION as BASH_DESCRIPTION, ToolBash, ToolBashConfig, job_handle,
         mount as mount_tool_bash, parse_bash_args,
     };
+    pub use crate::ports::tool_exit_plan_mode::{
+        EXIT_PLAN_MODE, ExitPlanError, ToolExitPlanMode, mount as mount_tool_exit_plan_mode,
+        validate_plan,
+    };
     pub use crate::ports::tool_fs::{
         EditInput, READ_LIMIT, STREAM_MIN_SIZE, ToolFs, ToolFsConfig, mount as mount_tool_fs,
         parse_edit_args, parse_read_args, parse_write_args,
