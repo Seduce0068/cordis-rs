@@ -34,3 +34,5 @@ pub mod session_title_llm;
 pub mod tool_schedule;
 
 pub mod tool_exit_plan_mode;
+
+pub mod agent_instructions;

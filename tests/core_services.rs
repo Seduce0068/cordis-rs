@@ -2446,3 +2446,30 @@ async fn time_context_formats_samples_and_respects_refresh_interval() {
     assert!(!throttled.should_inject(10_500));
     assert!(throttled.should_inject(11_000));
 }
+
+#[tokio::test]
+async fn agent_instructions_register_baseline_sections() {
+    use cordis_rs::core_services::provide_system_prompt;
+    use cordis_rs::plugin_ports::register_baseline;
+
+    let ctx = Context::root("agent-instructions");
+    let prompt = provide_system_prompt(&ctx).await.unwrap();
+
+    let dir = std::env::temp_dir().join(format!("agent-instructions-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    std::fs::write(dir.join("AGENTS.md"), "# Agent rules\nuse bash").unwrap();
+    std::fs::write(dir.join("GEMINI.md"), "# Gemini rules").unwrap();
+
+    let names = register_baseline(&prompt, &dir).unwrap();
+    assert_eq!(names.len(), 2);
+    // Unknown section names get the default order of 500.
+    assert_eq!(
+        prompt.get_section_order("agent-instructions:AGENTS.md"),
+        500
+    );
+
+    // Duplicate registration is rejected by the prompt registry.
+    assert!(register_baseline(&prompt, &dir).is_err());
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}

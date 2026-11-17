@@ -29,6 +29,7 @@ pub use plugin::{Fiber, FunctionPlugin, Plugin};
 
 /// Reusable ports of official DSH plugin implementations.
 pub mod plugin_ports {
+    pub use crate::ports::agent_instructions::{register_baseline, register_file};
     pub use crate::ports::command_compact::{
         CommandCompact, USAGE as COMMAND_COMPACT_USAGE, mount as mount_command_compact,
     };
