@@ -30,3 +30,5 @@ pub mod tool_session_query;
 pub mod command_compact;
 
 pub mod session_title_llm;
+
+pub mod tool_schedule;

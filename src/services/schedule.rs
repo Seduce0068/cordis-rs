@@ -120,6 +120,15 @@ impl ScheduleService {
         Ok(record.clone())
     }
 
+    /// Generic status transition used by management tools.
+    pub fn set_status_public(
+        &self,
+        id: &str,
+        status: ScheduleStatus,
+    ) -> std::result::Result<ScheduleRecord, ScheduleError> {
+        self.set_status(id, status)
+    }
+
     pub fn pause(&self, id: &str) -> std::result::Result<ScheduleRecord, ScheduleError> {
         self.set_status(id, ScheduleStatus::Paused)
     }

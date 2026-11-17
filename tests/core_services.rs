@@ -2177,3 +2177,57 @@ async fn schedule_service_manages_status_and_due_tasks() {
         Err(ScheduleError::NotFound(_))
     ));
 }
+
+#[tokio::test]
+async fn tool_schedule_exposes_management_tools() {
+    use cordis_rs::core_services::{ToolExecContext, provide_schedule, provide_tools};
+    use cordis_rs::plugin_ports::mount_tool_schedule;
+
+    let ctx = Context::root("tool-schedule");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    provide_schedule(&ctx).await.unwrap();
+    mount_tool_schedule(&ctx).await.unwrap();
+
+    let mut names = tools.names();
+    names.sort();
+    assert_eq!(
+        names,
+        [
+            "schedule_create",
+            "schedule_edit",
+            "schedule_list",
+            "schedule_view"
+        ]
+    );
+
+    let created = tools
+        .invoke(
+            "schedule_create",
+            serde_json::json!({ "title": "build", "prompt": "run tests", "due_ms": 1000 }),
+            ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap();
+    assert!(created.rendered[0].contains("Created schedule"));
+    let id = created.content["id"].as_str().unwrap().to_string();
+
+    let listed = tools
+        .invoke(
+            "schedule_list",
+            serde_json::json!({}),
+            ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(listed.content["schedules"].as_array().unwrap().len(), 1);
+
+    let edited = tools
+        .invoke(
+            "schedule_edit",
+            serde_json::json!({ "id": id, "action": "pause" }),
+            ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap();
+    assert!(edited.rendered[0].contains("paused"));
+}

@@ -68,6 +68,7 @@ pub mod plugin_ports {
         EditInput, READ_LIMIT, STREAM_MIN_SIZE, ToolFs, ToolFsConfig, mount as mount_tool_fs,
         parse_edit_args, parse_read_args, parse_write_args,
     };
+    pub use crate::ports::tool_schedule::{ToolSchedule, mount as mount_tool_schedule};
     pub use crate::ports::tool_session_query::{
         ToolSessionQuery, ToolSessionQueryConfig, mount as mount_tool_session_query,
     };
