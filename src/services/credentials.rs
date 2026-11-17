@@ -31,10 +31,19 @@ pub fn credential_ref(value: &str) -> Option<CredentialRef> {
     })
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct ResolvedCredential {
     pub value: String,
     pub source: String,
+}
+
+impl std::fmt::Debug for ResolvedCredential {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ResolvedCredential")
+            .field("value", &"<redacted>")
+            .field("source", &self.source)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

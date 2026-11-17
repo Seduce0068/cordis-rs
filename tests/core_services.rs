@@ -2976,3 +2976,45 @@ async fn compaction_shortens_next_request_messages() {
         "summary + tail: {lengths:?}"
     );
 }
+
+#[tokio::test]
+async fn security_hardening_for_credentials_and_loader_paths() {
+    use cordis_rs::core_services::{ResolvedCredential, credential_ref, provide_credentials};
+    use cordis_rs::loader::{Composition, VarTable};
+
+    // Debug output must never expose the secret value.
+    let resolved = ResolvedCredential {
+        value: "super-secret-key".to_string(),
+        source: "env".to_string(),
+    };
+    let debug = format!("{resolved:?}");
+    assert!(!debug.contains("super-secret-key"));
+    assert!(debug.contains("<redacted>"));
+
+    let ctx = Context::root("security-hardening");
+    let provider = provide_credentials(&ctx).await.unwrap();
+    assert!(
+        provider
+            .resolve(&credential_ref("$MISSING").unwrap())
+            .is_none()
+    );
+
+    // dshHomePath rejects traversal and absolute paths.
+    let vars = VarTable::new().with_home_path("/home/dsh");
+    let bad = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      p: !!js dshHomePath('../../etc/passwd')
+"#;
+    assert!(Composition::parse_with_vars(bad, &vars).is_err());
+    let absolute = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      p: !!js dshHomePath('/etc/passwd')
+"#;
+    assert!(Composition::parse_with_vars(absolute, &vars).is_err());
+}

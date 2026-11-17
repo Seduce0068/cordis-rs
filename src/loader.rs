@@ -1028,8 +1028,20 @@ fn evaluate_helper_call(
                     reason: "dshHomePath requires VarTable::with_home_path".to_string(),
                 });
             };
+            let candidate = std::path::Path::new(argument);
+            if candidate.is_absolute()
+                || candidate
+                    .components()
+                    .any(|component| matches!(component, std::path::Component::ParentDir))
+            {
+                return Err(LoaderError::InvalidExpression {
+                    path: path.to_string(),
+                    expression: expression.to_string(),
+                    reason: "dshHomePath rejects absolute paths and `..`".to_string(),
+                });
+            }
             Ok(Some(Value::String(
-                home.join(argument).to_string_lossy().to_string(),
+                home.join(candidate).to_string_lossy().to_string(),
             )))
         }
         "process.cwd" => {
