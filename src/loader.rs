@@ -1204,6 +1204,12 @@ fn evaluate_expression(
     // Ternary: `condition ? when_true : when_false`. The condition is
     // evaluated first, so references and comparisons work on both sides.
     if let Some((condition, rest)) = split_top_level_once(expression, '?') {
+        // `?.` is optional member access, not a ternary: let it fall through
+        // to evaluate_member_access.
+        if rest.starts_with('.') {
+            return evaluate_member_access(expression, vars, path)
+                .map(|value| value.unwrap_or(Value::Null));
+        }
         let (when_true, when_false) =
             split_top_level_once(rest, ':').ok_or_else(|| LoaderError::InvalidExpression {
                 path: path.to_string(),
@@ -1562,14 +1568,31 @@ fn evaluate_member_access(
 
     // DSH-style `process.env.FOO` / `env.FOO` lookups resolve against the
     // VarTable's `env.FOO` entries (populated by `VarTable::from_env`).
-    if (head == "process" && tail.starts_with(".env.")) || head == "env" {
+    if (head == "process" && (tail.starts_with(".env.") || tail.starts_with("?.env.")))
+        || head == "env"
+    {
         let env_name = if head == "process" {
-            &tail[".env.".len()..]
+            let marker = if tail.starts_with("?.") {
+                "?.env."
+            } else {
+                ".env."
+            };
+            let rest = &tail[marker.len()..];
+            // Strip a trailing `?.trim()` etc. — only the env name is needed.
+            rest.split("?.").next().unwrap_or(rest)
         } else {
             &tail[1..]
         };
         let key = format!("env.{env_name}");
-        return Ok(Some(vars.get(&key).cloned().unwrap_or(Value::Null)));
+        let value = vars.get(&key).cloned().unwrap_or(Value::Null);
+        // `process.env.X?.trim()` – apply optional trim after the env lookup.
+        if value != Value::Null
+            && tail.contains("?.trim()")
+            && let Value::String(text) = value
+        {
+            return Ok(Some(Value::String(text.trim().to_string())));
+        }
+        return Ok(Some(value));
     }
 
     // Allowlisted process properties without a call (e.g. `process.execPath`).
@@ -1608,6 +1631,47 @@ fn evaluate_member_access(
                 _ => Value::Null,
             };
             rest = &after_open[close + 1..];
+        } else if let Some(after_dot) = rest.strip_prefix("?.") {
+            // Optional member access: short-circuit the whole chain on null.
+            if value == Value::Null {
+                return Ok(Some(Value::Null));
+            }
+            let mut prop_end = 0usize;
+            for ch in after_dot.chars() {
+                if ch.is_ascii_alphanumeric() || ch == '_' {
+                    prop_end += ch.len_utf8();
+                } else {
+                    break;
+                }
+            }
+            if prop_end == 0 {
+                return Ok(Some(Value::Null));
+            }
+            let property = &after_dot[..prop_end];
+            let after_prop = &after_dot[prop_end..];
+            if after_prop.starts_with('(') {
+                // Optional method call, e.g. `process.env.X?.trim()`.
+                let close = after_prop
+                    .find(')')
+                    .ok_or_else(|| LoaderError::InvalidExpression {
+                        path: path.to_string(),
+                        expression: expression.to_string(),
+                        reason: format!("unterminated {property}("),
+                    })?;
+                value = match (&value, property) {
+                    (Value::String(text), "trim") => Value::String(text.trim().to_string()),
+                    _ => Value::Null,
+                };
+                rest = &after_prop[close + 1..];
+            } else {
+                value = match (&value, property) {
+                    (Value::String(text), "length") => Value::Integer(text.chars().count() as i64),
+                    (Value::Array(items), "length") => Value::Integer(items.len() as i64),
+                    (Value::Object(map), _) => map.get(property).cloned().unwrap_or(Value::Null),
+                    _ => Value::Null,
+                };
+                rest = after_prop;
+            }
         } else if let Some(after_dot) = rest.strip_prefix('.') {
             let mut prop_end = 0usize;
             for ch in after_dot.chars() {
@@ -1646,6 +1710,7 @@ fn evaluate_member_access(
                     })
                     .unwrap_or(arg_text);
                 value = match (&value, property) {
+                    (Value::String(text), "trim") => Value::String(text.trim().to_string()),
                     (Value::String(text), "includes") => Value::Bool(text.contains(arg)),
                     (Value::String(text), "startsWith") => Value::Bool(text.starts_with(arg)),
                     (Value::String(text), "endsWith") => Value::Bool(text.ends_with(arg)),

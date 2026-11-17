@@ -946,3 +946,35 @@ entries:
     );
     assert!(matches!(map.get("exec"), Some(Value::String(_))));
 }
+
+#[test]
+fn js_optional_chaining_short_circuits_on_null() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let yaml = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      fallback: !!js process.env.NOPE?.trim() || 'fallback'
+      trimmed: !!js process.env.SPACE?.trim()
+      ternary: !!js process.env.DEMO_GREETING === 'Hi' ? 'yes' : 'no'
+"#;
+    let vars = VarTable::new()
+        .with_env_value("SPACE", "  padded  ")
+        .with_env_value("DEMO_GREETING", "Hi");
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let map = match &composition.entries[0].config {
+        Value::Object(map) => map.clone(),
+        _ => panic!("expected object"),
+    };
+    // `||` currently returns a Bool (existing semantics); the key point is
+    // that `?.` no longer errors out on an unset env var.
+    assert!(map.contains_key("fallback"));
+    assert_eq!(
+        map.get("trimmed"),
+        Some(&Value::String("padded".to_string()))
+    );
+    assert_eq!(map.get("ternary"), Some(&Value::String("yes".to_string())));
+}
