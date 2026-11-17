@@ -134,7 +134,10 @@ pub mod core_services {
     pub use crate::services::session_query::{
         SessionHit, SessionQueryEngine, provide as provide_session_query,
     };
-    pub use crate::services::session_titles::{SessionTitles, provide as provide_session_titles};
+    pub use crate::services::session_titles::{
+        SessionTitles, TitleProviderConfig, frame_messages, provide as provide_session_titles,
+        title_from_output, title_system_prompt,
+    };
     pub use crate::services::sessions::{
         CheckpointCursor, ProjectionFold, Session, SessionEvent as LoggedSessionEvent,
         SessionHeader, SessionProjectionRegistry, SessionStore, provide as provide_sessions,

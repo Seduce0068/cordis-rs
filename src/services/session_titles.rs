@@ -85,6 +85,83 @@ impl SessionTitles {
     }
 }
 
+/// Configuration for the LLM-backed all-prompts title provider.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TitleProviderConfig {
+    pub target_words: usize,
+    pub target_cjk_characters: usize,
+}
+
+impl Default for TitleProviderConfig {
+    fn default() -> Self {
+        Self {
+            target_words: 6,
+            target_cjk_characters: 20,
+        }
+    }
+}
+
+/// System instruction for title generation, including stability rules when
+/// an existing title is supplied.
+pub fn title_system_prompt(config: &TitleProviderConfig, has_current_title: bool) -> String {
+    let mut lines = vec![
+        "Create a concise title for an AI coding-assistant session from the supplied human messages.".to_string(),
+        "Return only the title on one line, in plain text of natural language, with no quotes, prefix, explanation, Markdown, XML, or terminal control codes. No code is allowed.".to_string(),
+        "Use the language of the messages.".to_string(),
+        format!(
+            "Aim for about {} words in non-CJK languages or {} CJK characters.",
+            config.target_words, config.target_cjk_characters
+        ),
+        "If the messages give little to name, still return a short best-effort title, such as Greeting, instead of explaining.".to_string(),
+    ];
+    if has_current_title {
+        lines.extend([
+            "An existing title is supplied as currentTitle. If it still accurately describes the main topic or task, return it exactly unchanged.".to_string(),
+            "Follow-up questions, acknowledgements and requests to continue do not by themselves justify a title change.".to_string(),
+            "Do not reword or polish an adequate title; exact wording takes priority over length.".to_string(),
+            "Change the title only when the messages materially change the main topic.".to_string(),
+        ]);
+    }
+    lines.join("\n")
+}
+
+/// Frame human messages as JSON so user text cannot break delimiters.
+pub fn frame_messages(messages: &[String], current_title: Option<&str>) -> String {
+    let rendered: Vec<&str> = messages.iter().map(String::as_str).collect();
+    match current_title {
+        Some(title) => format!(
+            "Update the session title from this JSON object:\n{}",
+            serde_json::json!({ "currentTitle": title, "messages": rendered })
+        ),
+        None => format!(
+            "Generate the session title from this JSON array of human messages:\n{}",
+            serde_json::json!(rendered)
+        ),
+    }
+}
+
+/// Extract a title from model output: first non-empty line, stripping whole
+/// line asterisk emphasis such as `**Title**`.
+pub fn title_from_output(text: &str) -> Option<String> {
+    let line = text.lines().map(str::trim).find(|line| !line.is_empty())?;
+    let stripped = line
+        .strip_prefix("***")
+        .and_then(|value| value.strip_suffix("***"))
+        .or_else(|| {
+            line.strip_prefix("**")
+                .and_then(|value| value.strip_suffix("**"))
+        })
+        .or_else(|| {
+            line.strip_prefix('*')
+                .and_then(|value| value.strip_suffix('*'))
+        });
+    let title = match stripped {
+        Some(inner) if !inner.is_empty() && !inner.contains('*') => inner.to_string(),
+        _ => line.to_string(),
+    };
+    if title.is_empty() { None } else { Some(title) }
+}
+
 pub async fn provide(ctx: &crate::Context) -> Result<SessionTitles> {
     let titles = SessionTitles::new();
     ctx.provide("sessionTitles", titles.clone()).await?;

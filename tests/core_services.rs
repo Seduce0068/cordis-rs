@@ -2076,3 +2076,32 @@ async fn session_titles_keep_generated_and_fallback_titles() {
     assert_eq!(titles.get("s3").as_deref(), Some("trimmed"));
     assert_eq!(titles.list().len(), 2);
 }
+
+#[tokio::test]
+async fn title_provider_frames_messages_and_parses_output() {
+    use cordis_rs::core_services::{
+        TitleProviderConfig, frame_messages, title_from_output, title_system_prompt,
+    };
+
+    let config = TitleProviderConfig::default();
+    let prompt = title_system_prompt(&config, false);
+    assert!(prompt.contains("about 6 words"));
+    assert!(!prompt.contains("currentTitle"));
+    let with_title = title_system_prompt(&config, true);
+    assert!(with_title.contains("currentTitle"));
+
+    let framed = frame_messages(&["hello".to_string(), "world".to_string()], None);
+    assert!(framed.contains("\"hello\""));
+    let updated = frame_messages(&["more".to_string()], Some("Old title"));
+    assert!(updated.contains("\"Old title\""));
+
+    assert_eq!(
+        title_from_output("\n  **My Title**  \nextra").as_deref(),
+        Some("My Title")
+    );
+    assert_eq!(
+        title_from_output("plain title").as_deref(),
+        Some("plain title")
+    );
+    assert!(title_from_output("   \n  ").is_none());
+}
