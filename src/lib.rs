@@ -132,6 +132,9 @@ pub mod core_services {
         PruneError, PrunedText, PrunerConfig, ToolResultPruner, provide as provide_pruner,
     };
     pub use crate::services::retry::{RetryDecision, RetryPolicy, provide as provide_retry};
+    pub use crate::services::schedule::{
+        ScheduleError, ScheduleRecord, ScheduleService, ScheduleStatus, provide as provide_schedule,
+    };
     pub use crate::services::session_query::{
         SessionHit, SessionQueryEngine, provide as provide_session_query,
     };

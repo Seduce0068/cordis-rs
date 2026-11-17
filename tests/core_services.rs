@@ -2143,3 +2143,37 @@ async fn session_title_llm_port_generates_and_stores_title() {
             .unwrap()
     );
 }
+
+#[tokio::test]
+async fn schedule_service_manages_status_and_due_tasks() {
+    use cordis_rs::core_services::{ScheduleError, ScheduleStatus, provide_schedule};
+
+    let ctx = Context::root("schedule");
+    let service = provide_schedule(&ctx).await.unwrap();
+
+    let a = service.create("morning", "check builds", 1000);
+    let b = service.create("evening", "summarize", 5000);
+    assert_eq!(a.status, ScheduleStatus::Active);
+    assert_eq!(service.list().len(), 2);
+
+    // Only the first is due at t=2000.
+    let due = service.due(2000);
+    assert_eq!(due.len(), 1);
+    assert_eq!(due[0].id, a.id);
+
+    // Pausing removes it from due tasks.
+    service.pause(&a.id).unwrap();
+    assert!(service.due(9000).iter().all(|item| item.id != a.id));
+    service.resume(&a.id).unwrap();
+    assert_eq!(service.due(9000).len(), 2);
+
+    service.cancel(&b.id).unwrap();
+    assert_eq!(
+        service.get(&b.id).unwrap().status,
+        ScheduleStatus::Cancelled
+    );
+    assert!(matches!(
+        service.pause("missing"),
+        Err(ScheduleError::NotFound(_))
+    ));
+}
