@@ -805,3 +805,41 @@ entries:
         Some(&Value::String("working-directory".to_string()))
     );
 }
+
+#[test]
+fn js_object_literals_are_evaluated() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let mut vars = VarTable::new();
+    vars.insert("name", Value::String("cordis".to_string()));
+    vars.insert("n", Value::Integer(3));
+
+    let yaml = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      obj: !!js {name: $name, count: $n, ok: true}
+      list: !!js [{id: 1}, {id: 2}]
+"#;
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let map = match &composition.entries[0].config {
+        Value::Object(map) => map.clone(),
+        _ => panic!("expected object"),
+    };
+    let obj = match map.get("obj") {
+        Some(Value::Object(map)) => map.clone(),
+        _ => panic!("expected object literal"),
+    };
+    assert_eq!(obj.get("name"), Some(&Value::String("cordis".to_string())));
+    assert_eq!(obj.get("count"), Some(&Value::Integer(3)));
+    assert_eq!(obj.get("ok"), Some(&Value::Bool(true)));
+
+    let list = match map.get("list") {
+        Some(Value::Array(items)) => items.clone(),
+        _ => panic!("expected array literal"),
+    };
+    assert_eq!(list.len(), 2);
+    assert!(matches!(&list[0], Value::Object(m) if m.get("id") == Some(&Value::Integer(1))));
+}

@@ -1356,6 +1356,33 @@ fn evaluate_expression(
         }
         return Ok(Value::Array(items));
     }
+    if expression.starts_with('{') && expression.ends_with('}') {
+        let inner = &expression[1..expression.len() - 1];
+        let mut map = std::collections::BTreeMap::new();
+        for part in split_flow(inner) {
+            let (raw_key, raw_value) = split_top_level_once(part.trim(), ':').ok_or_else(|| {
+                LoaderError::InvalidExpression {
+                    path: path.to_string(),
+                    expression: expression.to_string(),
+                    reason: format!("invalid object entry {part:?}"),
+                }
+            })?;
+            let key = raw_key
+                .trim()
+                .strip_prefix('"')
+                .and_then(|value| value.strip_suffix('"'))
+                .or_else(|| {
+                    raw_key
+                        .trim()
+                        .strip_prefix('\'')
+                        .and_then(|v| v.strip_suffix('\''))
+                })
+                .unwrap_or_else(|| raw_key.trim())
+                .to_string();
+            map.insert(key, evaluate_expression(raw_value.trim(), vars, path)?);
+        }
+        return Ok(Value::Object(map));
+    }
     Ok(Value::String(expression.to_string()))
 }
 
