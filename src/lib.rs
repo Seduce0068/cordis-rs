@@ -73,6 +73,10 @@ pub mod plugin_ports {
         DEFAULT_REFRESH_INTERVAL_MS, PROJECTION_KEY, PreStepArgs, PreStepDecision,
         TimeContextPlugin, TimeContextPluginConfig, mount as mount_time_context, sample_message,
     };
+    pub use crate::ports::tmux_context::{
+        TMUX_DEFAULT_REFRESH_INTERVAL_MS, TMUX_PROJECTION_KEY, TmuxContextPlugin,
+        TmuxContextPluginConfig, mount as mount_tmux_context, sample_reading, should_sample,
+    };
     pub use crate::ports::tool_bash::{
         BashArgs, DESCRIPTION as BASH_DESCRIPTION, ToolBash, ToolBashConfig, job_handle,
         mount as mount_tool_bash, parse_bash_args,

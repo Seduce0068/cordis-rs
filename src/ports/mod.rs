@@ -48,3 +48,5 @@ pub mod tool_session_list;
 pub mod tool_str_replace_editor;
 
 pub mod time_context;
+
+pub mod tmux_context;

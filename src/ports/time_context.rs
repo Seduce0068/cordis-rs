@@ -2,8 +2,9 @@
 //!
 //! Source: `packages/context/time-context/src/index.ts` (+ timestamp.ts) in
 //! deepseek-ai/deepseek-harness (MIT), read as untrusted reference data.
-//! Registers a `timeContext` session projection and an `agent/pre-step`
-//! listener that injects a timestamp line when the refresh interval elapsed.
+//! Registers a `timeContext` session projection and exposes a pure sampling
+//! helper. The host drives `agent/pre-step` and calls `sample_message`; this
+//! port does not register a listener itself.
 
 use std::sync::Arc;
 
@@ -109,19 +110,18 @@ impl crate::Plugin for TimeContextPlugin {
         );
         // Keep the disposer alive for the fiber lifetime via an effect.
         let ctx_for_effect = ctx.clone();
-        let _ = ctx
-            .effect(move |scope| {
-                let d = disposer.clone();
-                let _c = ctx_for_effect.clone();
-                async move {
-                    scope.on_dispose(move || async move {
-                        let _ = d.dispose().await;
-                        Ok(())
-                    });
+        ctx.effect(move |scope| {
+            let d = disposer.clone();
+            let _c = ctx_for_effect.clone();
+            async move {
+                scope.on_dispose(move || async move {
+                    let _ = d.dispose().await;
                     Ok(())
-                }
-            })
-            .await;
+                });
+                Ok(())
+            }
+        })
+        .await?;
         Ok(())
     }
 }

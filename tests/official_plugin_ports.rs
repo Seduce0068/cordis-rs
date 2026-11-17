@@ -1584,3 +1584,38 @@ async fn time_context_plugin_registers_projection() {
     assert_eq!(view["messages"], 1);
     let _ = Session::new("unused", None);
 }
+
+#[tokio::test]
+async fn tmux_context_projects_samples_and_gates_step_one() {
+    use cordis_rs::core_services::{TmuxContext, provide_agents, provide_sessions};
+    use cordis_rs::plugin_ports::{
+        TmuxContextPluginConfig, mount_tmux_context, sample_reading, should_sample,
+    };
+
+    let ctx = Context::root("tmux-context-port");
+    provide_agents(&ctx).await.unwrap();
+    let (sessions, projections) = provide_sessions(&ctx).await.unwrap();
+    mount_tmux_context(&ctx, TmuxContextPluginConfig::default())
+        .await
+        .unwrap();
+
+    let session = sessions.create(Some("tmux-1".to_string()), None).unwrap();
+    session.append(
+        "user/message",
+        serde_json::json!({
+            "source": { "kind": "tmux-context" },
+            "text": "tmux location (turn 1):\nmain:0"
+        }),
+    );
+    let view = projections.view("tmuxContext", &session).unwrap();
+    assert_eq!(view["samples"], 1);
+
+    let location = cordis_rs::core_services::parse_location(
+        "main\\t0\\tshell\\t1\\t%3\\t1\\t0\\t=,80,24,0,0,0",
+    )
+    .unwrap();
+    let helper = TmuxContext::new();
+    assert!(should_sample(&helper, 1, &location));
+    assert!(!should_sample(&helper, 2, &location));
+    assert!(sample_reading(1, 1, &location, "2026-11-18T05:00:00+09:00").contains("session=main"));
+}
