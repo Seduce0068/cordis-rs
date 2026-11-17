@@ -98,13 +98,25 @@ pub struct SessionStore {
 }
 
 impl SessionStore {
-    pub fn create(&self, id: Option<String>, cwd: Option<String>) -> Session {
+    /// Create a session. An explicitly supplied id must be unique.
+    pub fn create(&self, id: Option<String>, cwd: Option<String>) -> crate::Result<Session> {
         let mut guard = self.state.write().expect("session store poisoned");
-        let id = id.unwrap_or_else(|| format!("session-{}", guard.next_id));
+        let id = id.unwrap_or_else(|| {
+            loop {
+                let candidate = format!("session-{}", guard.next_id);
+                guard.next_id += 1;
+                if !guard.sessions.iter().any(|s| s.id() == candidate) {
+                    return candidate;
+                }
+            }
+        });
+        if guard.sessions.iter().any(|session| session.id() == id) {
+            return Err(crate::Error::DuplicateSession(id));
+        }
         guard.next_id += 1;
         let session = Session::new(id, cwd);
         guard.sessions.push(session.clone());
-        session
+        Ok(session)
     }
 
     pub fn get(&self, id: &str) -> Option<Session> {
@@ -125,17 +137,31 @@ impl SessionStore {
             .clone()
     }
 
-    /// Fork a session up to a boundary sequence, mirroring upstream `fork`.
-    pub fn fork(&self, source: &Session, boundary: u64, id: Option<String>) -> Session {
-        let forked = self.create(id, source.cwd().map(str::to_string));
-        for event in source
-            .events()
-            .into_iter()
-            .filter(|event| event.seq <= boundary)
+    /// Fork a session up to an inclusive boundary sequence (1-based locally).
+    pub fn fork(
+        &self,
+        source: &Session,
+        boundary: u64,
+        id: Option<String>,
+    ) -> crate::Result<Session> {
+        let events = source.events();
+        if boundary > events.len() as u64 || boundary == 0 {
+            return Err(crate::Error::InvalidBoundary {
+                session_id: source.id().to_string(),
+                boundary,
+                reason: format!("boundary must be between 1 and {}", events.len()),
+            });
+        }
+        if let Some(child_id) = &id
+            && self.get(child_id).is_some()
         {
+            return Err(crate::Error::DuplicateSession(child_id.clone()));
+        }
+        let forked = self.create(id, source.cwd().map(str::to_string))?;
+        for event in events.into_iter().filter(|event| event.seq <= boundary) {
             forked.append(event.event_type, event.data);
         }
-        forked
+        Ok(forked)
     }
 }
 

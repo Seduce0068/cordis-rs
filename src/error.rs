@@ -17,6 +17,16 @@ pub enum Error {
     #[error("plugin `{0}` failed: {1}")]
     Plugin(String, String),
 
+    #[error("session `{0}` already exists")]
+    DuplicateSession(String),
+
+    #[error("invalid fork boundary {boundary} for session `{session_id}`: {reason}")]
+    InvalidBoundary {
+        session_id: String,
+        boundary: u64,
+        reason: String,
+    },
+
     #[error("{0}")]
     Other(String),
 }

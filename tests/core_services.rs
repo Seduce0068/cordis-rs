@@ -134,7 +134,9 @@ async fn session_store_appends_and_projections_fold() {
         .await
         .unwrap();
 
-    let session = sessions.create(Some("s1".to_string()), Some("/tmp".to_string()));
+    let session = sessions
+        .create(Some("s1".to_string()), Some("/tmp".to_string()))
+        .unwrap();
     assert_eq!(session.id(), "s1");
     assert_eq!(session.cwd(), Some("/tmp"));
     assert!(sessions.get("s1").is_some());
@@ -161,7 +163,7 @@ async fn session_store_appends_and_projections_fold() {
         Some(serde_json::json!(2))
     );
 
-    let forked = sessions.fork(&session, 2, Some("s2".to_string()));
+    let forked = sessions.fork(&session, 2, Some("s2".to_string())).unwrap();
     assert_eq!(forked.seq(), 2);
     assert_eq!(
         projections.view("count", &forked),
@@ -1832,7 +1834,9 @@ async fn command_compact_port_compacts_active_session() {
     let ctx = Context::root("command-compact-port");
     let commands: CommandRegistry = provide_commands(&ctx).await.unwrap();
     let (sessions, _) = provide_sessions(&ctx).await.unwrap();
-    let session = sessions.create(Some("compact-cmd".to_string()), None);
+    let session = sessions
+        .create(Some("compact-cmd".to_string()), None)
+        .unwrap();
     session.append(
         "user/message",
         serde_json::json!({ "text": "keep this line" }),
@@ -2754,4 +2758,46 @@ async fn tool_goal_registers_three_tools_with_cas() {
             .await
             .is_err()
     );
+}
+
+#[tokio::test]
+async fn session_store_rejects_duplicate_ids_and_invalid_forks() {
+    use cordis_rs::Error;
+    use cordis_rs::core_services::provide_sessions;
+
+    let ctx = Context::root("session-validation");
+    let (store, _) = provide_sessions(&ctx).await.unwrap();
+
+    let first = store.create(Some("dup".to_string()), None).unwrap();
+    assert!(matches!(
+        store.create(Some("dup".to_string()), None),
+        Err(Error::DuplicateSession(_))
+    ));
+    assert_eq!(store.list().len(), 1);
+    assert_eq!(store.get("dup").unwrap().id(), first.id());
+
+    first.append("a", serde_json::json!({}));
+    first.append("b", serde_json::json!({}));
+    first.append("c", serde_json::json!({}));
+
+    // Boundary beyond the event count is rejected (local seq is 1-based).
+    assert!(matches!(
+        store.fork(&first, 99, Some("child-a".to_string())),
+        Err(Error::InvalidBoundary { .. })
+    ));
+    // Zero boundary is invalid.
+    assert!(matches!(
+        store.fork(&first, 0, Some("child-b".to_string())),
+        Err(Error::InvalidBoundary { .. })
+    ));
+    // An existing child id is rejected.
+    assert!(matches!(
+        store.fork(&first, 2, Some("dup".to_string())),
+        Err(Error::DuplicateSession(_))
+    ));
+
+    // Inclusive boundary copies only the first two events.
+    let forked = store.fork(&first, 2, Some("child-ok".to_string())).unwrap();
+    assert_eq!(forked.seq(), 2);
+    assert_eq!(forked.events().len(), 2);
 }
