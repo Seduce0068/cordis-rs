@@ -72,6 +72,19 @@ pub struct FiberInner {
     inject: Vec<String>,
     state: Mutex<Lifecycle>,
     guard: AsyncMutex<()>,
+    /// Set before disposing effects so a dependent-drain refresh skips this
+    /// fiber instead of deadlocking on its own guard (team review finding).
+    retiring: std::sync::atomic::AtomicBool,
+}
+
+impl FiberInner {
+    pub(crate) fn is_retiring(&self) -> bool {
+        self.retiring.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    pub(crate) fn injects(&self, name: &str) -> bool {
+        self.inject.iter().any(|item| item == name)
+    }
 }
 
 #[derive(Clone)]
@@ -99,6 +112,7 @@ impl Fiber {
             inject,
             state: Mutex::new(Lifecycle::Pending),
             guard: AsyncMutex::new(()),
+            retiring: std::sync::atomic::AtomicBool::new(false),
         }));
         ctx.register_fiber(&fiber.0);
         fiber.refresh().await?;
@@ -127,6 +141,9 @@ impl Fiber {
         let state = self.state();
 
         if state == Lifecycle::Active && !resolved {
+            self.0
+                .retiring
+                .store(true, std::sync::atomic::Ordering::SeqCst);
             self.0.ctx.set_lifecycle(Lifecycle::Unloading);
             self.0.ctx.dispose_effects().await?;
             *self.0.state.lock().expect("fiber state poisoned") = Lifecycle::Pending;
@@ -151,6 +168,9 @@ impl Fiber {
 
     /// Unload the fiber and dispose every effect it registered.
     pub async fn unload(&self) -> Result<()> {
+        self.0
+            .retiring
+            .store(true, std::sync::atomic::Ordering::SeqCst);
         let _guard = self.0.guard.lock().await;
         if self.state() == Lifecycle::Unloaded {
             return Ok(());

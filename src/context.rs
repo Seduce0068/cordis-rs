@@ -247,7 +247,7 @@ impl Context {
         let disposer = Disposer::new(move || {
             let ctx = disposer_ctx.clone();
             let name = disposer_name.clone();
-            async move { ctx.remove_service(&name) }
+            async move { ctx.remove_service_async(&name).await }
         });
         self.inner
             .effects
@@ -264,6 +264,19 @@ impl Context {
             .expect("service registry poisoned")
             .remove(name);
         self.notify_fibers();
+        Ok(())
+    }
+
+    /// Two-phase removal: drop the service from lookup, drain dependent
+    /// fibers, then drop the remaining value. Prevents teardown races where a
+    /// provider service disappears while its dependents are still running.
+    pub async fn remove_service_async(&self, name: &str) -> Result<()> {
+        self.inner
+            .services
+            .write()
+            .expect("service registry poisoned")
+            .remove(name);
+        self.drain_dependent_fibers(name).await;
         Ok(())
     }
 
@@ -286,18 +299,19 @@ impl Context {
     /// Re-evaluate every mounted fiber. Upstream's `reflect.notify()` is
     /// notification-driven rather than polling; spawning the refresh keeps
     /// service registration non-blocking.
+    fn dependent_fibers(&self) -> Vec<std::sync::Weak<FiberInner>> {
+        let mut guard = self
+            .root_context()
+            .inner
+            .fibers
+            .write()
+            .expect("fiber registry poisoned");
+        guard.retain(|weak| weak.strong_count() > 0);
+        guard.clone()
+    }
+
     pub(crate) fn notify_fibers(&self) {
-        let fibers: Vec<std::sync::Weak<FiberInner>> = {
-            let mut guard = self
-                .root_context()
-                .inner
-                .fibers
-                .write()
-                .expect("fiber registry poisoned");
-            guard.retain(|weak| weak.strong_count() > 0);
-            guard.clone()
-        };
-        for weak in fibers {
+        for weak in self.dependent_fibers() {
             if let Some(fiber) = weak.upgrade() {
                 let fiber = crate::plugin::Fiber::from_inner(fiber);
                 tokio::spawn(async move {
@@ -305,6 +319,22 @@ impl Context {
                 });
             }
         }
+    }
+
+    /// Notify fibers that inject `name` and await their refresh, so callers
+    /// can drain dependents before removing a service they depend on.
+    /// Fibers already retiring are skipped to avoid a self-deadlock.
+    pub(crate) async fn drain_dependent_fibers(&self, name: &str) {
+        use futures::future::join_all;
+        let tasks: Vec<_> = self
+            .dependent_fibers()
+            .into_iter()
+            .filter_map(|weak| weak.upgrade())
+            .filter(|inner| inner.injects(name) && !inner.is_retiring())
+            .map(crate::plugin::Fiber::from_inner)
+            .map(|fiber| async move { fiber.refresh().await })
+            .collect();
+        let _ = join_all(tasks).await;
     }
 
     pub fn get_untyped(&self, name: &str) -> Option<Arc<dyn Any + Send + Sync>> {
