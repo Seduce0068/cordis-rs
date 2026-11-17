@@ -127,20 +127,22 @@ impl EffectScope {
     }
 
     /// Register a service that is removed when this effect is disposed.
-    pub async fn provide<T>(&self, name: impl Into<String>, service: T) -> Result<()>
+    pub async fn provide<T>(&self, name: impl Into<String>, service: T) -> Result<Disposer>
     where
         T: Any + Send + Sync,
     {
         let ctx = self.ctx.clone();
         let name = name.into();
-        let cleanup_ctx = ctx.clone();
-        let cleanup_name = name.clone();
+        let disposer = ctx.provide(name, service).await?;
+        let cleanup = disposer.clone();
         self.on_dispose(move || {
-            let ctx = cleanup_ctx.clone();
-            let name = cleanup_name.clone();
-            async move { ctx.remove_service(&name) }
+            let cleanup = cleanup.clone();
+            async move {
+                cleanup.dispose().await?;
+                Ok(())
+            }
         });
-        ctx.provide(name, service).await
+        Ok(disposer)
     }
 }
 
@@ -219,7 +221,10 @@ impl Context {
         self.inner.effects.clone()
     }
 
-    pub async fn provide<T>(&self, name: impl Into<String>, service: T) -> Result<()>
+    /// Register a service and return a disposer. The disposer is also pushed
+    /// onto this context's effect list, so a fiber unload removes the service
+    /// even when the caller discards the returned value (upstream semantics).
+    pub async fn provide<T>(&self, name: impl Into<String>, service: T) -> Result<Disposer>
     where
         T: Any + Send + Sync,
     {
@@ -236,7 +241,20 @@ impl Context {
         drop(services);
         self.inner.service_added.notify_waiters();
         self.notify_fibers();
-        Ok(())
+
+        let disposer_ctx = self.clone();
+        let disposer_name = name.clone();
+        let disposer = Disposer::new(move || {
+            let ctx = disposer_ctx.clone();
+            let name = disposer_name.clone();
+            async move { ctx.remove_service(&name) }
+        });
+        self.inner
+            .effects
+            .lock()
+            .expect("effect list poisoned")
+            .push(disposer.clone());
+        Ok(disposer)
     }
 
     pub fn remove_service(&self, name: &str) -> Result<()> {

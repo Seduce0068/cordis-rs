@@ -176,8 +176,11 @@ impl Plugin for Greeter {
 
     async fn apply(&self, ctx: &Context) -> Result<()> {
         self.applied.store(true, Ordering::SeqCst);
-        ctx.effect(|scope| async move { scope.provide("greeting", "hello".to_string()).await })
-            .await
+        ctx.effect(|scope| async move {
+            scope.provide("greeting", "hello".to_string()).await?;
+            Ok(())
+        })
+        .await
     }
 }
 
@@ -257,4 +260,26 @@ async fn serial_treats_false_as_non_bail_like_upstream() {
         Box::pin(async { Some(true) }) as cordis_rs::events::BoxFuture<'static, Option<bool>>
     });
     assert_eq!(serial.serial(&ctx, 1).await, Some(true));
+}
+
+#[tokio::test]
+async fn fiber_unload_removes_service_provided_by_plugin() {
+    use cordis_rs::{Context, Fiber, FunctionPlugin, Lifecycle};
+
+    let ctx = Context::root("provide-unload");
+    let plugin = FunctionPlugin::new("svc-provider", |ctx: &Context| {
+        let ctx = ctx.clone();
+        async move {
+            ctx.provide("feature", 42u32).await?;
+            Ok(())
+        }
+    });
+    let fiber = Fiber::mount(&ctx, Box::new(plugin)).await.unwrap();
+
+    assert_eq!(fiber.state(), Lifecycle::Active);
+    assert_eq!(*fiber.context().get::<u32>("feature").unwrap(), 42);
+
+    fiber.unload().await.unwrap();
+    assert_eq!(fiber.state(), Lifecycle::Unloaded);
+    assert!(fiber.context().get::<u32>("feature").is_none());
 }
