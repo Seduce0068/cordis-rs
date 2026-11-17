@@ -32,19 +32,30 @@ DSH を GPUI で再実装するにあたり、最大の障壁はプラグイン�
 
 - JS Proxy による `ctx.foo` アクセスは `ctx.get::<T>()` / `require()` に置換。
 - `serial` / `bail` は `Option<R>` 戻り値。`Some(false)` のみ upstream と異なる。
-- Schemastery 完全互換、YAML Loader の `!!js` 式評価、HMR は対象外。
+- Schemastery の完全な DSL とファイル監視 HMR は対象外。Config 検証と
+  YAML Loader は独自実装し、`!!js` は変数・補間・比較・算術・論理・三項・
+  member access・配列／オブジェクト／テンプレートリテラルをサポート
+  （任意の JavaScript 評価は行わない）。
 - 軽量 YAML パーサは依存追加を避けるため自作（serde_yaml は deprecated、
   yaml-rust2 は保守中だが Cargo.toml 凍結方針のため不採用）。
 
 ## 結果
 
-- 全 31 テスト通過、CI green。
-- `dsh-command-compact` / `dsh-command-goal` / `dsh-tool-todo` /
-  `dsh-command-feedback` を移植。
-- `ctx.tools` / `ctx.sessions` / `ctx.commands` のコアサービスを提供。
-- GPUI 側で `todos` projection を描画する経路を確立。
+- 全 74 テスト通過、CI green（licensed `v0.1.0` 〜 `v0.49.0`）。
+- コアサービス 25 個を提供（`tools` / `sessions` / `llm` / `agentLoop` /
+  `fs` / `jobs` / `shell` / `goals` / `systemPrompt` / `compaction` /
+  `approval` / `storage` / `agents` / `otel` ほか）。
+- 再利用 port 13 個を移植（tool-fs / tool-bash / tool-todo / tool-subagent /
+  skill-filesystem / message-feedback / session-persistence-jsonl /
+  llm-deepseek / feedback-producer ほか）。
+- 上流 `snapshots/sdk/text-turn/cordis.yml` の 6 エントリすべてを
+  Rust ランタイムで読み込み・mount する経路を確立。
+- GPUI 側で todo / fs / agent / prompt / 実 composition / plugin トグル /
+  ACP ストリームを描画。
 
 ## 未対応
 
-`ctx.llm` / `ctx.agentLoop` の完全実装、公式プラグイン 332 個の全移植、
-`!!js` 式評価、HMR。
+- 公式プラグイン 332 個の全移植（現状は 13 port）。
+- Schemastery DSL の完全互換とファイル監視 HMR。
+- OTLP 実送信（`ctx.otel` は in-memory レコードのみ）。
+- モデル側残高不足により ACP ストリーミング本文の実描画は未検証。
