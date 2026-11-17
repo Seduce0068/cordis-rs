@@ -1940,3 +1940,51 @@ async fn tool_pipeline_retries_retryable_errors() {
     assert_eq!(output.rendered, ["ok"]);
     assert_eq!(calls.load(AtomicOrdering::SeqCst), 2);
 }
+
+#[tokio::test]
+async fn agent_loop_retries_retryable_llm_errors() {
+    use std::sync::Arc as StdArc;
+    use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+
+    use cordis_rs::core_services::{
+        AgentLoop, LlmRequest, RetryPolicy, StreamChunk, provide_llm, provide_tools,
+    };
+
+    let ctx = Context::root("agent-llm-retry");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let llm = provide_llm(&ctx).await.unwrap();
+
+    let attempts = StdArc::new(AtomicUsize::new(0));
+    let counter = attempts.clone();
+    let provider = cordis_rs::core_services::from_async_text(
+        "flaky",
+        "flaky-1",
+        move |_request: LlmRequest| {
+            let counter = counter.clone();
+            async move {
+                if counter.fetch_add(1, AtomicOrdering::SeqCst) == 0 {
+                    Err("HTTP 429 rate limited".to_string())
+                } else {
+                    Ok::<_, String>("done".to_string())
+                }
+            }
+        },
+    );
+    let _p = llm.register(provider);
+    llm.set_default("flaky");
+
+    let policy = RetryPolicy {
+        max_retries: 2,
+        initial_delay_ms: 1,
+        max_delay_ms: 1,
+        ..Default::default()
+    };
+    let loop_ = AgentLoop::new(llm, tools)
+        .with_retry(policy)
+        .with_call_parser(StdArc::new(|_text: &str| Vec::new()));
+    let run = loop_.run("go").await.unwrap();
+    assert_eq!(run.final_text, "done");
+    assert_eq!(attempts.load(AtomicOrdering::SeqCst), 2);
+
+    let _ = StreamChunk::Done;
+}

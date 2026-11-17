@@ -49,6 +49,9 @@ pub struct LlmRequest {
 #[derive(Debug, Clone, PartialEq)]
 pub enum StreamChunk {
     Text(String),
+    /// Provider-side failure (e.g. `HTTP 429 rate limited`). `LlmService::stream`
+    /// turns this into an `Error::Other` so retry policies can inspect it.
+    Error(String),
     Done,
 }
 
@@ -173,6 +176,9 @@ impl LlmService {
         while let Some(chunk) = stream.next().await {
             match chunk {
                 StreamChunk::Text(part) => text.push_str(&part),
+                StreamChunk::Error(message) => {
+                    return Err(crate::Error::Other(message));
+                }
                 StreamChunk::Done => break,
             }
         }
@@ -201,7 +207,7 @@ where
             futures::stream::once(async move {
                 match future.await {
                     Ok(text) => StreamChunk::Text(text),
-                    Err(error) => StreamChunk::Text(format!("error: {error}")),
+                    Err(error) => StreamChunk::Error(error),
                 }
             })
             .boxed()

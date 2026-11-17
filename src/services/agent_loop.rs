@@ -69,6 +69,7 @@ pub struct AgentLoop {
     system_prompt: Option<crate::services::system_prompt::SystemPrompt>,
     goals: Option<crate::services::goals::GoalStore>,
     compaction: Option<crate::services::compaction::CompactionEngine>,
+    retry: Option<crate::services::retry::RetryPolicy>,
 }
 
 impl AgentLoop {
@@ -84,6 +85,7 @@ impl AgentLoop {
             system_prompt: None,
             goals: None,
             compaction: None,
+            retry: None,
         }
     }
 
@@ -123,6 +125,12 @@ impl AgentLoop {
         self
     }
 
+    /// Retry LLM requests on retryable provider errors.
+    pub fn with_retry(mut self, retry: crate::services::retry::RetryPolicy) -> Self {
+        self.retry = Some(retry);
+        self
+    }
+
     /// Run automatic pressure compaction before each step.
     pub fn with_compaction(
         mut self,
@@ -145,6 +153,7 @@ impl AgentLoop {
         let mut messages = Vec::new();
         let mut steps = Vec::new();
         let mut final_text = String::new();
+        let mut retry_attempt = 0u32;
 
         // Assemble the system prompt with the live goal as a variable.
         if let Some(system_prompt) = &self.system_prompt {
@@ -183,7 +192,32 @@ impl AgentLoop {
                 model: self.model.clone().unwrap_or_default(),
                 messages: messages.clone(),
             };
-            let response = self.llm.stream(self.model.as_deref(), request).await?;
+            let response = loop {
+                match self
+                    .llm
+                    .stream(self.model.as_deref(), request.clone())
+                    .await
+                {
+                    Ok(value) => break value,
+                    Err(error) => {
+                        let decision = self
+                            .retry
+                            .as_ref()
+                            .map(|policy| policy.should_retry_error(&error, retry_attempt))
+                            .unwrap_or(crate::services::retry::RetryDecision::Stop);
+                        if decision == crate::services::retry::RetryDecision::Stop {
+                            return Err(error);
+                        }
+                        let delay = self
+                            .retry
+                            .as_ref()
+                            .map(|policy| policy.backoff_ms(retry_attempt + 1, 0.5))
+                            .unwrap_or(0);
+                        tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
+                        retry_attempt += 1;
+                    }
+                }
+            };
             let calls = (self.parse_calls)(&response.text);
             final_text = response.text.clone();
             messages.push(ChatMessage::assistant(response.text.clone()));
