@@ -2554,3 +2554,26 @@ async fn workspace_file_search_indexes_and_filters() {
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[tokio::test]
+async fn harness_dev_context_injects_runtime_values() {
+    use cordis_rs::core_services::AssembleContext;
+    use cordis_rs::plugin_ports::{
+        HARNESS_SOURCE_KEY, WEB_GUI_URL_KEY, harness_context_value, with_harness_context,
+    };
+
+    let context = with_harness_context(
+        AssembleContext::default(),
+        "/opt/dsh",
+        "https://example.ts.net:8445/",
+    );
+    assert_eq!(
+        harness_context_value(&context, HARNESS_SOURCE_KEY),
+        Some("/opt/dsh")
+    );
+    assert_eq!(
+        harness_context_value(&context, WEB_GUI_URL_KEY),
+        Some("https://example.ts.net:8445/")
+    );
+    assert!(harness_context_value(&context, "missing").is_none());
+}

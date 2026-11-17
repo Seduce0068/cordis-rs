@@ -36,3 +36,5 @@ pub mod tool_schedule;
 pub mod tool_exit_plan_mode;
 
 pub mod agent_instructions;
+
+pub mod harness_dev_context;
