@@ -1687,3 +1687,66 @@ async fn tool_jobs_registers_three_tools_and_kill_two_branches() {
         .unwrap();
     assert_eq!(empty.rendered[0], "(no background jobs)");
 }
+
+#[tokio::test]
+async fn timeout_policy_converts_only_own_timer_to_structured_result() {
+    use cordis_rs::core_services::{ToolDefinition, ToolError, ToolOutput, provide_tools};
+    use cordis_rs::plugin_ports::{
+        TOOL_TIMEOUT_CODE, TimeoutPolicyPluginConfig, mount_timeout_policy, timeout_output,
+    };
+    use std::sync::Arc;
+
+    let structured = timeout_output(&cordis_rs::core_services::tool_timeout_result(50));
+    assert_eq!(structured.content["code"], TOOL_TIMEOUT_CODE);
+    assert_eq!(structured.content["timed_out"], true);
+
+    let ctx = Context::root("timeout-policy-port");
+    let (registry, pipeline) = provide_tools(&ctx).await.unwrap();
+    mount_timeout_policy(
+        &ctx,
+        TimeoutPolicyPluginConfig {
+            default_timeout_ms: Some(30),
+        },
+    )
+    .await
+    .unwrap();
+
+    let slow = Arc::new(
+        move |_args: serde_json::Value, _exec: cordis_rs::core_services::ToolExecContext| {
+            Box::pin(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                Ok(ToolOutput::text("done")) as Result<ToolOutput, ToolError>
+            }) as cordis_rs::events::BoxFuture<'static, Result<ToolOutput, ToolError>>
+        },
+    );
+    let fast = Arc::new(
+        move |_args: serde_json::Value, _exec: cordis_rs::core_services::ToolExecContext| {
+            Box::pin(async move { Ok(ToolOutput::text("done")) as Result<ToolOutput, ToolError> })
+                as cordis_rs::events::BoxFuture<'static, Result<ToolOutput, ToolError>>
+        },
+    );
+    let _slow_d = registry.register(ToolDefinition::new("slow", "slow", slow));
+    let _fast_d = registry.register(ToolDefinition::new("fast", "fast", fast));
+
+    let slow_result = pipeline
+        .run(
+            &registry,
+            "slow",
+            serde_json::json!({}),
+            cordis_rs::core_services::ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(slow_result.content["code"], TOOL_TIMEOUT_CODE);
+
+    let fast_result = pipeline
+        .run(
+            &registry,
+            "fast",
+            serde_json::json!({}),
+            cordis_rs::core_services::ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap();
+    assert_eq!(fast_result.rendered[0], "done");
+}

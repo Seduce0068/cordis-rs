@@ -73,6 +73,10 @@ pub mod plugin_ports {
         DEFAULT_REFRESH_INTERVAL_MS, PROJECTION_KEY, PreStepArgs, PreStepDecision,
         TimeContextPlugin, TimeContextPluginConfig, mount as mount_time_context, sample_message,
     };
+    pub use crate::ports::timeout_policy::{
+        POLICY_NAME, TOOL_TIMEOUT_CODE, TimeoutPolicyPlugin, TimeoutPolicyPluginConfig,
+        evaluate as evaluate_tool_timeout, mount as mount_timeout_policy, timeout_output,
+    };
     pub use crate::ports::tmux_context::{
         TMUX_DEFAULT_REFRESH_INTERVAL_MS, TMUX_PROJECTION_KEY, TmuxContextPlugin,
         TmuxContextPluginConfig, mount as mount_tmux_context, sample_reading, should_sample,
