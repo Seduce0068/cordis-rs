@@ -21,3 +21,5 @@ jobs:
     uses: Seduce0068/workflows/.github/workflows/rust-gates.yml@v1
     with:
       clippy_args: -A clippy::type_complexity
+      extra_gates: |
+        bash scripts/smoke-examples.sh
