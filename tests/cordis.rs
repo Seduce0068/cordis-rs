@@ -231,3 +231,30 @@ async fn function_plugin_mounts_without_inject() {
     fiber.unload().await.unwrap();
     assert_eq!(fiber.state(), Lifecycle::Unloaded);
 }
+
+#[test]
+fn bail_treats_false_as_non_bail_like_upstream() {
+    let ctx = Context::root("bail-false");
+    let bail: Event<u32, bool> = Event::new("bail-false");
+    let _false = bail.on_bail(&ctx, |_args| Some(false));
+    let _true = bail.on_bail(&ctx, |_args| Some(true));
+    // `false` is skipped, so the chain continues to the `true` listener.
+    assert_eq!(bail.bail(&ctx, 1), Some(true));
+
+    let only_false: Event<u32, bool> = Event::new("only-false");
+    let _false = only_false.on_bail(&ctx, |_args| Some(false));
+    assert_eq!(only_false.bail(&ctx, 1), None);
+}
+
+#[tokio::test]
+async fn serial_treats_false_as_non_bail_like_upstream() {
+    let ctx = Context::root("serial-false");
+    let serial: Event<u32, bool> = Event::new("serial-false");
+    let _false = serial.on_serial(&ctx, |_args| {
+        Box::pin(async { Some(false) }) as cordis_rs::events::BoxFuture<'static, Option<bool>>
+    });
+    let _true = serial.on_serial(&ctx, |_args| {
+        Box::pin(async { Some(true) }) as cordis_rs::events::BoxFuture<'static, Option<bool>>
+    });
+    assert_eq!(serial.serial(&ctx, 1).await, Some(true));
+}

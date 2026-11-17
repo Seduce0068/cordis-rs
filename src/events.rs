@@ -14,7 +14,7 @@
 //! In upstream, `isBailed(v) = v !== null && v !== false && v !== undefined`.
 //! This crate uses `Option<R>`: `None` is a non-bail, `Some(value)` bails.
 //! `Some(0)` / `Some(String::new())` therefore bail, matching upstream.
-//! `Some(false)` is the one divergence (upstream `false` does not bail).
+//! `Some(false)` is detected via `Any` downcast and treated as non-bail.
 
 use crate::error::Result;
 
@@ -210,13 +210,21 @@ where
         })
     }
 
+    /// Upstream's `false` is a non-bail value; detect it generically via Any.
+    fn is_bail_value(value: &R) -> bool {
+        let any = value as &dyn std::any::Any;
+        !matches!(any.downcast_ref::<bool>(), Some(false))
+    }
+
     /// Await serial listeners in registration order, stopping at the first bail.
     pub async fn serial(&self, ctx: &Context, args: A) -> Option<R> {
         let listeners: Vec<SerialListener<A, R>> = ctx
             .event_registry()
             .snapshot(self.key::<SerialListener<A, R>>());
         for listener in listeners {
-            if let Some(value) = listener(args.clone()).await {
+            if let Some(value) = listener(args.clone()).await
+                && Self::is_bail_value(&value)
+            {
                 return Some(value);
             }
         }
@@ -245,7 +253,9 @@ where
             .event_registry()
             .snapshot(self.key::<BailListener<A, R>>());
         for listener in listeners {
-            if let Some(value) = listener(args.clone()) {
+            if let Some(value) = listener(args.clone())
+                && Self::is_bail_value(&value)
+            {
                 return Some(value);
             }
         }
