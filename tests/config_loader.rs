@@ -843,3 +843,37 @@ entries:
     assert_eq!(list.len(), 2);
     assert!(matches!(&list[0], Value::Object(m) if m.get("id") == Some(&Value::Integer(1))));
 }
+
+#[test]
+fn js_template_literals_interpolate_variables() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let mut vars = VarTable::new();
+    vars.insert("home", Value::String("/home/user".to_string()));
+    vars.insert("n", Value::Integer(3));
+
+    let yaml = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      path: !!js `${home}/sessions`
+      mixed: !!js `run ${n}`
+      plain: !!js `no interpolation`
+"#;
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    let map = match &composition.entries[0].config {
+        Value::Object(map) => map.clone(),
+        _ => panic!("expected object"),
+    };
+    assert_eq!(
+        map.get("path"),
+        Some(&Value::String("/home/user/sessions".to_string()))
+    );
+    assert_eq!(map.get("mixed"), Some(&Value::String("run 3".to_string())));
+    assert_eq!(
+        map.get("plain"),
+        Some(&Value::String("no interpolation".to_string()))
+    );
+}

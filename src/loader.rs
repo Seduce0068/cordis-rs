@@ -1283,6 +1283,12 @@ fn evaluate_expression(
     }
 
     // `${name}` interpolation: replace every occurrence with a textual form.
+    // Backtick template literals: strip the ticks and interpolate ${name}.
+    if expression.starts_with('`') && expression.ends_with('`') && expression.len() >= 2 {
+        let inner = &expression[1..expression.len() - 1];
+        return evaluate_expression(inner, vars, path);
+    }
+
     if expression.contains("${") {
         let mut rendered = String::new();
         let mut rest = expression;
