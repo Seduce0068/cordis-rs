@@ -87,6 +87,9 @@ pub mod core_services {
     pub use crate::services::agent_loop::{
         AgentLoop, AgentRun, AgentStep, CallParser, CheckpointHook, ToolCall,
     };
+    pub use crate::services::agents::{
+        AgentError, AgentFactory, AgentRecord, AgentRegistry, provide as provide_agents,
+    };
     pub use crate::services::approval::{
         Answerer, ApprovalDecision, ApprovalError, ApprovalOutcome, ApprovalRequest,
         ApprovalService, provide as provide_approval, require_approval,

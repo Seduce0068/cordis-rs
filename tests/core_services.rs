@@ -1619,3 +1619,48 @@ async fn storage_hub_validates_domains_and_routes_backends() {
         Err(StorageError::UnknownBackend(_))
     ));
 }
+
+#[tokio::test]
+async fn agent_registry_creates_and_lists_agents() {
+    use std::sync::Arc as StdArc;
+
+    use cordis_rs::core_services::{AgentError, AgentRecord, provide_agents};
+
+    let ctx = Context::root("agents");
+    let registry = provide_agents(&ctx).await.unwrap();
+
+    let _factory = registry.register_factory(
+        "demo",
+        StdArc::new(|id| {
+            Ok(AgentRecord {
+                id: id.to_string(),
+                session_id: String::new(),
+                cwd: Some("/tmp".to_string()),
+            })
+        }),
+    );
+
+    let agent = registry.create("demo", "a-1").unwrap();
+    assert_eq!(agent.id, "a-1");
+    assert_eq!(agent.session_id, "a-1"); // 1:1 with session
+    assert_eq!(agent.cwd.as_deref(), Some("/tmp"));
+
+    assert!(matches!(
+        registry.create("demo", "a-1"),
+        Err(AgentError::Duplicate(_))
+    ));
+    assert!(matches!(
+        registry.create("unknown", "a-2"),
+        Err(AgentError::UnknownFactory(_))
+    ));
+
+    let direct = AgentRecord {
+        id: "a-2".to_string(),
+        session_id: "a-2".to_string(),
+        cwd: None,
+    };
+    let _disposer = registry.register(direct).unwrap();
+    assert_eq!(registry.list().len(), 2);
+    assert!(registry.get("a-1").is_some());
+    assert!(registry.get("missing").is_none());
+}
