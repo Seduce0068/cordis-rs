@@ -2421,3 +2421,60 @@ async fn session_stats_folds_steps_tools_and_clears_pending() {
 
     let _ = Session::new("unused", None);
 }
+
+#[tokio::test]
+async fn session_log_deepseek_builds_incremental_field_and_watermark() {
+    use cordis_rs::core_services::provide_sessions;
+    use cordis_rs::plugin_ports::{
+        SessionLogConfig, WATERMARK_EVENT, accepted_seq, fitting_prefix, prepare_field,
+    };
+
+    let ctx = Context::root("session-log-port");
+    let (sessions, _) = provide_sessions(&ctx).await.unwrap();
+    let session = sessions.create(Some("log-1".to_string()), None).unwrap();
+    for index in 1..=5 {
+        session.append(
+            "user/message",
+            serde_json::json!({ "text": format!("m{index}") }),
+        );
+    }
+
+    let request = serde_json::json!({ "sessionId": "log-1" });
+    let prepared = prepare_field(&sessions, &request, &SessionLogConfig::default())
+        .unwrap()
+        .unwrap();
+    assert_eq!(prepared.value["events"].as_array().unwrap().len(), 5);
+    assert_eq!(prepared.value["afterSeq"], 0);
+    assert_eq!(prepared.value["throughSeq"], 5);
+
+    // Accept appends a watermark; next prepare starts after it.
+    prepared.accept.as_ref().unwrap()().unwrap();
+    let next = prepare_field(&sessions, &request, &SessionLogConfig::default()).unwrap();
+    assert!(next.is_none(), "no new events after watermark");
+
+    let watermark_events = session
+        .events()
+        .into_iter()
+        .map(|event| {
+            serde_json::json!({
+                "type": event.event_type,
+                "version": event.data.get("version").cloned().unwrap_or(serde_json::Value::Null),
+                "last_seq": event.data.get("last_seq").cloned().unwrap_or(serde_json::Value::Null),
+            })
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(accepted_seq(&watermark_events), 5);
+
+    // Tight budget keeps only a whole-event prefix (no byte slicing).
+    let (events, through) = fitting_prefix(&sessions, "log-1", 0, 120).unwrap();
+    assert!(!events.is_empty() && events.len() < 5);
+    assert!((1..=5).contains(&through));
+
+    // Foreign watermark generation is ignored.
+    assert_eq!(
+        accepted_seq(&[serde_json::json!({
+            "type": WATERMARK_EVENT, "version": 2, "last_seq": 99
+        })]),
+        0
+    );
+}

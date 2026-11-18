@@ -72,3 +72,5 @@ pub mod deepseek_llm_api_extensions;
 pub mod session_title_first_prompt_llm;
 
 pub mod session_stats;
+
+pub mod session_log_deepseek;

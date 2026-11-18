@@ -98,6 +98,10 @@ pub mod plugin_ports {
         FeedbackError, FeedbackItem, MessageFeedback, MessageFeedbackConfig, MessageFeedbackPlugin,
         Rating, mount as mount_message_feedback,
     };
+    pub use crate::ports::session_log_deepseek::{
+        FIELD_NAME, SessionLogConfig, SessionLogDeepSeek, WATERMARK_EVENT, accepted_seq,
+        fitting_prefix, mount as mount_session_log_deepseek, prepare_field,
+    };
     pub use crate::ports::session_persistence_jsonl::{
         JsonlPersistence, JsonlSessionHandle, PersistedEvent, PersistenceError,
         mount as mount_session_persistence_jsonl,
