@@ -141,6 +141,9 @@ pub mod plugin_ports {
         SkillFilesystem, SkillFsConfig, discover as discover_skills,
         mount as mount_skill_filesystem,
     };
+    pub use crate::ports::text_search::{
+        SearchKeys, TextSearchIndex, normalize as normalize_search,
+    };
     #[deprecated(note = "use `TIME_CONTEXT_PROJECTION_KEY` instead")]
     pub use crate::ports::time_context::PROJECTION_KEY;
     pub use crate::ports::time_context::{

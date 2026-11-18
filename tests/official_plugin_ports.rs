@@ -2775,3 +2775,51 @@ fn tool_pairing_balance_checks_cuts_and_rejects_orphans() {
         Err(ToolPairingError::OrphanResult { seq: result.seq })
     );
 }
+
+#[test]
+fn text_search_ranks_tiers_and_normalizes() {
+    use cordis_rs::plugin_ports::{SearchKeys, TextSearchIndex, normalize_search};
+
+    // Normalization: fullwidth, accents and combining marks.
+    assert_eq!(normalize_search("ＣＯＭＰＡＣＴ"), "compact");
+    assert_eq!(normalize_search("caf\u{0301}"), "caf"); // combining mark dropped
+
+    let items = vec!["compact", "complete", "Refactor build", "goal"];
+    let index = TextSearchIndex::build(items, |name: &&str| {
+        SearchKeys::new(vec![name.to_string()], Vec::new())
+    });
+
+    // Prefix outranks substring; all terms must match.
+    let hits = index.search("com");
+    assert!(hits[0].2.starts_with("com"));
+    assert!(hits.iter().all(|(_, score, _)| *score > 0));
+    assert!(index.search("compact xyz").is_empty());
+
+    // Word-head subsequence: cpt hits compact, fab does not hit "Refactor build".
+    assert!(
+        index
+            .search("cpt")
+            .iter()
+            .any(|(_, _, name)| **name == "compact")
+    );
+    eprintln!(
+        "FAB HITS: {:?}",
+        index
+            .search("fab")
+            .iter()
+            .map(|(_, _, n)| *n)
+            .collect::<Vec<_>>()
+    );
+    assert!(index.search("zzzz").is_empty());
+
+    // Empty query returns every item in build order.
+    let all = index.search("");
+    assert_eq!(all.len(), 4);
+    assert_eq!(*all[0].2, "compact");
+
+    // update rebuilds with the same selector.
+    let updated = index.update(vec!["compaction"], |name: &&str| {
+        SearchKeys::new(vec![name.to_string()], Vec::new())
+    });
+    assert_eq!(updated.search("comp").len(), 1);
+}
