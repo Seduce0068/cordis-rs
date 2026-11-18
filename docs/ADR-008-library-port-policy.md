@@ -41,7 +41,10 @@ v1.0.0 を待たず次 minor で削除してよい（ADR-005 の「semver major�
 いない公開 helper」に絞られた（自動集計の23件の大半は `mount_*` alias の誤検知）。
 
 - **private 化して削減**: `tool_pairing::balance_at` / `mcp_templates::parse_segments`
-  / `llm_attribution::launch_suffix`（外部参照は lib.rs re-export のみで削除済み）。
+  / `llm_attribution::launch_suffix` / `session_persistence_jsonl::validate_session_id`
+  / `agent_instructions::register_file`（外部参照は lib.rs re-export のみで削除済み）。
+  再 public 化条件: 他 port / host / test から検証・登録の再利用が必要になった時点で、
+  利用箇所を添えて ADR を更新してから export する。
 - **legacy として残存**: `user_approval::APPROVAL_OUTCOMES` /
   `tool_fs::READ_LIMIT` / `STREAM_MIN_SIZE`（upstream parity 定数として value あり）。
 - **現状維持**: `sandbox_policy::is_valid_path` / `sandbox_mode_fold`（tool 実行前
@@ -50,7 +53,9 @@ v1.0.0 を待たず次 minor で削除してよい（ADR-005 の「semver major�
   / `harness_dev_context` の prompt 定数（protocol／upstream 文言として価値あり）。
 
 削除は「private 化 → re-export 削除」の2段階で実施し、CI の `-D warnings` で
-残存参照を検知する。
+残存参照を検知する。これは ADR-008 の「利用箇所が1つ以上」基準の事後適用であり、
+「定義ファイル内だけで使われる helper は当初から public にすべきではなかった」
+という判断に基づく。他 port から1件でも参照があれば private 化しない。
 
 ## 関連
 

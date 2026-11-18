@@ -45,7 +45,7 @@ impl std::error::Error for PersistenceError {}
 /// Validate a session id before using it as a filename. Rejects path
 /// separators, `..`, leading dots, control characters and over-long ids so a
 /// caller cannot escape the configured root (fail closed).
-pub fn validate_session_id(id: &str) -> std::result::Result<(), PersistenceError> {
+fn validate_session_id(id: &str) -> std::result::Result<(), PersistenceError> {
     let valid = !id.is_empty()
         && id.len() <= 128
         && id

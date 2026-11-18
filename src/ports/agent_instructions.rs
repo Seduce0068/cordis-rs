@@ -13,7 +13,7 @@ use crate::core_services::{PromptSection, SystemPrompt};
 
 /// Register one baseline instruction file as a prompt section.
 /// Returns the section name, or `None` when the file is missing/empty.
-pub fn register_file(
+fn register_file(
     system_prompt: &SystemPrompt,
     root: &Path,
     filename: &str,
