@@ -3249,3 +3249,81 @@ async fn tool_pipeline_post_execute_observes_failed_tools() {
     assert!(matches!(result, Err(ToolError::Execution(_))));
     assert_eq!(observed.load(Ordering::SeqCst), 1);
 }
+
+#[tokio::test]
+async fn sandbox_policy_resolves_explicit_session_and_default_modes() {
+    use cordis_rs::core_services::{SandboxMode, Session, provide_sessions};
+    use cordis_rs::plugin_ports::{
+        SANDBOX_INVALID_ROOT, SandboxPolicyConfig, mount_sandbox_policy, render_policy_context,
+    };
+    use std::path::PathBuf;
+
+    let ctx = Context::root("sandbox-policy");
+    provide_sessions(&ctx).await.unwrap();
+    let config = SandboxPolicyConfig {
+        mode: SandboxMode::ReadOnly,
+        workspace_root: PathBuf::from("/work"),
+        additional_writable_roots: vec![PathBuf::from("/tmp")],
+    };
+    let service = mount_sandbox_policy(&ctx, config).await.unwrap();
+    assert!(
+        ctx.get::<cordis_rs::plugin_ports::SandboxPolicyService>("sandboxPolicy")
+            .is_some()
+    );
+
+    // Default is read-only (fail-safe).
+    let resolved = service.resolve(None, None);
+    assert_eq!(resolved.mode, SandboxMode::ReadOnly);
+    assert_eq!(resolved.workspace_root, PathBuf::from("/work"));
+
+    // Explicit override wins over the session projection.
+    let session = Session::new("s1", Some("/work/repo".to_string()));
+    session.append(
+        "sandbox/mode",
+        serde_json::json!({ "mode": "workspace-write" }),
+    );
+    assert_eq!(
+        service.override_of(&session),
+        Some(SandboxMode::WorkspaceWrite)
+    );
+    assert_eq!(
+        service.resolve(Some(&session), None).mode,
+        SandboxMode::WorkspaceWrite
+    );
+    assert_eq!(
+        service
+            .resolve(Some(&session), Some(SandboxMode::DangerFullAccess))
+            .mode,
+        SandboxMode::DangerFullAccess
+    );
+    assert_eq!(
+        service.resolve(Some(&session), None).workspace_root,
+        PathBuf::from("/work/repo")
+    );
+
+    // Writable root registration and disposal.
+    let d = service
+        .register_writable_root(PathBuf::from("/extra"))
+        .unwrap();
+    assert_eq!(
+        service.resolve(None, None).additional_writable_roots.len(),
+        2
+    );
+    assert!(
+        service
+            .register_writable_root(PathBuf::from("relative"))
+            .is_err()
+    );
+    d.dispose().await.unwrap();
+    assert_eq!(
+        service.resolve(None, None).additional_writable_roots.len(),
+        1
+    );
+
+    // Context rendering covers all three modes.
+    assert!(render_policy_context(&resolved).contains("read-only"));
+    assert!(
+        render_policy_context(&service.resolve(Some(&session), None)).contains("workspace-write")
+    );
+    assert_eq!(SANDBOX_INVALID_ROOT, "SANDBOX_INVALID_ROOT");
+}

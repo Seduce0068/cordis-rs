@@ -116,6 +116,11 @@ pub mod plugin_ports {
         NativeToolExecutorPlugin, SERVICE_NAME as NATIVE_EXECUTOR_SERVICE, ToolCallSpec,
         ToolSchema, mount as mount_native_tool_executor,
     };
+    pub use crate::ports::sandbox_policy::{
+        PROJECTION_KEY as SANDBOX_PROJECTION_KEY, ResolvedPolicy, SANDBOX_INVALID_ROOT,
+        SandboxPolicyConfig, SandboxPolicyService, is_valid_path, mount as mount_sandbox_policy,
+        render_policy_context, sandbox_mode_fold,
+    };
     pub use crate::ports::session_log_deepseek::{
         FIELD_NAME, SessionLogConfig, SessionLogDeepSeek, WATERMARK_EVENT, accepted_seq,
         fitting_prefix, mount as mount_session_log_deepseek, prepare_field,
