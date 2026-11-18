@@ -66,3 +66,5 @@ pub mod mcp_resources;
 pub mod hooks_claude_code;
 
 pub mod session_turn_outline;
+
+pub mod deepseek_llm_api_extensions;

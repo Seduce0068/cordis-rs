@@ -2163,3 +2163,75 @@ async fn session_turn_outline_folds_turns_and_commits_draft() {
 
     let _ = Session::new("unused", None);
 }
+
+#[tokio::test]
+async fn deepseek_llm_api_extensions_prepares_and_accepts_idempotently() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use cordis_rs::plugin_ports::{PreparedField, mount_deepseek_llm_api_extensions};
+
+    let ctx = Context::root("llm-api-extensions");
+    let registry = mount_deepseek_llm_api_extensions(&ctx).await.unwrap();
+
+    assert!(!registry.register(" bad", Arc::new(|_| Ok(None))));
+    assert!(registry.register(
+        "thinking",
+        Arc::new(|_| {
+            Ok(Some(PreparedField {
+                value: serde_json::json!({ "budget": 10 }),
+                accept: None,
+            }))
+        })
+    ));
+    assert!(!registry.register("thinking", Arc::new(|_| Ok(None))));
+
+    let calls = Arc::new(AtomicUsize::new(0));
+    let accept_calls = calls.clone();
+    assert!(registry.register(
+        "trace",
+        Arc::new(move |_| {
+            let counter = accept_calls.clone();
+            Ok(Some(PreparedField {
+                value: serde_json::json!({ "id": "t1" }),
+                accept: Some(Arc::new(move || {
+                    counter.fetch_add(1, Ordering::SeqCst);
+                    Ok(())
+                })),
+            }))
+        })
+    ));
+
+    let request = serde_json::json!({ "model": "deepseek-chat" });
+    let prepared = registry.prepare(&request, false);
+    assert_eq!(prepared.fields["thinking"]["budget"], 10);
+    assert_eq!(prepared.fields["trace"]["id"], "t1");
+    assert!(prepared.failures.is_empty());
+
+    // Acceptance runs once and joins subsequent callers.
+    assert!(prepared.accept().is_ok());
+    assert!(prepared.accept().is_ok());
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+
+    // Deep-clone: mutating the original provider value cannot affect fields.
+    let shared = Arc::new(std::sync::Mutex::new(serde_json::json!({ "n": 1 })));
+    let source = shared.clone();
+    registry.register(
+        "clone",
+        Arc::new(move |_| {
+            Ok(Some(PreparedField {
+                value: source.lock().unwrap().clone(),
+                accept: None,
+            }))
+        }),
+    );
+    *shared.lock().unwrap() = serde_json::json!({ "n": 99 });
+    let prepared = registry.prepare(&request, false);
+    assert_eq!(prepared.fields["clone"]["n"], 99); // snapshot taken at prepare time
+
+    // A failing provider is omitted and reported once.
+    registry.register("broken", Arc::new(|_| Err("boom".to_string())));
+    let prepared = registry.prepare(&request, false);
+    assert!(prepared.fields.get("broken").is_none());
+    assert_eq!(prepared.failures[0].0, "broken");
+}

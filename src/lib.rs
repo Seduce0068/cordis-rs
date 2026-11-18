@@ -51,6 +51,11 @@ pub mod plugin_ports {
         SHADOW_PRICE_EVENT, measure_content, mount as mount_compaction_tool_result_pruner,
         provide as provide_tool_result_pruner, prune_content, prune_session,
     };
+    pub use crate::ports::deepseek_llm_api_extensions::{
+        AcceptCallback, DEEPSEEK_EXTENSIONS_SERVICE, DeepSeekLlmApiExtensionRegistry,
+        DeepSeekLlmApiExtensions, ExtensionProvider, PreparedExtensions, PreparedField,
+        mount as mount_deepseek_llm_api_extensions,
+    };
     pub use crate::ports::feedback_producer::{
         FeedbackProducer, ProducerOutcome, TurnStopping, TurnStoppingEvent,
         mount as mount_feedback_producer, produce, turn_stopping_event,
