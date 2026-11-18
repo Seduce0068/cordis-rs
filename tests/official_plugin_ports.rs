@@ -3055,3 +3055,66 @@ fn llm_attribution_renders_ua_and_validates_suffix_token() {
     assert!(!is_product_token("a/b/c"));
     assert!(!is_product_token(""));
 }
+
+#[test]
+fn call_config_eq_compares_fields_and_stop_element_wise() {
+    use cordis_rs::plugin_ports::{LlmCallConfig, call_config_eq};
+
+    let base = LlmCallConfig {
+        provider: "deepseek".to_string(),
+        model: "deepseek-chat".to_string(),
+        reasoning_effort: None,
+        temperature: Some(0.5),
+        max_tokens: Some(100),
+        stop: Some(vec!["END".to_string()]),
+    };
+    let same = LlmCallConfig {
+        stop: Some(vec!["END".to_string()]),
+        ..base.clone()
+    };
+    assert!(call_config_eq(&base, &same));
+
+    // Each single-field difference breaks equality.
+    let different = LlmCallConfig {
+        model: "other".to_string(),
+        ..base.clone()
+    };
+    assert!(!call_config_eq(&base, &different));
+    let different = LlmCallConfig {
+        temperature: Some(0.6),
+        ..base.clone()
+    };
+    assert!(!call_config_eq(&base, &different));
+
+    // stop: None vs Some([]) differ; order matters.
+    let none = LlmCallConfig {
+        stop: None,
+        ..base.clone()
+    };
+    assert!(!call_config_eq(&base, &none));
+    let empty = LlmCallConfig {
+        stop: Some(Vec::new()),
+        ..base.clone()
+    };
+    assert!(!call_config_eq(&none, &empty));
+    let reordered = LlmCallConfig {
+        stop: Some(vec!["X".into(), "Y".into()]),
+        ..base.clone()
+    };
+    let reordered2 = LlmCallConfig {
+        stop: Some(vec!["Y".into(), "X".into()]),
+        ..base.clone()
+    };
+    assert!(!call_config_eq(&reordered, &reordered2));
+
+    // NaN temperatures are unequal (upstream `!==` semantics).
+    let nan1 = LlmCallConfig {
+        temperature: Some(f64::NAN),
+        ..base.clone()
+    };
+    let nan2 = LlmCallConfig {
+        temperature: Some(f64::NAN),
+        ..base
+    };
+    assert!(!call_config_eq(&nan1, &nan2));
+}

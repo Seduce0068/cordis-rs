@@ -103,6 +103,7 @@ pub mod plugin_ports {
     pub use crate::ports::llm_attribution::{
         AppIdentity, attribution_headers, is_product_token, launch_suffix, user_agent,
     };
+    pub use crate::ports::llm_call_config::{LlmCallConfig, call_config_eq};
     pub use crate::ports::llm_deepseek::{
         CredentialError, DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL, DeepSeekConfig, LlmDeepSeek,
         PROVIDER as DEEPSEEK_PROVIDER, mount as mount_llm_deepseek, resolve_api_key,
