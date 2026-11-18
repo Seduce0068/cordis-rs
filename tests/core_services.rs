@@ -4077,3 +4077,63 @@ fn otel_exporter_redacts_secrets_and_builds_otlp_payload() {
     assert!(!text.contains("super-secret"));
     assert!(text.contains("resourceLogs"));
 }
+
+#[tokio::test]
+async fn llm_timeout_yields_exactly_one_error_then_terminates() {
+    use cordis_rs::plugin_ports::{TIMEOUT_PREFIX, with_llm_timeout};
+    use futures::StreamExt;
+    use std::time::Duration;
+
+    let hanging: cordis_rs::services::llm::StreamHandler = std::sync::Arc::new(|_request| {
+        Box::pin(futures::stream::pending::<
+            cordis_rs::core_services::StreamChunk,
+        >())
+    });
+    let timed = with_llm_timeout(hanging, Duration::from_millis(5));
+    let chunks: Vec<_> = timed(cordis_rs::core_services::LlmRequest {
+        model: "m".to_string(),
+        messages: Vec::new(),
+    })
+    .take(5)
+    .collect()
+    .await;
+
+    assert_eq!(
+        chunks.len(),
+        1,
+        "timeout stream must terminate after one error"
+    );
+    match &chunks[0] {
+        cordis_rs::core_services::StreamChunk::Error(reason) => {
+            assert!(reason.starts_with(TIMEOUT_PREFIX))
+        }
+        other => panic!("expected timeout error, got {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn llm_timeout_error_carries_504_contract_code() {
+    use cordis_rs::plugin_ports::with_llm_timeout;
+    use futures::StreamExt;
+    use std::time::Duration;
+
+    let hanging: cordis_rs::services::llm::StreamHandler = std::sync::Arc::new(|_request| {
+        Box::pin(futures::stream::pending::<
+            cordis_rs::core_services::StreamChunk,
+        >())
+    });
+    let timed = with_llm_timeout(hanging, Duration::from_millis(5));
+    let mut stream = timed(cordis_rs::core_services::LlmRequest {
+        model: "m".to_string(),
+        messages: Vec::new(),
+    });
+    let chunk = stream.next().await.unwrap();
+    // LlmService::stream converts StreamChunk::Error(msg) to Error::Other(msg);
+    // the 504 code must survive that conversion for RetryPolicy::error_code.
+    let reason = match chunk {
+        cordis_rs::core_services::StreamChunk::Error(reason) => reason,
+        other => panic!("expected error chunk, got {other:?}"),
+    };
+    let error = cordis_rs::Error::Other(reason);
+    assert!(error.to_string().contains("504"));
+}

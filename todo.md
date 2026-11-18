@@ -21,7 +21,7 @@ status: current
 
 ### 優先度: 高
 
-- [ ] **with_llm_timeout の timeout 後に Error チャンクを無限生成する** — 根拠 `src/ports/llm_resilience.rs:29-39` / R2-review / 重大度 high / confirmed
+- [x] **with_llm_timeout の timeout 後に Error チャンクを無限生成する** — 2026-11-19 修正（TimeoutState::Terminated、R4 レビュー反映）。
 - [ ] **Session::append の seq 採番と Vec push が別ロックで並行順序が反転する** — 根拠 `src/services/sessions.rs:60-73` / R2-DI,R2-BV / 重大度 high / confirmed
 - [ ] **JSONL read/read_recovered が seq/type のスキーマ不正をセンチネル値に変換して fail-open** — 根拠 `src/ports/session_persistence_jsonl.rs:114-118,149-155` / R2-DI / 重大度 high / confirmed
 - [ ] **Done なしで枯渇した LLM ストリームを部分テキストのまま成功として返す** — 根拠 `src/services/llm.rs:176-185` / R2-ER / 重大度 high / confirmed
