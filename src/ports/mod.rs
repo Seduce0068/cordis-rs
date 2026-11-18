@@ -112,3 +112,5 @@ pub mod llm_message;
 pub mod user_approval;
 
 pub mod goal_round_driver;
+
+pub mod compaction_automation;
