@@ -80,14 +80,49 @@ impl FileSystem {
                 } else {
                     root.join(candidate)
                 };
-                let canonical_root = std::fs::canonicalize(root).unwrap_or_else(|_| root.clone());
-                let canonical = std::fs::canonicalize(&joined).unwrap_or_else(|_| joined.clone());
+                let canonical_root = std::fs::canonicalize(root).map_err(|error| {
+                    Error::Other(format!("cannot resolve filesystem root: {error}"))
+                })?;
+                // Canonicalize before checking containment. A path that does
+                // not exist yet (a file about to be created) is resolved via
+                // its nearest existing ancestor, so symlinks in the existing
+                // prefix cannot bypass the root check (swarm review R2-ER).
+                let canonical = match std::fs::canonicalize(&joined) {
+                    Ok(resolved) => resolved,
+                    Err(_) => {
+                        let mut ancestor = joined.as_path();
+                        let mut tail = Vec::new();
+                        while !ancestor.exists() {
+                            let Some(name) = ancestor.file_name() else {
+                                return Err(Error::Other(format!(
+                                    "path escapes filesystem root: {path}"
+                                )));
+                            };
+                            tail.push(name.to_os_string());
+                            let Some(parent) = ancestor.parent() else {
+                                return Err(Error::Other(format!(
+                                    "path escapes filesystem root: {path}"
+                                )));
+                            };
+                            ancestor = parent;
+                        }
+                        let mut resolved = std::fs::canonicalize(ancestor).map_err(|error| {
+                            Error::Other(format!("cannot resolve path: {error}"))
+                        })?;
+                        for component in tail.iter().rev() {
+                            resolved.push(component);
+                        }
+                        resolved
+                    }
+                };
                 if !canonical.starts_with(&canonical_root) {
                     return Err(Error::Other(format!(
                         "path escapes filesystem root: {path}"
                     )));
                 }
-                Ok(joined)
+                // Return the verified canonical path so callers operate on
+                // exactly what was checked (limits symlink TOCTOU exposure).
+                Ok(canonical)
             }
         }
     }

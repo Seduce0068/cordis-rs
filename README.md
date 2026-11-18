@@ -75,6 +75,7 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 | --- | --- | --- |
 | Context / registry / typed events | stable | — |
 | LlmService seam (`register` / `stream`) | stable | — |
+| `FileSystem::scoped` root 閉じ込め | beta | symlink 検証後に開くまで TOCTOU 残存（std のみの PoC では openat 相当が不可）。検証済み canonical path を返して軽減 |
 | 組み込み LLM provider (`from_async_text`) | stub | 実 HTTP / timeout / retry の end-to-end 検証 |
 | OTLP (`ctx.otel`) | stub | 実送信の実装（現在 in-memory） |
 | JSONL 永続化 (`mount`) | beta | 通常 turn への自動配線 |
@@ -141,7 +142,7 @@ danger-full-access は allow）。
 テストは `tests/cordis.rs`（ランタイム）、`tests/config_loader.rs`（Loader / `!!js`）、
 `tests/core_services.rs`（コアサービス・port）、`tests/official_plugin_port.rs`
 （`dsh-command-compact`）、`tests/official_plugin_ports.rs`（`command-goal` / `tool-todo`）
-に分かれています（全 194 件）。
+に分かれています（全 195 件）。
 
 `mount_real_composition` は上流 `snapshots/sdk/text-turn/cordis.yml` の
 6 エントリすべてを fiber として起動します。

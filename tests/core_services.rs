@@ -4221,3 +4221,22 @@ async fn llm_stream_without_done_is_an_error_not_partial_success() {
         .unwrap_err();
     assert!(error.to_string().contains("without Done"));
 }
+
+#[test]
+#[cfg(unix)]
+fn scoped_fs_rejects_symlink_escape_even_when_target_missing() {
+    use cordis_rs::core_services::FileSystem;
+
+    let base = std::env::temp_dir().join(format!("cordis-fs-escape-{}", std::process::id()));
+    let root = base.join("root");
+    let outside = base.join("outside");
+    let _ = std::fs::remove_dir_all(&base);
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::create_dir_all(&outside).unwrap();
+    std::os::unix::fs::symlink(&outside, root.join("escape")).unwrap();
+
+    let fs = FileSystem::scoped(&root);
+    assert!(fs.stat("escape/hidden.txt").is_err());
+
+    std::fs::remove_dir_all(&base).unwrap();
+}
