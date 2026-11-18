@@ -2840,3 +2840,38 @@ async fn feedback_producer_keeps_fiber_and_unloads_cleanly() {
     // listener; the service entry itself is generation-fenced and remains
     // until the disposer runs.
 }
+
+#[tokio::test]
+async fn duplicate_provider_paths_are_mutually_exclusive() {
+    use cordis_rs::core_services::provide_tools;
+    use cordis_rs::plugin_ports::{
+        MessageFeedbackConfig, mount_message_feedback, mount_native_tool_executor,
+    };
+
+    // messageFeedback: second mount on the same context is rejected and does
+    // not replace the first service.
+    let ctx = Context::root("dup-providers");
+    let _first = mount_message_feedback(&ctx, MessageFeedbackConfig::default())
+        .await
+        .unwrap();
+    assert!(
+        mount_message_feedback(&ctx, MessageFeedbackConfig::default())
+            .await
+            .is_err()
+    );
+    assert!(
+        ctx.get::<cordis_rs::plugin_ports::MessageFeedback>("messageFeedback")
+            .is_some()
+    );
+
+    // toolExecutor: two mount paths (apply/mount) no longer create two
+    // executor instances in the root context.
+    let tools_ctx = Context::root("dup-executor");
+    provide_tools(&tools_ctx).await.unwrap();
+    let _executor = mount_native_tool_executor(&tools_ctx, 4).await.unwrap();
+    assert!(
+        tools_ctx
+            .get::<cordis_rs::plugin_ports::NativeToolExecutor>("nativeToolExecutor")
+            .is_some()
+    );
+}

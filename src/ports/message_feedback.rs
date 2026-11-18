@@ -190,23 +190,31 @@ impl crate::Plugin for MessageFeedbackPlugin {
         &[]
     }
 
-    async fn apply(&self, ctx: &Context) -> Result<()> {
-        let service = MessageFeedback::new(self.config.clone())?;
-        ctx.provide("messageFeedback", service).await?;
+    async fn apply(&self, _ctx: &Context) -> Result<()> {
+        // Registration is owned by `mount` on the root context: a fiber child
+        // would otherwise shadow the configured service with a second copy.
         Ok(())
     }
 }
 
 /// Mount the service on a context.
 pub async fn mount(ctx: &Context, config: MessageFeedbackConfig) -> Result<MessageFeedback> {
-    let service = MessageFeedback::new(config)?;
+    let service = MessageFeedback::new(config.clone())?;
     ctx.provide("messageFeedback", service.clone()).await?;
-    let _fiber = crate::Fiber::mount(
-        ctx,
-        Box::new(MessageFeedbackPlugin {
-            config: MessageFeedbackConfig::default(),
-        }),
-    )
-    .await?;
+    let fiber = crate::Fiber::mount(ctx, Box::new(MessageFeedbackPlugin { config })).await?;
+    // Retain the fiber so its effect scope is not dropped without cleanup.
+    let effect_ctx = ctx.clone();
+    effect_ctx
+        .effect(move |scope| {
+            let fiber = fiber.clone();
+            async move {
+                scope.on_dispose(move || async move {
+                    fiber.unload().await?;
+                    Ok(())
+                });
+                Ok(())
+            }
+        })
+        .await?;
     Ok(service)
 }

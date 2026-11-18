@@ -159,23 +159,10 @@ impl crate::Plugin for NativeToolExecutorPlugin {
         &["tools"]
     }
 
-    async fn apply(&self, ctx: &Context) -> Result<()> {
-        let tools = ctx.require::<ToolRegistry>("tools").await?;
-        let pipeline = ctx.get::<ToolPipeline>("toolPipeline");
-        let pipeline = pipeline
-            .as_deref()
-            .cloned()
-            .unwrap_or_else(ToolPipeline::default);
-        let holder = ctx
-            .get::<ExecutorSelector>("toolExecutor")
-            .map(|arc| (*arc).clone())
-            .unwrap_or_default();
-        if ctx.get::<ExecutorSelector>("toolExecutor").is_none() {
-            let _ = ctx.provide("toolExecutor", holder.clone()).await?;
-        }
-        let executor = NativeToolExecutor::new((*tools).clone(), pipeline);
-        holder.register(executor.clone());
-        ctx.provide(SERVICE_NAME, executor).await?;
+    async fn apply(&self, _ctx: &Context) -> Result<()> {
+        // Registration is owned by `mount` on the root context: the fiber
+        // child would otherwise create a second executor with a shadowed
+        // config and register it twice in the same holder.
         Ok(())
     }
 }
@@ -199,5 +186,17 @@ pub async fn mount(ctx: &Context, max_parallel: usize) -> Result<NativeToolExecu
         NativeToolExecutor::new((*tools).clone(), pipeline).with_max_parallel(max_parallel);
     holder.register(executor.clone());
     ctx.provide(SERVICE_NAME, executor.clone()).await?;
+    let fiber = crate::Fiber::mount(ctx, Box::new(NativeToolExecutorPlugin)).await?;
+    ctx.effect(move |scope| {
+        let fiber = fiber.clone();
+        async move {
+            scope.on_dispose(move || async move {
+                fiber.unload().await?;
+                Ok(())
+            });
+            Ok(())
+        }
+    })
+    .await?;
     Ok(executor)
 }
