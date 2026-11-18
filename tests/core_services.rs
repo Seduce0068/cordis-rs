@@ -3410,3 +3410,29 @@ async fn user_questions_phase1_validates_and_routes_answers() {
         cordis_rs::plugin_ports::user_questions_fold(serde_json::Value::Null, &session.events()[0]);
     assert_eq!(folded["c1"], "open");
 }
+
+#[test]
+fn jsonl_persistence_rejects_path_traversal_session_ids() {
+    use cordis_rs::plugin_ports::{JsonlPersistence, PersistenceError};
+
+    let root = std::env::temp_dir().join(format!("cordis-traversal-{}", std::process::id()));
+    let store = JsonlPersistence::new(&root);
+
+    // Existing-style ids still work.
+    store.create("session-1").unwrap();
+    assert!(store.open("session-1").is_ok());
+
+    // Traversal / separator / hidden / unicode ids are rejected before any file
+    // is created, and no file escapes the configured root.
+    for id in ["../evil", "a/b", "", ".hidden", "あ", "with space"] {
+        assert!(
+            matches!(store.create(id), Err(PersistenceError::InvalidId(_))),
+            "{id}"
+        );
+        assert!(
+            matches!(store.open(id), Err(PersistenceError::InvalidId(_))),
+            "{id}"
+        );
+    }
+    assert!(!root.parent().unwrap().join("evil.jsonl").exists());
+}

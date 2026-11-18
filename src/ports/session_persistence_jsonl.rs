@@ -25,6 +25,7 @@ pub struct PersistedEvent {
 pub enum PersistenceError {
     NotFound(String),
     AlreadyExists(String),
+    InvalidId(String),
     Corrupt { path: String, reason: String },
 }
 
@@ -33,12 +34,33 @@ impl std::fmt::Display for PersistenceError {
         match self {
             Self::NotFound(id) => write!(f, "session {id} not found"),
             Self::AlreadyExists(id) => write!(f, "session {id} already exists"),
+            Self::InvalidId(id) => write!(f, "invalid session id {id}"),
             Self::Corrupt { path, reason } => write!(f, "corrupt session log {path}: {reason}"),
         }
     }
 }
 
 impl std::error::Error for PersistenceError {}
+
+/// Validate a session id before using it as a filename. Rejects path
+/// separators, `..`, leading dots, control characters and over-long ids so a
+/// caller cannot escape the configured root (fail closed).
+pub fn validate_session_id(id: &str) -> std::result::Result<(), PersistenceError> {
+    let valid = !id.is_empty()
+        && id.len() <= 128
+        && id
+            .bytes()
+            .next()
+            .is_some_and(|byte| byte.is_ascii_alphanumeric())
+        && id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-');
+    if valid {
+        Ok(())
+    } else {
+        Err(PersistenceError::InvalidId(id.to_string()))
+    }
+}
 
 /// Handle for one persisted session.
 #[derive(Clone)]
@@ -128,6 +150,7 @@ impl JsonlPersistence {
         id: impl Into<String>,
     ) -> std::result::Result<JsonlSessionHandle, PersistenceError> {
         let id = id.into();
+        validate_session_id(&id)?;
         std::fs::create_dir_all(&self.root).map_err(|error| PersistenceError::Corrupt {
             path: self.root.to_string_lossy().to_string(),
             reason: error.to_string(),
@@ -150,6 +173,7 @@ impl JsonlPersistence {
     }
 
     pub fn open(&self, id: &str) -> std::result::Result<JsonlSessionHandle, PersistenceError> {
+        validate_session_id(id)?;
         if let Some(handle) = self
             .state
             .read()
