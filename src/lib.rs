@@ -68,6 +68,7 @@ pub mod plugin_ports {
         DeepSeekLlmApiExtensions, ExtensionProvider, PreparedExtensions, PreparedField,
         mount as mount_deepseek_llm_api_extensions,
     };
+    pub use crate::ports::duration::{Decomposed, Duration};
     pub use crate::ports::feedback_producer::{
         FeedbackProducer, ProducerOutcome, TurnStopping, TurnStoppingEvent,
         mount as mount_feedback_producer, produce, turn_stopping_event,

@@ -2695,3 +2695,47 @@ async fn hooks_codex_uses_snake_case_payload_and_deny_only_mapping() {
     assert_eq!(pair[1].1["dialect"], "codex");
     let _ = codex_outcome(true, None);
 }
+
+#[test]
+fn duration_from_millis_and_decompose() {
+    use cordis_rs::plugin_ports::{Decomposed, Duration};
+
+    let zero = Duration::from_millis(0);
+    assert_eq!(
+        zero.decompose().unwrap(),
+        Decomposed {
+            days: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+            milliseconds: 0,
+        }
+    );
+    assert_eq!(zero.render().unwrap(), "0ms");
+
+    let d = Duration::from_millis(1234);
+    assert_eq!(
+        d.decompose().unwrap(),
+        Decomposed {
+            days: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 1,
+            milliseconds: 234,
+        }
+    );
+    assert_eq!(d.render().unwrap(), "1s 234ms");
+
+    let day = Duration::from_millis(86_400_000);
+    let parts = day.decompose().unwrap();
+    assert_eq!(parts.days, 1);
+    assert_eq!(parts.hours, 0);
+
+    // Negative spans can be built but not decomposed.
+    let negative = Duration::from_millis(-1);
+    assert!(negative.decompose().is_err());
+
+    // Range check mirrors the safe-integer ceiling.
+    assert!(Duration::try_from_millis(Duration::MAX_SAFE_MILLIS).is_ok());
+    assert!(Duration::try_from_millis(Duration::MAX_SAFE_MILLIS + 1).is_err());
+}
