@@ -161,18 +161,10 @@ impl crate::Plugin for ToolStrReplaceEditor {
     }
 
     async fn apply(&self, ctx: &Context) -> Result<()> {
-        let _ = ctx.require::<ToolRegistry>("tools").await?;
-        Ok(())
-    }
-}
-
-pub async fn mount(ctx: &Context) -> Result<ToolRegistry> {
-    let tools = ctx.require::<ToolRegistry>("tools").await?;
-    let fs = ctx.require::<FileSystem>("fs").await?;
-    let tools_for_effect = tools.clone();
-    let _ = ctx
-        .effect(move |scope| {
-            let tools = tools_for_effect.clone();
+        let tools = ctx.require::<ToolRegistry>("tools").await?;
+        let fs = ctx.require::<FileSystem>("fs").await?;
+        ctx.effect(move |scope| {
+            let tools = tools.clone();
             let fs = fs.clone();
             async move {
                 let disposer = tools.register(ToolDefinition::new(
@@ -181,12 +173,19 @@ pub async fn mount(ctx: &Context) -> Result<ToolRegistry> {
                     handler((*fs).clone()),
                 ));
                 scope.on_dispose(move || async move {
-                    let _ = disposer.dispose().await;
+                    disposer.dispose().await?;
                     Ok(())
                 });
                 Ok(())
             }
         })
-        .await;
+        .await?;
+        Ok(())
+    }
+}
+
+pub async fn mount(ctx: &Context) -> Result<ToolRegistry> {
+    let tools = ctx.require::<ToolRegistry>("tools").await?;
+    let _fiber = crate::Fiber::mount(ctx, Box::new(ToolStrReplaceEditor)).await?;
     Ok((*tools).clone())
 }
