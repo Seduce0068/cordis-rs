@@ -104,3 +104,5 @@ pub mod goal_fold;
 pub mod llm_attribution;
 
 pub mod llm_call_config;
+
+pub mod compaction_checkpoint;

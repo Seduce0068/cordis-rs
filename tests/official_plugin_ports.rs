@@ -3118,3 +3118,29 @@ fn call_config_eq_compares_fields_and_stop_element_wise() {
     };
     assert!(!call_config_eq(&nan1, &nan2));
 }
+
+#[test]
+fn compaction_checkpoint_source_generates_and_recognizes_marker() {
+    use cordis_rs::plugin_ports::{
+        checkpoint_source_json, compact_checkpoint_source, is_compact_checkpoint_source,
+    };
+
+    let source = compact_checkpoint_source("c1", None);
+    let json = checkpoint_source_json(&source);
+    assert_eq!(json["kind"], "compact-checkpoint");
+    assert_eq!(json["compactionId"], "c1");
+    assert!(json.get("sourceCommandId").is_none());
+    assert!(is_compact_checkpoint_source(&json));
+
+    let with_command = compact_checkpoint_source("c2", Some("cmd-1".to_string()));
+    let json2 = checkpoint_source_json(&with_command);
+    assert_eq!(json2["sourceCommandId"], "cmd-1");
+    assert!(is_compact_checkpoint_source(&json2));
+
+    // Non-checkpoint sources are rejected.
+    assert!(!is_compact_checkpoint_source(
+        &serde_json::json!({"kind": "other"})
+    ));
+    assert!(!is_compact_checkpoint_source(&serde_json::json!({})));
+    assert!(!is_compact_checkpoint_source(&serde_json::Value::Null));
+}

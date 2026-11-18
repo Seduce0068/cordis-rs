@@ -44,6 +44,10 @@ pub mod plugin_ports {
         CommandGoal, DEFAULT_MAX_GOAL_ROUNDS, USAGE as GOAL_USAGE, mount as mount_command_goal,
     };
     pub use crate::ports::command_parse::{ParsedCommand, parse_command};
+    pub use crate::ports::compaction_checkpoint::{
+        COMPACT_CHECKPOINT_KIND, CompactionCheckpointSource, checkpoint_source_json,
+        compact_checkpoint_source, is_compact_checkpoint_source,
+    };
     #[deprecated(note = "use `ImageOffloadDecision` instead")]
     pub use crate::ports::compaction_image_offload::Decision;
     #[deprecated(note = "use `IMAGE_OFFLOAD_EVENT_TYPE` instead")]
