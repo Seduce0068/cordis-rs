@@ -2033,3 +2033,70 @@ async fn hooks_claude_code_parses_selects_and_maps_phase_one() {
     assert_eq!(pair[1].0, "hook/result");
     assert_eq!(pair[1].1["run_event_seq"], 42);
 }
+
+#[tokio::test]
+async fn multiple_port_mounts_unregister_and_reload_with_fs_service() {
+    use cordis_rs::core_services::provide_tools;
+    use cordis_rs::plugin_ports::{mount_tool_fs, mount_tool_str_replace_editor};
+    use cordis_rs::services::fs::provide as provide_fs_service;
+    use std::time::Duration;
+
+    let ctx = Context::root("multi-port-unload");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    provide_fs_service(&ctx).await.unwrap();
+    mount_tool_fs(
+        &ctx,
+        cordis_rs::core_services::FileSystem::local(),
+        Default::default(),
+    )
+    .await
+    .unwrap();
+    mount_tool_str_replace_editor(&ctx).await.unwrap();
+
+    assert_eq!(
+        tools
+            .names()
+            .iter()
+            .filter(|name| *name == "str_replace_editor")
+            .count(),
+        1
+    );
+    assert!(tools.names().contains(&"read".to_string()));
+
+    // Removing the shared fs service unloads both dependent fibers. Poll with
+    // a bounded deadline instead of a fixed sleep.
+    ctx.remove_service("fs").unwrap();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            let names = tools.names();
+            if !names.contains(&"str_replace_editor".to_string())
+                && !names.contains(&"read".to_string())
+            {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("dependent tools were not unloaded after fs removal");
+
+    // Re-provide fs: both reload without duplicate tool registrations.
+    provide_fs_service(&ctx).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            let names = tools.names();
+            if names
+                .iter()
+                .filter(|name| *name == "str_replace_editor")
+                .count()
+                == 1
+                && names.iter().filter(|name| *name == "read").count() == 1
+            {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("dependent tools did not reload after fs re-provide");
+}

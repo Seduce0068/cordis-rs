@@ -48,7 +48,17 @@ status: accepted
 後から元を除外できるようにしてあるが、pressure 再判定は `TokenMeter` 側の責務であり、
 本 port は character budget を token budget とみなさない。
 
+## 補遺: port fiber の強参照保持
+
+`tool_fs` / `tool_str_replace_editor` の `mount()` は `Fiber` を ctx の effect list に
+保持する。Context の fiber registry は `Weak` のみなので、mount ハンドルを
+捨てると fiber がドロップされ dependent refresh が走らなくなる（実測で確認）。
+effect list → Disposer → cleanup closure → Fiber → child Context → parent Context
+という強参照サイクルができるが、root context はプロセス生存なので実害は限定的。
+scoped context では `dispose_effects()` まで解放されない点を設計上受け入れる。
+`unload()` は終端で `retiring` は戻らないため、reload は notify 経由でのみ機能する。
+
 ## 検証
 
 `cargo fmt --all --check` / `cargo check --all-targets` / `cargo clippy --all-targets -- -D warnings` /
-`cargo test --all-targets`（128 tests）および GitHub Actions が成功していること。
+`cargo test --all-targets`（134 tests）および GitHub Actions が成功していること。

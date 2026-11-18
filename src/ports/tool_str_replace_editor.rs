@@ -186,6 +186,17 @@ impl crate::Plugin for ToolStrReplaceEditor {
 
 pub async fn mount(ctx: &Context) -> Result<ToolRegistry> {
     let tools = ctx.require::<ToolRegistry>("tools").await?;
-    let _fiber = crate::Fiber::mount(ctx, Box::new(ToolStrReplaceEditor)).await?;
+    let fiber = crate::Fiber::mount(ctx, Box::new(ToolStrReplaceEditor)).await?;
+    ctx.effect(move |scope| {
+        let fiber = fiber.clone();
+        async move {
+            scope.on_dispose(move || async move {
+                fiber.unload().await?;
+                Ok(())
+            });
+            Ok(())
+        }
+    })
+    .await?;
     Ok((*tools).clone())
 }
