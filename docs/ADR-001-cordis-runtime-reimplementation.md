@@ -41,11 +41,11 @@ DSH を GPUI で再実装するにあたり、最大の障壁はプラグイン�
 
 ## 結果
 
-- 全 172 テスト通過、CI green（タグ `v0.1.0` 〜 `v0.151.0`）。
+- 全 173 テスト通過、CI green（タグ `v0.1.0` 〜 `v0.151.0`）。
 - コアサービス 38 個を提供（`tools` / `sessions` / `llm` / `agentLoop` /
   `fs` / `jobs` / `shell` / `goals` / `systemPrompt` / `compaction` /
   `approval` / `storage` / `agents` / `otel` / `retry` / `sessionTitles` / `schedule` / `planMode` / `credentials` / `timeoutPolicy` / `pluginInventory` / `timeContext` / `sessionReferences` / `fileReferences` / `fileSearch` / `tmuxContext` / `repeatReminder` ほか）。
-- 再利用 port 50 個を移植（tool-fs / tool-bash / tool-todo / tool-subagent /
+- 再利用 port 51 個を移植（tool-fs / tool-bash / tool-todo / tool-subagent /
   skill-filesystem / message-feedback / session-persistence-jsonl /
   llm-deepseek / feedback-producer / command-compact / session-title-all-prompts-llm / tool-schedule / tool-exit-plan-mode / agent-instructions / harness-dev-context / tool-goal / fs-observation-policy / tool-session-list / tool-str-replace-editor / time-context / tmux-context / tool-jobs / timeout-policy / compaction-* / fs-patch / mcp-resources / hooks-claude-code / session-turn-outline / deepseek-llm-api-extensions / session-stats / session-log-deepseek / native-tool-executor / command-builtins / command-parse / mcp-templates / hooks-codex / duration / tool-pairing / text-search ほか）。
 - library port として `hook-protocol`（matcher / outcome merge）を追加。

@@ -100,3 +100,5 @@ pub mod fs_errno;
 pub mod session_filename;
 
 pub mod goal_fold;
+
+pub mod llm_attribution;

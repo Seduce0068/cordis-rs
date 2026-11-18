@@ -3023,3 +3023,35 @@ fn session_filename_generates_and_parses_canonical_names() {
     assert!(session_format_version(-1, "label").is_err());
     assert!(session_format_version(i64::MAX, "label").is_err());
 }
+
+#[test]
+fn llm_attribution_renders_ua_and_validates_suffix_token() {
+    use cordis_rs::plugin_ports::{AppIdentity, attribution_headers, is_product_token, user_agent};
+
+    let identity = AppIdentity {
+        product: "deepseek-harness".to_string(),
+        version: "1.2.3".to_string(),
+        url: "https://example.com".to_string(),
+        suffix: None,
+    };
+    assert_eq!(
+        user_agent(&identity),
+        "deepseek-harness/1.2.3 (+https://example.com)"
+    );
+    let headers = attribution_headers(&identity);
+    assert_eq!(headers[0].0, "user-agent");
+
+    let with_suffix = AppIdentity {
+        suffix: Some("dsh-profile/web".to_string()),
+        ..identity
+    };
+    assert!(user_agent(&with_suffix).ends_with(" dsh-profile/web"));
+
+    // RFC 9110 product token validation (also blocks CRLF injection).
+    assert!(is_product_token("dsh-profile/web"));
+    assert!(is_product_token("token"));
+    assert!(!is_product_token("has space"));
+    assert!(!is_product_token("bad\r\nheader"));
+    assert!(!is_product_token("a/b/c"));
+    assert!(!is_product_token(""));
+}

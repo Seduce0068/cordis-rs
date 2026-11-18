@@ -100,6 +100,9 @@ pub mod plugin_ports {
         HooksCodex, codex_audit_pair, codex_effect, codex_outcome, load_codex_config,
         mount as mount_hooks_codex, select_tool_hooks, tool_payload,
     };
+    pub use crate::ports::llm_attribution::{
+        AppIdentity, attribution_headers, is_product_token, launch_suffix, user_agent,
+    };
     pub use crate::ports::llm_deepseek::{
         CredentialError, DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL, DeepSeekConfig, LlmDeepSeek,
         PROVIDER as DEEPSEEK_PROVIDER, mount as mount_llm_deepseek, resolve_api_key,
