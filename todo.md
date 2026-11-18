@@ -28,7 +28,7 @@ status: current
 - [x] **FileSystem::resolve が canonicalize 失敗時に未正規化パスへフォールバックし root 閉じ込めを弱める** — 2026-11-19 修正（最長既存 ancestor を canonicalize、検証済み canonical path を返却、R4 TOCTOU 指摘を README に明記）。
 - [ ] **context.rs と plugin.rs の双方向依存（レイヤ逆転）** — 根拠 `src/context.rs:13,510-558` / R1-AR / 重大度 high / confirmed
 - [ ] **context ↔ events のモジュール循環** — 根拠 `src/context.rs:12`, `src/events.rs:29` / R1-AR / 重大度 high / confirmed
-- [ ] **effect の placeholder が no-op のまま await を跨ぎ teardown 中の登録が残存する** — 根拠 `src/context.rs:651-683` / R2-BV / 重大度 high / likely
+- [x] **effect の placeholder が no-op のまま await を跨ぎ teardown 中の登録が残存する** — 2026-11-19 修正（is_spent() で reentrant teardown を検知し children を unwind、R4 指摘反映）。
 - [ ] **invoke_blocking が tokio::time::sleep を含む retry を block_on で実行しデッドロックし得る** — 根拠 `src/services/tools.rs:428-453,501-509` / R2-BV / 重大度 high / likely
 - [x] **!!js 式評価に再帰深度制限がなく深い入れ子でスタックオーバーフロー** — 2026-11-19 修正（evaluate_expression に limits/depth を伝播、R4 往復すり抜け指摘を反映）。
 

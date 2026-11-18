@@ -667,21 +667,25 @@ impl Context {
             return result;
         }
         let disposer = Disposer::from_children(children);
+        // A reentrant teardown during `setup().await` consumes the placeholder.
+        // `is_spent()` detects that directly (Lifecycle may be untouched for an
+        // EffectScope-only dispose): unwind the children and do NOT re-register
+        // the effect into a list that has already been drained (swarm R2-BV).
+        if placeholder.is_spent() {
+            return disposer.dispose().await;
+        }
         {
             let mut list = target_list.lock().expect("disposer list poisoned");
-            let mut replaced = false;
             for slot in list.iter_mut() {
                 if slot.same_as(&placeholder) {
-                    *slot = disposer.clone();
-                    replaced = true;
-                    break;
+                    *slot = disposer;
+                    return Ok(());
                 }
             }
-            if !replaced {
-                list.push(disposer);
-            }
+            // The placeholder vanished without being spent (e.g. removed by
+            // id). Do not re-push into a torn-down list; unwind instead.
         }
-        Ok(())
+        disposer.dispose().await
     }
 
     pub async fn dispose_effects(&self) -> Result<()> {

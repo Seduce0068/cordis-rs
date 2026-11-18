@@ -4256,3 +4256,37 @@ fn js_expression_recursion_is_bounded() {
         "expected TooDeep, got {result:?}"
     );
 }
+
+#[tokio::test]
+async fn effect_setup_during_teardown_does_not_revive_disposer() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let ctx = Context::root("effect-teardown");
+    let cleaned = Arc::new(AtomicUsize::new(0));
+    let counter = cleaned.clone();
+    let ctx_clone = ctx.clone();
+    let result = ctx
+        .effect(move |scope| {
+            let ctx = ctx_clone.clone();
+            let counter = counter.clone();
+            async move {
+                scope.on_dispose(move || {
+                    let counter = counter.clone();
+                    async move {
+                        counter.fetch_add(1, Ordering::SeqCst);
+                        Ok(())
+                    }
+                });
+                // Reentrant teardown while setup is still running.
+                ctx.dispose_effects().await?;
+                Ok(())
+            }
+        })
+        .await;
+    assert!(result.is_ok());
+    // The child disposer ran exactly once and the effect list stays empty.
+    assert_eq!(cleaned.load(Ordering::SeqCst), 1);
+    ctx.dispose_effects().await.unwrap();
+    assert_eq!(cleaned.load(Ordering::SeqCst), 1);
+}
