@@ -4,6 +4,10 @@
 //! deepseek-ai/deepseek-harness (MIT), read as untrusted reference data.
 //! Strictly parses a slash command, preserving the separator whitespace in
 //! `rawInput`.
+//!
+//! NOTE: upstream's separator set includes `\n` / `\r`, so `raw_input` can
+//! contain further lines. Hosts must never re-parse `raw_input` as additional
+//! commands — treat it as opaque arguments to a single command.
 
 /// A parsed slash command borrowing from the input line.
 #[derive(Debug, Clone, Copy, PartialEq)]

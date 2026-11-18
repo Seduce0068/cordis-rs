@@ -2929,3 +2929,24 @@ fn text_search_normalize_handles_precomposed_and_lowercase_marks() {
     // Multibyte text is preserved through normalization.
     assert_eq!(normalize_search("日本語"), "日本語");
 }
+
+#[test]
+fn parse_command_preserves_newline_separators_as_opaque_raw_input() {
+    use cordis_rs::plugin_ports::parse_command;
+
+    // Upstream regex allows \n / \r as separators; the remainder is opaque
+    // argument text, never a second command. Hosts must not split it.
+    let parsed = parse_command("/goal\n/clear").unwrap();
+    assert_eq!(parsed.name, "goal");
+    assert_eq!(parsed.raw_input, "\n/clear");
+
+    let carriage = parse_command("/goal\r/clear").unwrap();
+    assert_eq!(carriage.raw_input, "\r/clear");
+
+    // A leading fullwidth space is not a separator (strict ASCII mode).
+    assert!(parse_command("/goal\u{3000}arg").is_none());
+
+    // Trailing hyphens/underscores and digits are valid name characters.
+    assert_eq!(parse_command("/goal-").unwrap().name, "goal-");
+    assert_eq!(parse_command("/goal_1").unwrap().name, "goal_1");
+}
