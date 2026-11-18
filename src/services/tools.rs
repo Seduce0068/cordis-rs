@@ -62,6 +62,18 @@ impl ToolOutput {
             rendered: vec![text],
         }
     }
+
+    /// Model-facing error flag (e.g. a structured TOOL_TIMEOUT result).
+    /// Implemented as a method so existing struct literals stay valid. Note:
+    /// a tool that returns `"code": "TOOL_TIMEOUT"` as ordinary data would
+    /// also be flagged; hosts needing strict attribution should use a typed
+    /// field in a future breaking release.
+    pub fn is_error(&self) -> bool {
+        self.content
+            .get("code")
+            .and_then(|value| value.as_str())
+            .is_some_and(|code| code.starts_with("TOOL_") || code.ends_with("_ERROR"))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

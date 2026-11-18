@@ -270,18 +270,34 @@ impl CheckpointCursor {
         })
     }
 
-    /// Restore a cursor previously written by `save`. A missing or malformed
-    /// file starts from zero so a fresh run checkpoints the whole log.
-    pub fn load(path: impl AsRef<std::path::Path>) -> Self {
-        let written = std::fs::read_to_string(path)
-            .ok()
-            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
-            .and_then(|value| value["written"].as_u64())
-            .and_then(|value| usize::try_from(value).ok())
-            .unwrap_or(0);
-        Self {
+    /// Restore a cursor previously written by `save`. Missing files are a
+    /// fresh start (`Ok` with zero), but malformed/corrupt files are an error
+    /// so data loss is not silently masked (fail closed).
+    pub fn try_load(path: impl AsRef<std::path::Path>) -> std::result::Result<Self, String> {
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(Self::new());
+            }
+            Err(error) => return Err(format!("cannot read checkpoint cursor: {error}")),
+        };
+        let value: serde_json::Value = serde_json::from_str(&text)
+            .map_err(|error| format!("invalid checkpoint cursor JSON: {error}"))?;
+        let written = value
+            .get("written")
+            .and_then(|value| value.as_u64())
+            .ok_or_else(|| "checkpoint cursor missing 'written'".to_string())?;
+        let written = usize::try_from(written)
+            .map_err(|_| "checkpoint cursor 'written' out of range".to_string())?;
+        Ok(Self {
             written: Arc::new(std::sync::Mutex::new(written)),
-        }
+        })
+    }
+
+    /// Backwards-compatible loader that falls back to zero on malformed data.
+    /// Prefer `try_load` when corruption should be surfaced.
+    pub fn load(path: impl AsRef<std::path::Path>) -> Self {
+        Self::try_load(path).unwrap_or_default()
     }
 }
 

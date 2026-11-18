@@ -3174,3 +3174,33 @@ async fn agent_loop_propagates_caller_and_session_to_tool_exec() {
     assert_eq!(captured[0].0.as_deref(), Some("agent-42"));
     assert_eq!(captured[0].1.as_deref(), Some("session-7"));
 }
+
+#[tokio::test]
+async fn checkpoint_try_load_fails_closed_on_corruption_and_tool_output_exposes_error() {
+    use cordis_rs::core_services::{CheckpointCursor, ToolOutput};
+
+    let dir = std::env::temp_dir().join(format!("checkpoint-fc-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    let path = dir.join("cursor.json");
+
+    // Missing file is a fresh start (Ok with zero).
+    let cursor = CheckpointCursor::try_load(&path).unwrap();
+    assert_eq!(cursor.written(), 0);
+
+    // Malformed JSON is surfaced instead of silently reprocessing the log.
+    std::fs::write(&path, "not json").unwrap();
+    assert!(CheckpointCursor::try_load(&path).is_err());
+
+    // `load` keeps legacy fallback behaviour.
+    assert_eq!(CheckpointCursor::load(&path).written(), 0);
+
+    // Structured tool errors are detectable by callers.
+    let timeout = ToolOutput {
+        content: serde_json::json!({ "code": "TOOL_TIMEOUT", "message": "timeout" }),
+        rendered: vec!["timeout".to_string()],
+    };
+    assert!(timeout.is_error());
+    assert!(!ToolOutput::text("ok").is_error());
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}
