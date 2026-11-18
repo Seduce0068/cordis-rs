@@ -58,7 +58,18 @@ effect list → Disposer → cleanup closure → Fiber → child Context → par
 scoped context では `dispose_effects()` まで解放されない点を設計上受け入れる。
 `unload()` は終端で `retiring` は戻らないため、reload は notify 経由でのみ機能する。
 
+## 補遺: mcp-resources のスコープ分離
+
+レビュー指摘で、グローバル 1 枚の provider マップでは他エージェントのリソースが
+読めることが判明した。`ScopeKey`（Global / Agent / Session / Both）単位で
+provider を保持し、呼び出しは Both → Global の順にフォールバックして解決する。
+既存 `register()` は Global 登録として後方互換を保ち、新規 `register_scoped()` が
+スコープと URI scheme allowlist を受け取る。scheme allowlist は upstream に無い
+ローカル拡張であり、scheme だけでは `file://` 配下の `../` は防げない点に注意。
+AgentLoop が `ToolExecContext::agent("agent-1")` 固定であるため、実効的な分離には
+呼び出し側が正しい agent/session を渡す改修が別途必要である。
+
 ## 検証
 
 `cargo fmt --all --check` / `cargo check --all-targets` / `cargo clippy --all-targets -- -D warnings` /
-`cargo test --all-targets`（134 tests）および GitHub Actions が成功していること。
+`cargo test --all-targets`（140 tests）および GitHub Actions が成功していること。

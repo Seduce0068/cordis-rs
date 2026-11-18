@@ -83,7 +83,8 @@ pub mod plugin_ports {
     };
     pub use crate::ports::mcp_resources::{
         LIST_RESOURCES, LIST_TEMPLATES, MCP_RESOURCES_SERVICE, McpResourceRegistry,
-        McpResourcesPlugin, READ_RESOURCE, ResourceProvider, mount as mount_mcp_resources,
+        McpResourcesPlugin, READ_RESOURCE, ResourceProvider, ScopeKey,
+        mount as mount_mcp_resources,
     };
     pub use crate::ports::message_feedback::{
         FeedbackError, FeedbackItem, MessageFeedback, MessageFeedbackConfig, MessageFeedbackPlugin,

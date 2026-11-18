@@ -2310,3 +2310,73 @@ async fn security_review_second_pass_regressions() {
         .unwrap_err();
     assert!(!error.to_string().contains("secret-server"));
 }
+
+#[tokio::test]
+async fn mcp_resources_scope_isolation_and_uri_allowlist() {
+    use cordis_rs::core_services::{ToolExecContext, provide_tools};
+    use cordis_rs::plugin_ports::{ScopeKey, mount_mcp_resources};
+
+    let ctx = Context::root("mcp-scope");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let registry = mount_mcp_resources(&ctx).await.unwrap();
+
+    let scope = ScopeKey::Both {
+        agent: "agent-a".to_string(),
+        session: "session-a".to_string(),
+    };
+    let provider = std::sync::Arc::new(|_method: &str, _params: serde_json::Value| {
+        Ok(serde_json::json!({ "resources": [] }))
+    });
+    registry.register_scoped(scope, "private", provider, vec!["https".to_string()]);
+
+    let scoped_exec = ToolExecContext {
+        agent: Some("agent-a".to_string()),
+        session: Some("session-a".to_string()),
+        signal_cancelled: false,
+    };
+    assert!(
+        tools
+            .invoke(
+                cordis_rs::plugin_ports::LIST_RESOURCES,
+                serde_json::json!({ "server": "private" }),
+                scoped_exec.clone(),
+            )
+            .await
+            .is_ok()
+    );
+
+    // A different agent/session cannot see the scoped provider.
+    let other_exec = ToolExecContext {
+        agent: Some("agent-b".to_string()),
+        session: Some("session-b".to_string()),
+        signal_cancelled: false,
+    };
+    assert!(
+        tools
+            .invoke(
+                cordis_rs::plugin_ports::LIST_RESOURCES,
+                serde_json::json!({ "server": "private" }),
+                other_exec.clone(),
+            )
+            .await
+            .is_err()
+    );
+
+    // URI scheme outside the allowlist is rejected before dispatch.
+    let error = tools
+        .invoke(
+            cordis_rs::plugin_ports::READ_RESOURCE,
+            serde_json::json!({ "server": "private", "uri": "file:///etc/passwd" }),
+            scoped_exec,
+        )
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("scheme not allowed"));
+    assert!(registry.unregister_scoped(
+        &ScopeKey::Both {
+            agent: "agent-a".to_string(),
+            session: "session-a".to_string()
+        },
+        "private"
+    ));
+}

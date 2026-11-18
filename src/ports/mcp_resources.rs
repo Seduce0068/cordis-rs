@@ -7,8 +7,54 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::core_services::{ToolDefinition, ToolError, ToolHandler, ToolOutput, ToolRegistry};
+use crate::core_services::{
+    ToolDefinition, ToolError, ToolExecContext, ToolHandler, ToolOutput, ToolRegistry,
+};
 use crate::{Context, Result};
+
+/// Caller scope used to isolate providers. More specific scopes win; a call
+/// falls back to less specific ones so a global provider remains visible.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ScopeKey {
+    Global,
+    Agent(String),
+    Session(String),
+    Both { agent: String, session: String },
+}
+
+impl ScopeKey {
+    fn from_exec(exec: &ToolExecContext) -> Self {
+        match (&exec.agent, &exec.session) {
+            (Some(agent), Some(session)) => Self::Both {
+                agent: agent.clone(),
+                session: session.clone(),
+            },
+            (Some(agent), None) => Self::Agent(agent.clone()),
+            (None, Some(session)) => Self::Session(session.clone()),
+            (None, None) => Self::Global,
+        }
+    }
+
+    fn fallbacks(&self) -> Vec<&Self> {
+        let mut out = vec![self];
+        match self {
+            Self::Both { .. } => {
+                out.push(&Self::Global);
+            }
+            Self::Agent(_) | Self::Session(_) => {
+                out.push(&Self::Global);
+            }
+            Self::Global => {}
+        }
+        out
+    }
+}
+
+#[derive(Clone)]
+struct ProviderEntry {
+    provider: ResourceProvider,
+    allowed_schemes: Vec<String>,
+}
 
 pub const MCP_RESOURCES_SERVICE: &str = "mcpResources";
 pub const LIST_RESOURCES: &str = "list_mcp_resources";
@@ -19,12 +65,10 @@ pub const READ_RESOURCE: &str = "read_mcp_resource";
 pub type ResourceProvider =
     Arc<dyn Fn(&str, serde_json::Value) -> Result<serde_json::Value> + Send + Sync>;
 
-/// Global provider registry. Upstream selects providers from the calling
-/// agent's scoped registry; core services have no Scope type, so this port
-/// intentionally uses one global map (scope isolation is not implemented).
+/// Provider registry with caller-scope isolation and URI scheme allowlists.
 #[derive(Clone, Default)]
 pub struct McpResourceRegistry {
-    providers: Arc<std::sync::RwLock<HashMap<String, ResourceProvider>>>,
+    providers: Arc<std::sync::RwLock<HashMap<ScopeKey, HashMap<String, ProviderEntry>>>>,
 }
 
 impl McpResourceRegistry {
@@ -32,52 +76,102 @@ impl McpResourceRegistry {
         Self::default()
     }
 
-    /// Register a provider for one server. Returns true when replaced.
+    /// Register a globally visible provider (backwards compatible).
     pub fn register(&self, server: impl Into<String>, provider: ResourceProvider) -> bool {
+        self.register_scoped(ScopeKey::Global, server, provider, Vec::new())
+    }
+
+    /// Register a provider restricted to a scope with a URI scheme allowlist.
+    /// An empty allowlist permits any scheme (legacy behaviour).
+    pub fn register_scoped(
+        &self,
+        scope: ScopeKey,
+        server: impl Into<String>,
+        provider: ResourceProvider,
+        allowed_schemes: Vec<String>,
+    ) -> bool {
         self.providers
             .write()
             .expect("mcp resource registry poisoned")
-            .insert(server.into(), provider)
+            .entry(scope)
+            .or_default()
+            .insert(
+                server.into(),
+                ProviderEntry {
+                    provider,
+                    allowed_schemes,
+                },
+            )
             .is_some()
     }
 
+    /// Remove a globally registered server.
     pub fn unregister(&self, server: &str) -> bool {
+        self.unregister_scoped(&ScopeKey::Global, server)
+    }
+
+    pub fn unregister_scoped(&self, scope: &ScopeKey, server: &str) -> bool {
         self.providers
             .write()
             .expect("mcp resource registry poisoned")
-            .remove(server)
+            .get_mut(scope)
+            .and_then(|map| map.remove(server))
             .is_some()
     }
 
     pub fn servers(&self) -> Vec<String> {
-        let mut names: Vec<_> = self
+        let mut names = std::collections::HashSet::new();
+        for map in self
             .providers
             .read()
             .expect("mcp resource registry poisoned")
-            .keys()
-            .cloned()
-            .collect();
+            .values()
+        {
+            names.extend(map.keys().cloned());
+        }
+        let mut names: Vec<_> = names.into_iter().collect();
         names.sort();
         names
     }
 
     fn call(
         &self,
+        exec: &ToolExecContext,
         server: &str,
         method: &str,
         params: serde_json::Value,
     ) -> std::result::Result<serde_json::Value, ToolError> {
-        let provider = self
+        let scope = ScopeKey::from_exec(exec);
+        let guard = self
             .providers
             .read()
-            .expect("mcp resource registry poisoned")
-            .get(server)
-            .cloned()
-            .ok_or_else(|| {
-                // Do not enumerate registered servers to the model (info leak).
-                ToolError::InvalidArgs(format!("No MCP resource provider for server '{server}'"))
-            })?;
-        provider(method, params).map_err(|error| ToolError::Execution(error.to_string()))
+            .expect("mcp resource registry poisoned");
+        let mut entry: Option<ProviderEntry> = None;
+        for candidate in scope.fallbacks() {
+            if let Some(found) = guard.get(candidate).and_then(|map| map.get(server)) {
+                entry = Some(found.clone());
+                break;
+            }
+        }
+        let entry = entry.ok_or_else(|| {
+            // Do not enumerate registered servers to the model (info leak).
+            ToolError::InvalidArgs(format!("No MCP resource provider for server '{server}'"))
+        })?;
+        drop(guard);
+        // Scheme allowlist is a local hardening extension (upstream has none).
+        if let Some(uri) = params.get("uri").and_then(|value| value.as_str())
+            && !entry.allowed_schemes.is_empty()
+        {
+            let allowed = entry.allowed_schemes.iter().any(|scheme| {
+                uri.starts_with(&format!("{scheme}://")) || uri.starts_with(&format!("{scheme}:"))
+            });
+            if !allowed {
+                return Err(ToolError::InvalidArgs(format!(
+                    "URI scheme not allowed for server '{server}'"
+                )));
+            }
+        }
+        (entry.provider)(method, params).map_err(|error| ToolError::Execution(error.to_string()))
     }
 }
 
@@ -89,15 +183,16 @@ fn server_arg(args: &serde_json::Value) -> std::result::Result<String, ToolError
 }
 
 fn list_handler(registry: McpResourceRegistry, method: &'static str) -> ToolHandler {
-    Arc::new(move |args, _exec| {
+    Arc::new(move |args, exec| {
         let registry = registry.clone();
+        let exec = exec.clone();
         Box::pin(async move {
             let server = server_arg(&args)?;
             let mut params = serde_json::json!({});
             if let Some(cursor) = args.get("cursor").and_then(|value| value.as_str()) {
                 params["cursor"] = serde_json::json!(cursor);
             }
-            let result = registry.call(&server, method, params)?;
+            let result = registry.call(&exec, &server, method, params)?;
             Ok(ToolOutput {
                 rendered: vec![format!(
                     "{} resource(s) from {server}",
@@ -113,16 +208,21 @@ fn list_handler(registry: McpResourceRegistry, method: &'static str) -> ToolHand
 }
 
 fn read_handler(registry: McpResourceRegistry) -> ToolHandler {
-    Arc::new(move |args, _exec| {
+    Arc::new(move |args, exec| {
         let registry = registry.clone();
+        let exec = exec.clone();
         Box::pin(async move {
             let server = server_arg(&args)?;
             let uri = args
                 .get("uri")
                 .and_then(|value| value.as_str())
                 .ok_or_else(|| ToolError::InvalidArgs("uri must be a string".to_string()))?;
-            let result =
-                registry.call(&server, "resources/read", serde_json::json!({ "uri": uri }))?;
+            let result = registry.call(
+                &exec,
+                &server,
+                "resources/read",
+                serde_json::json!({ "uri": uri }),
+            )?;
             Ok(ToolOutput {
                 rendered: vec![format!("Read {uri} from {server}")],
                 content: result,
