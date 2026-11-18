@@ -64,3 +64,5 @@ pub mod fs_patch;
 pub mod mcp_resources;
 
 pub mod hooks_claude_code;
+
+pub mod session_turn_outline;

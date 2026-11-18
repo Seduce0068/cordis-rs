@@ -2100,3 +2100,66 @@ async fn multiple_port_mounts_unregister_and_reload_with_fs_service() {
     .await
     .expect("dependent tools did not reload after fs re-provide");
 }
+
+#[tokio::test]
+async fn session_turn_outline_folds_turns_and_commits_draft() {
+    use cordis_rs::core_services::{Session, provide_agents, provide_sessions};
+    use cordis_rs::plugin_ports::mount_session_turn_outline;
+
+    let ctx = Context::root("turn-outline-port");
+    provide_agents(&ctx).await.unwrap();
+    let (sessions, projections) = provide_sessions(&ctx).await.unwrap();
+    mount_session_turn_outline(&ctx).await.unwrap();
+    let session = sessions
+        .create(Some("outline-1".to_string()), None)
+        .unwrap();
+
+    session.append("turn/start", serde_json::json!({ "turn": 1 }));
+    session.append(
+        "user/message",
+        serde_json::json!({
+            "source": { "kind": "user" },
+            "content": [{ "type": "text", "text": "  hello   world  " }]
+        }),
+    );
+    session.append(
+        "assistant/message",
+        serde_json::json!({
+            "message": { "content": [{ "type": "text", "text": "draft answer" }] }
+        }),
+    );
+    let before_end = projections.view("turnOutline", &session).unwrap();
+    assert_eq!(before_end["turns"][0]["response"], "");
+
+    session.append("turn/end", serde_json::json!({}));
+    let view = projections.view("turnOutline", &session).unwrap();
+    assert_eq!(view["turns"].as_array().unwrap().len(), 1);
+    assert_eq!(view["turns"][0]["prompt"], "hello world");
+    assert_eq!(view["turns"][0]["response"], "draft answer");
+
+    // Steering message must not overwrite the first prompt; a new turn appends.
+    session.append(
+        "user/message",
+        serde_json::json!({
+            "source": { "kind": "user" },
+            "content": [{ "type": "text", "text": "steering" }]
+        }),
+    );
+    session.append("turn/start", serde_json::json!({ "turn": 2 }));
+    let view = projections.view("turnOutline", &session).unwrap();
+    assert_eq!(view["turns"].as_array().unwrap().len(), 2);
+    assert_eq!(view["turns"][0]["prompt"], "hello world");
+
+    // Non-user sources never fill a prompt.
+    session.append(
+        "user/message",
+        serde_json::json!({
+            "source": { "kind": "time-context" },
+            "content": [{ "type": "text", "text": "injected" }]
+        }),
+    );
+    let view = projections.view("turnOutline", &session).unwrap();
+    assert_eq!(view["turns"][1]["prompt"], "");
+
+    let _ = Session::new("unused", None);
+}

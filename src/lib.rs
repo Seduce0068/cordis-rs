@@ -89,6 +89,10 @@ pub mod plugin_ports {
         mount as mount_session_persistence_jsonl,
     };
     pub use crate::ports::session_title_llm::{SessionTitleLlm, mount as mount_session_title_llm};
+    pub use crate::ports::session_turn_outline::{
+        PROMPT_PREVIEW_LIMIT, RESPONSE_PREVIEW_LIMIT, SessionTurnOutline,
+        TURN_OUTLINE_PROJECTION_KEY, fold, mount as mount_session_turn_outline,
+    };
     pub use crate::ports::skill_filesystem::{
         SkillFilesystem, SkillFsConfig, discover as discover_skills,
         mount as mount_skill_filesystem,
