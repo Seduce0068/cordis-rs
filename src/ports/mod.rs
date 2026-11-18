@@ -118,3 +118,5 @@ pub mod compaction_automation;
 pub mod code_language;
 
 pub mod attachment_admission;
+
+pub mod workspace_path;

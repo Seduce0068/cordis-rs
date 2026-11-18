@@ -261,6 +261,11 @@ pub mod plugin_ports {
         Answer, AnswerItem, AskQuestion, AskRequest, QuestionOption, TOOL_NAME, UserQuestionError,
         UserQuestionService, mount as mount_user_questions, user_questions_fold,
     };
+    pub use crate::ports::workspace_path::{
+        abbreviate_home_path, file_address_for, is_absolute_workspace_path, is_windows_style_path,
+        path_parts_of, relativize_to_cwd, resolve_workspace_path, validate_segment,
+        workspace_title_of,
+    };
 }
 
 /// Core service implementations.

@@ -3251,3 +3251,44 @@ fn attachment_admission_rejects_non_canonical_base64() {
     assert_eq!(decoded[0].data, b"hi");
     assert_eq!(decoded[1].data, b"a");
 }
+
+#[test]
+fn workspace_path_helpers_handle_posix_windows_and_control_chars() {
+    use cordis_rs::plugin_ports::{
+        abbreviate_home_path, file_address_for, is_absolute_workspace_path, path_parts_of,
+        relativize_to_cwd, resolve_workspace_path, validate_segment, workspace_title_of,
+    };
+
+    assert!(is_absolute_workspace_path("/tmp/x"));
+    assert!(is_absolute_workspace_path(r"C:\dir"));
+    assert!(is_absolute_workspace_path(r"\\server\share"));
+    assert!(!is_absolute_workspace_path("relative/path"));
+
+    assert_eq!(
+        resolve_workspace_path(Some("/work"), "./src/main.rs"),
+        "/work/src/main.rs"
+    );
+    assert_eq!(resolve_workspace_path(None, "rel"), "rel");
+    assert_eq!(
+        abbreviate_home_path("/home/user/a", Some("/home/user")),
+        "~/a"
+    );
+    assert_eq!(abbreviate_home_path("/home/user", Some("/home/user")), "~");
+
+    assert_eq!(workspace_title_of(r"C:\dir\main.rs"), "main.rs");
+    assert_eq!(
+        path_parts_of("dir/sub/file.txt"),
+        ("dir/sub/".to_string(), "file.txt".to_string())
+    );
+    assert_eq!(relativize_to_cwd("/work/a/b", Some("/work")), "a/b");
+
+    let address = file_address_for("s1", Some("/work"), "/work/src/main.rs");
+    assert!(address.starts_with("dsh-resource://file/session/s1/"));
+    assert!(address.ends_with("src/main.rs"));
+
+    // Control characters (C0/C1, bidi) and separators are rejected in segments.
+    assert!(validate_segment("ok").is_ok());
+    assert!(validate_segment("../").is_err());
+    assert!(validate_segment("a\nb").is_err());
+    assert!(validate_segment("a\u{202e}b").is_err());
+}
