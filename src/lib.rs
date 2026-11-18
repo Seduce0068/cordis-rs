@@ -93,6 +93,10 @@ pub mod plugin_ports {
         JsonlPersistence, JsonlSessionHandle, PersistedEvent, PersistenceError,
         mount as mount_session_persistence_jsonl,
     };
+    pub use crate::ports::session_title_first_prompt_llm::{
+        FirstPromptTitleConfig, SessionTitleFirstPromptLlm, first_title_line,
+        mount as mount_session_title_first_prompt_llm, strip_emphasis,
+    };
     pub use crate::ports::session_title_llm::{SessionTitleLlm, mount as mount_session_title_llm};
     pub use crate::ports::session_turn_outline::{
         PROMPT_PREVIEW_LIMIT, RESPONSE_PREVIEW_LIMIT, SessionTurnOutline,

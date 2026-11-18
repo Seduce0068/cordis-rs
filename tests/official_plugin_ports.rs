@@ -2235,3 +2235,42 @@ async fn deepseek_llm_api_extensions_prepares_and_accepts_idempotently() {
     assert!(prepared.fields.get("broken").is_none());
     assert_eq!(prepared.failures[0].0, "broken");
 }
+
+#[tokio::test]
+async fn session_title_first_prompt_validates_and_strips_emphasis() {
+    use cordis_rs::plugin_ports::{
+        FirstPromptTitleConfig, first_title_line, mount_session_title_first_prompt_llm,
+        strip_emphasis,
+    };
+
+    let valid = FirstPromptTitleConfig {
+        provider: "deepseek".to_string(),
+        model: "deepseek-chat".to_string(),
+        ..Default::default()
+    };
+    let ctx = Context::root("first-prompt-title");
+    mount_session_title_first_prompt_llm(&ctx, valid)
+        .await
+        .unwrap();
+
+    let bad = FirstPromptTitleConfig {
+        target_words: 0,
+        provider: "deepseek".to_string(),
+        model: "m".to_string(),
+        ..Default::default()
+    };
+    assert!(
+        mount_session_title_first_prompt_llm(&Context::root("bad-title"), bad)
+            .await
+            .is_err()
+    );
+
+    assert_eq!(strip_emphasis("**A title**"), "A title");
+    assert_eq!(strip_emphasis("*one*"), "one");
+    assert_eq!(strip_emphasis("plain"), "plain");
+    assert_eq!(
+        first_title_line("  **Hello**\nsecond"),
+        Some("Hello".to_string())
+    );
+    assert_eq!(first_title_line("\n\n"), None);
+}
