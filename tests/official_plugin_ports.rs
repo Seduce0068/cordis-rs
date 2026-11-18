@@ -3174,3 +3174,30 @@ fn llm_message_helpers_bound_summary_and_extract_text() {
     assert_eq!(extract_text_content(&content, "\n"), "first\nsecond");
     assert_eq!(extract_text_content(&serde_json::json!([]), " "), "");
 }
+
+#[test]
+fn code_language_maps_extensions_and_dotfiles() {
+    use cordis_rs::plugin_ports::{extension_for_path, language_for_path, read_lang_hint_for_path};
+
+    assert_eq!(language_for_path("main.rs"), Some("rust"));
+    assert_eq!(language_for_path("MAIN.RS"), Some("rust"));
+    assert_eq!(language_for_path("dir/main.tsx"), Some("typescript"));
+    assert_eq!(language_for_path(r"C:\dir\main.PS1"), Some("powershell"));
+    assert_eq!(language_for_path("config/.env"), Some("dotenv"));
+    assert_eq!(language_for_path(".gitignore"), None);
+    assert_eq!(language_for_path("Makefile"), None);
+    assert_eq!(extension_for_path("a.b.TXT"), Some("txt".to_string()));
+
+    // Short hints: suffix-specific overrides and language short names.
+    assert_eq!(read_lang_hint_for_path("a.ts"), Some("ts"));
+    assert_eq!(read_lang_hint_for_path("a.tsx"), Some("tsx"));
+    assert_eq!(read_lang_hint_for_path("a.tf"), Some("tf"));
+    assert_eq!(read_lang_hint_for_path("a.py"), Some("py"));
+    assert_eq!(read_lang_hint_for_path("a.rs"), Some("rs"));
+    assert_eq!(read_lang_hint_for_path(".env"), Some("env"));
+    assert_eq!(read_lang_hint_for_path("a.unknown"), None);
+
+    // Prototype-like names never resolve (table is explicit, no object lookup).
+    assert_eq!(language_for_path("constructor"), None);
+    assert_eq!(language_for_path("__proto__"), None);
+}
