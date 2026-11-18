@@ -61,6 +61,10 @@ pub type CheckpointHook = Arc<dyn Fn(&Session) -> crate::Result<()> + Send + Syn
 pub struct AgentLoop {
     llm: LlmService,
     tools: ToolRegistry,
+    /// When set, tool calls pass through the pipeline so middleware such as
+    /// timeout-policy and approval gates applies. Unset keeps legacy direct
+    /// invoke (no gates) for backwards compatibility.
+    pipeline: Option<crate::services::tools::ToolPipeline>,
     model: Option<String>,
     max_steps: usize,
     parse_calls: CallParser,
@@ -77,6 +81,7 @@ impl AgentLoop {
         Self {
             llm,
             tools,
+            pipeline: None,
             model: None,
             max_steps: 4,
             parse_calls: Arc::new(no_calls),
@@ -87,6 +92,13 @@ impl AgentLoop {
             compaction: None,
             retry: None,
         }
+    }
+
+    /// Route tool calls through the shared pipeline so middleware (approval,
+    /// retry, timeout policy) applies. Without this, calls use direct invoke.
+    pub fn with_pipeline(mut self, pipeline: crate::services::tools::ToolPipeline) -> Self {
+        self.pipeline = Some(pipeline);
+        self
     }
 
     pub fn with_model(mut self, model: impl Into<String>) -> Self {
@@ -262,7 +274,10 @@ impl AgentLoop {
             let mut tool_results = Vec::new();
             for call in calls {
                 let exec = ToolExecContext::agent("agent-1");
-                let result = self.tools.invoke(&call.name, call.args, exec).await;
+                let result = match &self.pipeline {
+                    Some(pipeline) => pipeline.run(&self.tools, &call.name, call.args, exec).await,
+                    None => self.tools.invoke(&call.name, call.args, exec).await,
+                };
                 tool_results.push(result.clone());
                 let rendered = match result {
                     Ok(output) => output.rendered.join("\n"),

@@ -3018,3 +3018,74 @@ entries:
 "#;
     assert!(Composition::parse_with_vars(absolute, &vars).is_err());
 }
+
+#[tokio::test]
+async fn agent_loop_with_pipeline_applies_tool_middleware() {
+    use std::sync::Arc as StdArc;
+
+    use cordis_rs::core_services::{
+        AgentLoop, LlmProvider, StreamChunk, ToolDefinition, ToolError, ToolExecContext,
+        ToolOutput, provide_llm, provide_tools,
+    };
+    use cordis_rs::events::BoxFuture;
+
+    let ctx = Context::root("agent-loop-pipeline");
+    let (registry, pipeline) = provide_tools(&ctx).await.unwrap();
+    let llm = provide_llm(&ctx).await.unwrap();
+
+    let _guard = pipeline.use_middleware(StdArc::new(
+        |_args: serde_json::Value,
+         _exec: ToolExecContext,
+         _next: cordis_rs::core_services::ToolNext| {
+            Box::pin(async { Err(ToolError::Execution("blocked by middleware".to_string())) })
+                as BoxFuture<'static, Result<ToolOutput, ToolError>>
+        },
+    ));
+
+    let _tool = registry.register(ToolDefinition::new(
+        "echo",
+        "echo input",
+        StdArc::new(|_args, _exec| Box::pin(async { Ok(ToolOutput::text("direct")) })),
+    ));
+
+    let flag = StdArc::new(std::sync::atomic::AtomicBool::new(true));
+    let provider_flag = flag.clone();
+    let provider = LlmProvider::new(
+        "scripted",
+        "scripted-1",
+        StdArc::new(move |_request| {
+            let has_result = _request
+                .messages
+                .iter()
+                .any(|message| message.content.contains("blocked by middleware"));
+            let flag = provider_flag.clone();
+            let text = if !has_result && flag.swap(false, std::sync::atomic::Ordering::SeqCst) {
+                "call echo".to_string()
+            } else {
+                "done".to_string()
+            };
+            Box::pin(futures::stream::iter(vec![
+                StreamChunk::Text(text),
+                StreamChunk::Done,
+            ]))
+        }),
+    );
+    llm.register(provider);
+
+    let parser: cordis_rs::core_services::CallParser = StdArc::new(|text: &str| {
+        if text == "call echo" {
+            vec![cordis_rs::core_services::ToolCall::new(
+                "echo",
+                serde_json::json!({}),
+            )]
+        } else {
+            Vec::new()
+        }
+    });
+
+    let loop_ = AgentLoop::new(llm, registry.clone())
+        .with_pipeline(pipeline)
+        .with_call_parser(parser);
+    loop_.run("go").await.unwrap();
+    assert!(!flag.load(std::sync::atomic::Ordering::SeqCst));
+}
