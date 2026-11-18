@@ -3327,3 +3327,85 @@ async fn sandbox_policy_resolves_explicit_session_and_default_modes() {
     );
     assert_eq!(SANDBOX_INVALID_ROOT, "SANDBOX_INVALID_ROOT");
 }
+
+#[tokio::test]
+async fn user_questions_phase1_validates_and_routes_answers() {
+    use cordis_rs::core_services::provide_sessions;
+    use cordis_rs::plugin_ports::{
+        Answer, AskQuestion, AskRequest, UserQuestionError, mount_user_questions,
+    };
+
+    let ctx = Context::root("user-questions");
+    provide_sessions(&ctx).await.unwrap();
+    let service = mount_user_questions(&ctx).await.unwrap();
+
+    // An empty question list is rejected before dispatch.
+    assert_eq!(
+        service
+            .ask(
+                AskRequest {
+                    questions: Vec::new(),
+                    agent: None
+                },
+                false
+            )
+            .await,
+        Err(UserQuestionError::EmptyQuestions)
+    );
+    assert_eq!(
+        service
+            .ask(
+                AskRequest {
+                    questions: vec![],
+                    agent: None
+                },
+                true
+            )
+            .await,
+        Err(UserQuestionError::AskAborted)
+    );
+
+    let request = AskRequest {
+        questions: vec![AskQuestion {
+            id: "q1".to_string(),
+            question: "Proceed?".to_string(),
+            header: None,
+            options: Vec::new(),
+            multi_select: false,
+        }],
+        agent: None,
+    };
+
+    // No answerer -> NO_PROVIDER.
+    assert_eq!(
+        service.ask(request.clone(), false).await,
+        Err(UserQuestionError::NoProvider)
+    );
+
+    // A registered answerer supplies the answer through the waterfall seam.
+    let _disposer = service.on_answerer(&ctx, |shared, _next| {
+        let shared = shared.clone();
+        Box::pin(async move {
+            let agent = shared.lock().expect("ask request poisoned").agent.clone();
+            Ok(Answer {
+                answers: vec![cordis_rs::plugin_ports::AnswerItem {
+                    id: "q1".to_string(),
+                    selected: vec![agent.unwrap_or_else(|| String::from("anonymous"))],
+                    custom: None,
+                }],
+            })
+        })
+    });
+    let answer = service.ask(request, false).await.unwrap();
+    assert_eq!(answer.answers[0].id, "q1");
+
+    // Phase 2 APIs are intentionally absent; projection fold still tracks state.
+    let session = cordis_rs::core_services::Session::new("uq", None);
+    session.append(
+        "user/question-asked",
+        serde_json::json!({ "call_id": "c1" }),
+    );
+    let folded =
+        cordis_rs::plugin_ports::user_questions_fold(serde_json::Value::Null, &session.events()[0]);
+    assert_eq!(folded["c1"], "open");
+}

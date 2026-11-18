@@ -217,6 +217,10 @@ pub mod plugin_ports {
         DESCRIPTION as WORKING_DIRECTORY_DESCRIPTION, ToolWorkingDirectory,
         execute as execute_working_directory, mount as mount_working_directory,
     };
+    pub use crate::ports::user_questions::{
+        Answer, AnswerItem, AskQuestion, AskRequest, PHASE2_TOOL_NAME, QuestionOption,
+        UserQuestionError, UserQuestionService, mount as mount_user_questions, user_questions_fold,
+    };
 }
 
 /// Core service implementations.
