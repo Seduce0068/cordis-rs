@@ -184,6 +184,14 @@ impl EventRegistry {
         T: Send + Sync + 'static,
     {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        // Publish metadata before the listener becomes visible in the slot:
+        // a concurrent dispatch may call is_global(id) as soon as the slot
+        // contains the listener, and must not observe missing metadata
+        // (swarm review R1-AP).
+        self.meta
+            .write()
+            .expect("event meta poisoned")
+            .insert(id, HookMeta { options });
         let binding = self.slot(key);
         let mut slot = binding.write().expect("event slot poisoned");
         if options.prepend {
@@ -192,10 +200,6 @@ impl EventRegistry {
             slot.push((id, Arc::new(listener)));
         }
         drop(slot);
-        self.meta
-            .write()
-            .expect("event meta poisoned")
-            .insert(id, HookMeta { options });
         id
     }
 

@@ -36,7 +36,7 @@ status: current
 
 - [x] **check-doc-counts.sh が ports 数を算出するだけでドキュメント検証していない** — 2026-11-19 修正（ports 検証と矛盾行ゼロ条件を追加、陳腐な 20/13 を更新）。
 - [x] **ローカル verify.sh と CI ゲートの clippy 引数・extra_gates が乖離** — 2026-11-19 修正（--locked、ゲート順、audit、check-no-unsafe、check-doc-counts を同期、R4 指摘反映）。
-- [ ] **push_with がリスナー公開後に HookMeta を書き global 判定に競合窓** — 根拠 `src/events.rs:182-200` / R1-AP / 重大度 medium / confirmed
+- [x] **push_with がリスナー公開後に HookMeta を書き global 判定に競合窓** — 2026-11-19 修正（meta.insert を slot 挿入前に移動）。
 - [ ] **型付き Event のディスパッチがスコープフィルタ／global を無視** — 根拠 `src/context.rs:355-387`, `src/events.rs:428-590` / R1-AP / 重大度 medium / confirmed
 - [ ] **イベントレジストリがコンテキスト階層を継承せずサービス lookup と非対称** — 根拠 `src/context.rs:206-231,560-584` / R1-AP / 重大度 medium / confirmed
 - [ ] **Lifecycle に validation なしの公開 setter があり不正遷移／未知 u8 を Failed に丸める** — 根拠 `src/context.rs:15-36,246-253` / R1-AP / 重大度 medium / confirmed
@@ -75,6 +75,8 @@ status: current
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
 
 ## メモ
+
+- **R4 補足（2026-11-19）**: `remove()` は slot→meta 順のままなので、push との対称性が崩れる残余競合がある。完全解消には `snapshot_with_ids` が global 判定を一緒に返す設計（`SlotEntry { listener, options }` への統合）が必要。ADR-006 の「meta 別管理」判断の再検討材料として残す。
 
 - グローバルTODO: `~/.config/opencode/todo.md`（複数プロジェクト横断のタスク用）。
 - **swarm コンボ R6 集約（2026-11-19）**: `swarm-project-review` R1〜R5 の20エージェントから67件を取得。重複5件を統合、却下1件、speculative 1件を下記へ。
