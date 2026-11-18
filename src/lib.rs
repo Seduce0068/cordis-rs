@@ -161,6 +161,7 @@ pub mod plugin_ports {
         FIELD_NAME, SessionLogConfig, SessionLogDeepSeek, WATERMARK_EVENT, accepted_seq,
         fitting_prefix, mount as mount_session_log_deepseek, prepare_field,
     };
+    pub use crate::ports::session_persistence_jsonl::RecoveryReport;
     pub use crate::ports::session_persistence_jsonl::{
         JsonlPersistence, JsonlSessionHandle, PersistedEvent, PersistenceError,
         mount as mount_session_persistence_jsonl,

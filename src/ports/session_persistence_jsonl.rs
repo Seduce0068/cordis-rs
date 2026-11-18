@@ -121,6 +121,51 @@ impl JsonlSessionHandle {
     }
 }
 
+/// Result of a recovery replay: valid events plus the 1-based line where a
+/// torn/corrupt write was detected. `None` means the log was complete.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RecoveryReport {
+    pub events: Vec<PersistedEvent>,
+    pub truncated_at_line: Option<usize>,
+}
+
+impl JsonlSessionHandle {
+    /// Replay the log, stopping at the first malformed line instead of
+    /// failing. The truncation point is always reported so callers cannot
+    /// silently continue with an incomplete log. This never modifies the file.
+    pub fn read_recovered(&self) -> std::result::Result<RecoveryReport, PersistenceError> {
+        let file =
+            File::open(&self.path).map_err(|_| PersistenceError::NotFound(self.id.clone()))?;
+        let mut events = Vec::new();
+        let mut truncated_at_line = None;
+        for (index, line) in BufReader::new(file).lines().enumerate() {
+            let line = line.map_err(|error| PersistenceError::Corrupt {
+                path: self.path.to_string_lossy().to_string(),
+                reason: error.to_string(),
+            })?;
+            if line.trim().is_empty() {
+                continue; // tolerate a trailing blank line
+            }
+            match serde_json::from_str::<serde_json::Value>(&line) {
+                Ok(value) => events.push(PersistedEvent {
+                    seq: value["seq"].as_u64().unwrap_or(0),
+                    event_type: value["type"].as_str().unwrap_or_default().to_string(),
+                    data: value["data"].clone(),
+                }),
+                Err(_) => {
+                    // Stop here: anything after a torn write is untrustworthy.
+                    truncated_at_line = Some(index + 1);
+                    break;
+                }
+            }
+        }
+        Ok(RecoveryReport {
+            events,
+            truncated_at_line,
+        })
+    }
+}
+
 #[derive(Default)]
 struct StoreState {
     handles: HashMap<String, JsonlSessionHandle>,

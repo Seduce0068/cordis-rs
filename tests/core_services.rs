@@ -3918,3 +3918,39 @@ async fn llm_resilience_timeout_yields_retryable_error_chunk() {
     );
     assert!(attempts.load(std::sync::atomic::Ordering::SeqCst) >= 3);
 }
+
+#[test]
+fn jsonl_recovery_stops_at_torn_write_and_reports_line() {
+    use cordis_rs::plugin_ports::{JsonlPersistence, PersistenceError};
+    use std::io::Write;
+
+    let root = std::env::temp_dir().join(format!("cordis-recovery-{}", std::process::id()));
+    let store = JsonlPersistence::new(&root);
+    let handle = store.create("recover").unwrap();
+
+    // Complete log: no truncation reported, existing read() still works.
+    let session = cordis_rs::core_services::Session::new("recover", None);
+    let event = session.append("user/message", serde_json::json!({"text": "hello"}));
+    handle.append(&event).unwrap();
+    let report = handle.read_recovered().unwrap();
+    assert_eq!(report.events.len(), 1);
+    assert_eq!(report.truncated_at_line, None);
+    assert!(handle.read().is_ok());
+
+    // Append a torn (incomplete JSON) final line, then verify recovery stops
+    // there and reports the line while the strict read() still fails closed.
+    {
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .open(handle.path())
+            .unwrap();
+        writeln!(file, "{{\"seq\":2,\"type\":\"user/mess").unwrap();
+    }
+    let recovered = handle.read_recovered().unwrap();
+    assert_eq!(recovered.events.len(), 1);
+    assert_eq!(recovered.truncated_at_line, Some(2));
+    assert!(matches!(
+        handle.read(),
+        Err(PersistenceError::Corrupt { .. })
+    ));
+}
