@@ -34,7 +34,7 @@ status: current
 
 ### 優先度: 中
 
-- [ ] **check-doc-counts.sh が ports 数を算出するだけでドキュメント検証していない** — 根拠 `scripts/check-doc-counts.sh:11-21` / R1-CF / 重大度 medium / confirmed
+- [x] **check-doc-counts.sh が ports 数を算出するだけでドキュメント検証していない** — 2026-11-19 修正（ports 検証と矛盾行ゼロ条件を追加、陳腐な 20/13 を更新）。
 - [ ] **ローカル verify.sh と CI ゲートの clippy 引数・extra_gates が乖離** — 根拠 `.github/workflows/ci.yml:22-28`, `scripts/verify.sh:11-23` / R1-CF / 重大度 medium / confirmed
 - [ ] **push_with がリスナー公開後に HookMeta を書き global 判定に競合窓** — 根拠 `src/events.rs:182-200` / R1-AP / 重大度 medium / confirmed
 - [ ] **型付き Event のディスパッチがスコープフィルタ／global を無視** — 根拠 `src/context.rs:355-387`, `src/events.rs:428-590` / R1-AP / 重大度 medium / confirmed

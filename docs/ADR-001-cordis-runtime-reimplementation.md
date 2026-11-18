@@ -41,7 +41,7 @@ DSH を GPUI で再実装するにあたり、最大の障壁はプラグイン�
 
 ## 結果
 
-- 全 196 テスト通過、CI green（タグ `v0.1.0` 〜 `v0.171.0`）。
+- 全 196 テスト通過、CI green（タグ `v0.1.0` 〜 `v0.177.0`）。
 - コアサービス 38 個を提供（`tools` / `sessions` / `llm` / `agentLoop` /
   `fs` / `jobs` / `shell` / `goals` / `systemPrompt` / `compaction` /
   `approval` / `storage` / `agents` / `otel` / `retry` / `sessionTitles` / `schedule` / `planMode` / `credentials` / `timeoutPolicy` / `pluginInventory` / `timeContext` / `sessionReferences` / `fileReferences` / `fileSearch` / `tmuxContext` / `repeatReminder` ほか）。
@@ -56,7 +56,7 @@ DSH を GPUI で再実装するにあたり、最大の障壁はプラグイン�
 
 ## 未対応
 
-- 公式プラグイン 332 個の全移植（現状は 13 port）。
+- 公式プラグイン 332 個の全移植（現状 63 port）。
 - Schemastery DSL の完全互換とファイル監視 HMR。
 - OTLP 実送信（`ctx.otel` は in-memory レコードのみ）。
 - モデル側残高不足により ACP ストリーミング本文の実描画は未検証。

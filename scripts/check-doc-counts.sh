@@ -19,6 +19,20 @@ check_file() {
 check_file README.md "全 ${tests} 件" "tests"
 check_file docs/PROGRESS.md "テスト ${tests} 件" "tests"
 check_file docs/ADR-001-cordis-runtime-reimplementation.md "全 ${tests} テスト通過" "tests"
+check_file README.md "再利用 port（${ports}）" "ports"
+check_file docs/PROGRESS.md "現状 ${ports} port" "ports"
+
+# Do not let a stale count survive in a second sentence: fail if any line that
+# mentions a port count disagrees with the computed value (R4 review).
+for file in README.md docs/PROGRESS.md docs/ADR-001-cordis-runtime-reimplementation.md; do
+  stale=$(grep -nE '(再利用 port|現状(は)?|全) [0-9]+ ?port|port [0-9]+ 個|port（[0-9]+）' "$file" \
+    | grep -vE " ${ports} ?port|port ${ports} 個|port（${ports}）" || true)
+  if [ -n "$stale" ]; then
+    echo "docs drift: stale port count in $file:" >&2
+    echo "$stale" >&2
+    fail=1
+  fi
+done
 
 if [ "$fail" -ne 0 ]; then
   echo "Actual counts: tests=$tests ports=$ports" >&2
