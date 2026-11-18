@@ -624,6 +624,14 @@ fn strip_comment(line: &str) -> &str {
                 }
                 in_single = !in_single;
             }
+            b'\\' if in_double && index + 1 < bytes.len() => {
+                // Inside double quotes a backslash escapes the next byte;
+                // skipping it prevents `\"` from closing the string and a
+                // following `#` from being mistaken for a comment.
+                index += 2;
+                previous_was_space = false;
+                continue;
+            }
             b'"' if !in_single => in_double = !in_double,
             b'#' if !in_single && !in_double && previous_was_space => return &line[..index],
             _ => {}

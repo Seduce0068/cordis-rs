@@ -1010,3 +1010,22 @@ entries:
         Some(&Value::String("sibling".to_string()))
     );
 }
+
+#[test]
+fn loader_preserves_hash_after_escaped_quote_in_double_quoted_string() {
+    let yaml = r#"
+entries:
+  - id: quoted
+    plugin: demo/greet
+    config:
+      msg: "a\" # not-a-comment"
+"#;
+    let composition = Composition::parse(yaml).unwrap();
+    let msg = &composition.entries[0].config.as_object().unwrap()["msg"];
+    assert!(format!("{msg:?}").contains("not-a-comment"));
+
+    // Multibyte characters inside quotes must not break comment scanning.
+    let yaml = "entries:\n  - id: cjk\n    plugin: demo/greet\n    config:\n      msg: \"あ😀\" # comment\n";
+    let composition = Composition::parse(yaml).unwrap();
+    assert_eq!(composition.entries.len(), 1);
+}
