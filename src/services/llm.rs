@@ -173,14 +173,28 @@ impl LlmService {
         let model = provider.model().to_string();
         let mut stream = handler(request);
         let mut text = String::new();
+        let mut completed = false;
         while let Some(chunk) = stream.next().await {
             match chunk {
                 StreamChunk::Text(part) => text.push_str(&part),
                 StreamChunk::Error(message) => {
                     return Err(crate::Error::Other(message));
                 }
-                StreamChunk::Done => break,
+                StreamChunk::Done => {
+                    completed = true;
+                    break;
+                }
             }
+        }
+        // A stream that ends without Done was cut short (transport close,
+        // timeout, decorator abort). Returning the partial text as a success
+        // would hide the failure (swarm review R2-ER, high).
+        if !completed {
+            // No 3-digit code: a protocol violation is not retryable via
+            // RetryPolicy::error_code, and partial text is discarded (fail-closed).
+            return Err(crate::Error::Other(
+                "LLM stream ended without Done".to_string(),
+            ));
         }
         Ok(LlmResponse { text, model })
     }
@@ -210,6 +224,7 @@ where
                     Err(error) => StreamChunk::Error(error),
                 }
             })
+            .chain(futures::stream::once(async { StreamChunk::Done }))
             .boxed()
         }),
     )

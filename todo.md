@@ -24,7 +24,7 @@ status: current
 - [x] **with_llm_timeout の timeout 後に Error チャンクを無限生成する** — 2026-11-19 修正（TimeoutState::Terminated、R4 レビュー反映）。
 - [x] **Session::append の seq 採番と Vec push が別ロックで並行順序が反転する** — 2026-11-19 修正（単一 Mutex の LogState に統合）。
 - [x] **JSONL read/read_recovered が seq/type のスキーマ不正をセンチネル値に変換して fail-open** — 2026-11-19 修正（decode_line で seq/type/data を厳密検証、RecoveryReport に reason 追加）。
-- [ ] **Done なしで枯渇した LLM ストリームを部分テキストのまま成功として返す** — 根拠 `src/services/llm.rs:176-185` / R2-ER / 重大度 high / confirmed
+- [x] **Done なしで枯渇した LLM ストリームを部分テキストのまま成功として返す** — 2026-11-19 修正（Done 必須化、from_async_text に Done 追加、R4 指摘反映）。
 - [ ] **FileSystem::resolve が canonicalize 失敗時に未正規化パスへフォールバックし root 閉じ込めを弱める** — 根拠 `src/services/fs.rs:83-90` / R2-ER / 重大度 high / confirmed
 - [ ] **context.rs と plugin.rs の双方向依存（レイヤ逆転）** — 根拠 `src/context.rs:13,510-558` / R1-AR / 重大度 high / confirmed
 - [ ] **context ↔ events のモジュール循環** — 根拠 `src/context.rs:12`, `src/events.rs:29` / R1-AR / 重大度 high / confirmed

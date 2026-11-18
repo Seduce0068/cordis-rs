@@ -4196,3 +4196,28 @@ fn jsonl_rejects_invalid_seq_and_type_instead_of_sentinels() {
     assert_eq!(recovered.events.len(), 1);
     assert_eq!(recovered.truncated_at_line, Some(2));
 }
+
+#[tokio::test]
+async fn llm_stream_without_done_is_an_error_not_partial_success() {
+    let ctx = Context::root("llm-no-done");
+    let llm = cordis_rs::core_services::provide_llm(&ctx).await.unwrap();
+    let handler: cordis_rs::services::llm::StreamHandler = std::sync::Arc::new(|_request| {
+        Box::pin(futures::stream::once(async {
+            cordis_rs::core_services::StreamChunk::Text("partial".to_string())
+        }))
+    });
+    llm.register(cordis_rs::core_services::LlmProvider::new(
+        "no-done", "m", handler,
+    ));
+    let error = llm
+        .stream(
+            Some("no-done"),
+            cordis_rs::core_services::LlmRequest {
+                model: "m".to_string(),
+                messages: Vec::new(),
+            },
+        )
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("without Done"));
+}
