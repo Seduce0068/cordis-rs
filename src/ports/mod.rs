@@ -86,3 +86,5 @@ pub mod mcp_templates;
 pub mod hooks_codex;
 
 pub mod duration;
+
+pub mod tool_pairing;

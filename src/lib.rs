@@ -176,6 +176,9 @@ pub mod plugin_ports {
         DEFAULT_WAIT_TIMEOUT_MS, INLINE_OUTPUT_BYTES, MAX_WAIT_TIMEOUT_MS, ToolJobs,
         mount as mount_tool_jobs,
     };
+    pub use crate::ports::tool_pairing::{
+        CutBalance, ToolPairingError, all_cuts, balance_at, balanced_after, balanced_before,
+    };
     pub use crate::ports::tool_schedule::{ToolSchedule, mount as mount_tool_schedule};
     pub use crate::ports::tool_session_list::{
         DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT, Page, ToolSessionList,

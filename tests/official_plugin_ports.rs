@@ -2739,3 +2739,39 @@ fn duration_from_millis_and_decompose() {
     assert!(Duration::try_from_millis(Duration::MAX_SAFE_MILLIS).is_ok());
     assert!(Duration::try_from_millis(Duration::MAX_SAFE_MILLIS + 1).is_err());
 }
+
+#[test]
+fn tool_pairing_balance_checks_cuts_and_rejects_orphans() {
+    use cordis_rs::core_services::Session;
+    use cordis_rs::plugin_ports::{ToolPairingError, all_cuts, balanced_after, balanced_before};
+
+    let session = Session::new("pairing", None);
+    let call = session.append("tool/call", serde_json::json!({ "tool": "bash" }));
+    let result = session.append("tool/result", serde_json::json!({ "text": "ok" }));
+    let events = session.events();
+
+    // Before the call is balanced; between call and result is not.
+    assert!(balanced_before(&events, call.seq).unwrap());
+    assert!(!balanced_after(&events, call.seq).unwrap());
+    assert!(!balanced_before(&events, result.seq).unwrap());
+    assert!(balanced_after(&events, result.seq).unwrap());
+
+    let cuts = all_cuts(&events).unwrap();
+    assert_eq!(cuts.len(), 3);
+    assert!(cuts[0].safe && !cuts[1].safe && cuts[2].safe);
+
+    // Unknown seq is an explicit error, never a silent clamp.
+    assert_eq!(
+        balanced_before(&events, 999),
+        Err(ToolPairingError::UnknownSeq(999))
+    );
+
+    // Orphan result fails loud.
+    let orphan = Session::new("orphan", None);
+    let result = orphan.append("tool/result", serde_json::json!({ "text": "late" }));
+    let events = orphan.events();
+    assert_eq!(
+        balanced_after(&events, result.seq),
+        Err(ToolPairingError::OrphanResult { seq: result.seq })
+    );
+}
