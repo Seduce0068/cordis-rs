@@ -98,6 +98,11 @@ pub mod plugin_ports {
         FeedbackError, FeedbackItem, MessageFeedback, MessageFeedbackConfig, MessageFeedbackPlugin,
         Rating, mount as mount_message_feedback,
     };
+    pub use crate::ports::native_tool_executor::{
+        DEFAULT_MAX_PARALLEL, ExecutionOutcome, ExecutorSelector, NativeToolExecutor,
+        NativeToolExecutorPlugin, SERVICE_NAME as NATIVE_EXECUTOR_SERVICE, ToolCallSpec,
+        ToolSchema, mount as mount_native_tool_executor,
+    };
     pub use crate::ports::session_log_deepseek::{
         FIELD_NAME, SessionLogConfig, SessionLogDeepSeek, WATERMARK_EVENT, accepted_seq,
         fitting_prefix, mount as mount_session_log_deepseek, prepare_field,

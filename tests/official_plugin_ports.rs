@@ -2478,3 +2478,56 @@ async fn session_log_deepseek_builds_incremental_field_and_watermark() {
         0
     );
 }
+
+#[tokio::test]
+async fn native_tool_executor_describes_and_executes_in_model_order() {
+    use cordis_rs::core_services::{ToolDefinition, ToolExecContext, ToolOutput, provide_tools};
+    use cordis_rs::plugin_ports::{
+        ExecutorSelector, NativeToolExecutor, ToolCallSpec, mount_native_tool_executor,
+    };
+    use std::sync::Arc as StdArc;
+
+    let ctx = Context::root("native-executor");
+    let (registry, pipeline) = provide_tools(&ctx).await.unwrap();
+    let _d1 = registry.register(ToolDefinition::new(
+        "alpha",
+        "first",
+        StdArc::new(|_args, _exec| Box::pin(async { Ok(ToolOutput::text("a")) })),
+    ));
+    let _d2 = registry.register(ToolDefinition::new(
+        "beta",
+        "second",
+        StdArc::new(|_args, _exec| Box::pin(async { Ok(ToolOutput::text("b")) })),
+    ));
+
+    let executor = mount_native_tool_executor(&ctx, 2).await.unwrap();
+    assert_eq!(executor.describe().len(), 2);
+    assert_eq!(executor.describe()[0].parameters["type"], "object");
+
+    let outcomes = executor
+        .execute(
+            vec![
+                ToolCallSpec {
+                    name: "alpha".to_string(),
+                    args: serde_json::json!({}),
+                },
+                ToolCallSpec {
+                    name: "beta".to_string(),
+                    args: serde_json::json!({}),
+                },
+            ],
+            ToolExecContext::agent("a"),
+        )
+        .await;
+    // Model order preserved even with buffer_unordered.
+    assert_eq!(outcomes.len(), 2);
+    assert_eq!(outcomes[0].name, "alpha");
+    assert_eq!(outcomes[1].name, "beta");
+
+    let holder = ctx.get::<ExecutorSelector>("toolExecutor").unwrap();
+    assert!(holder.current().is_some());
+    assert!(!holder.register(executor.clone())); // one executor per slot
+    let other = NativeToolExecutor::new(registry.clone(), pipeline.clone());
+    holder.clear();
+    assert!(holder.register(other));
+}
