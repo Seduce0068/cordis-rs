@@ -40,16 +40,24 @@ pub mod plugin_ports {
     pub use crate::ports::command_goal::{
         CommandGoal, DEFAULT_MAX_GOAL_ROUNDS, USAGE as GOAL_USAGE, mount as mount_command_goal,
     };
+    #[deprecated(note = "use `ImageOffloadDecision` instead")]
+    pub use crate::ports::compaction_image_offload::Decision;
+    #[deprecated(note = "use `IMAGE_OFFLOAD_EVENT_TYPE` instead")]
+    pub use crate::ports::compaction_image_offload::EVENT_TYPE;
     pub use crate::ports::compaction_image_offload::{
-        CompactionImageOffload, Decision, EVENT_TYPE, IMAGE_OFFLOAD_PROJECTION_KEY,
+        CompactionImageOffload, Decision as ImageOffloadDecision,
+        EVENT_TYPE as IMAGE_OFFLOAD_EVENT_TYPE, IMAGE_OFFLOAD_PROJECTION_KEY,
         IMAGE_OFFLOAD_REQUIRED_CODE, OffloadTarget, decide,
         mount as mount_compaction_image_offload, offload_payload, select_oldest,
         select_oldest_after, validate_payload,
     };
+    #[deprecated(note = "use `TOOL_RESULT_PRUNER_SERVICE_NAME` instead")]
+    pub use crate::ports::compaction_tool_result_pruner::SERVICE_NAME;
     pub use crate::ports::compaction_tool_result_pruner::{
-        CompactionToolResultPruner, PruneSessionResult, REPLACEMENT_EVENT, SERVICE_NAME,
-        SHADOW_PRICE_EVENT, measure_content, mount as mount_compaction_tool_result_pruner,
-        provide as provide_tool_result_pruner, prune_content, prune_session,
+        CompactionToolResultPruner, PruneSessionResult, REPLACEMENT_EVENT,
+        SERVICE_NAME as TOOL_RESULT_PRUNER_SERVICE_NAME, SHADOW_PRICE_EVENT, measure_content,
+        mount as mount_compaction_tool_result_pruner, provide as provide_tool_result_pruner,
+        prune_content, prune_session,
     };
     pub use crate::ports::deepseek_llm_api_extensions::{
         AcceptCallback, DEEPSEEK_EXTENSIONS_SERVICE, DeepSeekLlmApiExtensionRegistry,
@@ -107,9 +115,12 @@ pub mod plugin_ports {
         SkillFilesystem, SkillFsConfig, discover as discover_skills,
         mount as mount_skill_filesystem,
     };
+    #[deprecated(note = "use `TIME_CONTEXT_PROJECTION_KEY` instead")]
+    pub use crate::ports::time_context::PROJECTION_KEY;
     pub use crate::ports::time_context::{
-        DEFAULT_REFRESH_INTERVAL_MS, PROJECTION_KEY, PreStepArgs, PreStepDecision,
-        TimeContextPlugin, TimeContextPluginConfig, mount as mount_time_context, sample_message,
+        DEFAULT_REFRESH_INTERVAL_MS, PROJECTION_KEY as TIME_CONTEXT_PROJECTION_KEY, PreStepArgs,
+        PreStepDecision, TimeContextPlugin, TimeContextPluginConfig, mount as mount_time_context,
+        sample_message,
     };
     pub use crate::ports::timeout_policy::{
         POLICY_NAME, TOOL_TIMEOUT_CODE, TimeoutPolicyPlugin, TimeoutPolicyPluginConfig,
@@ -153,10 +164,17 @@ pub mod plugin_ports {
     pub use crate::ports::tool_subagent::{
         ToolSubagent, ToolSubagentConfig, mount as mount_tool_subagent,
     };
+    #[deprecated(note = "use `TodoWriteCounts` instead")]
+    pub use crate::ports::tool_todo::Counts;
+    #[deprecated(note = "use `TodoSessionEvent` instead")]
+    pub use crate::ports::tool_todo::SessionEvent;
+    #[deprecated(note = "use `TodoTools` instead")]
+    pub use crate::ports::tool_todo::Tools;
     pub use crate::ports::tool_todo::{
-        Counts, MountedTodo, RawTodo, SessionEvent, SessionProjections, TodoItem, TodoStatus,
-        TodoWriteArgs, TodoWriteResult, ToolExecution, ToolFailure, ToolTodo, Tools, describe,
-        mount as mount_tool_todo, to_todo_list, tool_failure_error,
+        Counts as TodoWriteCounts, MountedTodo, RawTodo, SessionEvent as TodoSessionEvent,
+        SessionProjections, TodoItem, TodoStatus, TodoWriteArgs, TodoWriteResult, ToolExecution,
+        ToolFailure, ToolTodo, Tools as TodoTools, describe, mount as mount_tool_todo,
+        to_todo_list, tool_failure_error,
     };
     pub use crate::ports::tool_working_directory::{
         DESCRIPTION as WORKING_DIRECTORY_DESCRIPTION, ToolWorkingDirectory,
