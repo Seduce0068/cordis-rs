@@ -108,3 +108,5 @@ pub mod llm_call_config;
 pub mod compaction_checkpoint;
 
 pub mod llm_message;
+
+pub mod user_approval;

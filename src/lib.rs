@@ -238,6 +238,10 @@ pub mod plugin_ports {
         DESCRIPTION as WORKING_DIRECTORY_DESCRIPTION, ToolWorkingDirectory,
         execute as execute_working_directory, mount as mount_working_directory,
     };
+    pub use crate::ports::user_approval::{
+        APPROVAL_OUTCOMES, APPROVAL_POLICIES, ASK_SENTENCE, NEVER_SENTENCE,
+        normalize_approval_outcome, outcome_label,
+    };
     pub use crate::ports::user_questions::{
         Answer, AnswerItem, AskQuestion, AskRequest, QuestionOption, TOOL_NAME, UserQuestionError,
         UserQuestionService, mount as mount_user_questions, user_questions_fold,

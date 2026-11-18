@@ -3584,3 +3584,35 @@ async fn hook_deny_middleware_blocks_tool_execution() {
             .is_ok()
     );
 }
+
+#[test]
+fn user_approval_normalization_is_fail_closed() {
+    use cordis_rs::core_services::{ApprovalDecision, ApprovalError, ApprovalOutcome};
+    use cordis_rs::plugin_ports::{normalize_approval_outcome, outcome_label};
+
+    let allow = ApprovalOutcome {
+        decision: ApprovalDecision::Allow,
+        answerer: None,
+    };
+    let deny = ApprovalOutcome {
+        decision: ApprovalDecision::Deny,
+        answerer: None,
+    };
+
+    assert_eq!(
+        normalize_approval_outcome(Ok(allow)),
+        ApprovalDecision::Allow
+    );
+    // Explicit deny, unavailable and cancelled all collapse to Deny.
+    assert_eq!(normalize_approval_outcome(Ok(deny)), ApprovalDecision::Deny);
+    assert_eq!(
+        normalize_approval_outcome(Err(ApprovalError::Unavailable)),
+        ApprovalDecision::Deny
+    );
+    assert_eq!(
+        normalize_approval_outcome(Err(ApprovalError::Cancelled)),
+        ApprovalDecision::Deny
+    );
+    assert_eq!(outcome_label(ApprovalDecision::Allow), "allowed-once");
+    assert_eq!(outcome_label(ApprovalDecision::Deny), "rejected");
+}
