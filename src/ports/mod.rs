@@ -116,3 +116,5 @@ pub mod goal_round_driver;
 pub mod compaction_automation;
 
 pub mod code_language;
+
+pub mod attachment_admission;

@@ -3201,3 +3201,53 @@ fn code_language_maps_extensions_and_dotfiles() {
     assert_eq!(language_for_path("constructor"), None);
     assert_eq!(language_for_path("__proto__"), None);
 }
+
+#[test]
+fn attachment_admission_rejects_non_canonical_base64() {
+    use cordis_rs::plugin_ports::{
+        AttachmentErrorCode, EncodedFile, EncodedImage, decode_canonical_base64, decode_file,
+        decode_images,
+    };
+
+    // Canonical standard base64 decodes and re-encodes identically.
+    let decoded =
+        decode_canonical_base64("aGVsbG8=", true, AttachmentErrorCode::InvalidImageBase64).unwrap();
+    assert_eq!(decoded, b"hello");
+
+    // Empty image is rejected; empty file is a valid zero-byte payload.
+    assert!(decode_canonical_base64("", true, AttachmentErrorCode::InvalidImageBase64,).is_err());
+    assert_eq!(
+        decode_file(&EncodedFile {
+            data: String::new(),
+            name: None
+        })
+        .unwrap(),
+        Vec::<u8>::new()
+    );
+
+    // Non-canonical forms (extra padding, whitespace, bad chars) are rejected.
+    for bad in ["AB==", "aGVsbG8=\n", "aGVsbG8", "!!!!"] {
+        assert!(
+            decode_canonical_base64(bad, true, AttachmentErrorCode::InvalidImageBase64,).is_err(),
+            "{bad}"
+        );
+    }
+
+    // Batch preserves order and error code.
+    let images = vec![
+        EncodedImage {
+            data: "aGk=".to_string(),
+            media_type: "text/plain".to_string(),
+            name: None,
+        },
+        EncodedImage {
+            data: "YQ==".to_string(),
+            media_type: "text/plain".to_string(),
+            name: None,
+        },
+    ];
+    let decoded = decode_images(&images).unwrap();
+    assert_eq!(decoded.len(), 2);
+    assert_eq!(decoded[0].data, b"hi");
+    assert_eq!(decoded[1].data, b"a");
+}
