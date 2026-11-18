@@ -130,6 +130,9 @@ pub mod plugin_ports {
         CONTEXT_SUMMARY_MAX_CHARS, bound_context_summary, extract_text_content,
     };
     pub use crate::ports::llm_resilience::{TIMEOUT_PREFIX, with_llm_retry, with_llm_timeout};
+    pub use crate::ports::llm_transport::{
+        FakeTransport, HttpRequest, HttpResponse, LlmTransport, handler_from_transport,
+    };
     pub use crate::ports::mcp_resources::{
         LIST_RESOURCES, LIST_TEMPLATES, MCP_RESOURCES_SERVICE, McpResourceRegistry,
         McpResourcesPlugin, READ_RESOURCE, ResourceProvider, ScopeKey,

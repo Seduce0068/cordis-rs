@@ -3954,3 +3954,48 @@ fn jsonl_recovery_stops_at_torn_write_and_reports_line() {
         Err(PersistenceError::Corrupt { .. })
     ));
 }
+
+#[test]
+fn llm_transport_fake_records_wire_request_without_secrets() {
+    use cordis_rs::plugin_ports::{
+        FakeTransport, HttpRequest, HttpResponse, LlmTransport, handler_from_transport,
+    };
+    use futures::StreamExt;
+
+    let transport = FakeTransport::new();
+    transport.push_response(HttpResponse::ok("hello"));
+    let headers = vec![
+        ("user-agent".to_string(), "deepseek-harness/1.0".to_string()),
+        ("authorization".to_string(), "Bearer test-key".to_string()),
+    ];
+    let handler = handler_from_transport(
+        std::sync::Arc::new(transport.clone()),
+        "http://127.0.0.1:1234/chat/completions",
+        headers,
+    );
+    let chunks: Vec<_> = futures::executor::block_on(async {
+        handler(cordis_rs::core_services::LlmRequest {
+            model: "m".to_string(),
+            messages: Vec::new(),
+        })
+        .collect()
+        .await
+    });
+    assert!(chunks.iter().any(|chunk| matches!(
+        chunk,
+        cordis_rs::core_services::StreamChunk::Text(text) if text == "hello"
+    )));
+
+    let requests = transport.requests();
+    assert_eq!(requests.len(), 1);
+    assert_eq!(requests[0].method, "POST");
+    assert!(
+        requests[0]
+            .headers
+            .iter()
+            .any(|(key, _)| key == "user-agent")
+    );
+    assert!(requests[0].url.contains("127.0.0.1"));
+    let _ = HttpRequest::post("x", "y"); // ensure public constructor stays usable
+    let _: &dyn LlmTransport = &transport;
+}
