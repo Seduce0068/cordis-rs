@@ -513,3 +513,58 @@ async fn stage_a_dispose_checked_and_once_self_removal() {
     tokio::time::sleep(std::time::Duration::from_millis(20)).await;
     assert_eq!(spawned.load(Ordering::SeqCst), 2);
 }
+
+#[tokio::test]
+async fn stage_b_prepend_global_and_filtered_dispatch() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use cordis_rs::EventOptions;
+
+    let ctx = Context::root("stage-b");
+    let order = Arc::new(std::sync::Mutex::new(Vec::new()));
+
+    let o = order.clone();
+    let _tail = ctx.on("evt", move |_args| {
+        let o = o.clone();
+        Box::pin(async move { o.lock().unwrap().push("tail") })
+    });
+    let o = order.clone();
+    let _head = ctx.on_with(
+        "evt",
+        move |_args| {
+            let o = o.clone();
+            Box::pin(async move { o.lock().unwrap().push("head") })
+        },
+        EventOptions {
+            prepend: true,
+            global: false,
+        },
+    );
+
+    ctx.emit("evt", serde_json::json!({})).await;
+    assert_eq!(*order.lock().unwrap(), vec!["head", "tail"]);
+
+    // A filtered scope skips non-global listeners, but global ones still fire.
+    let gated = ctx.filtered(|name| name != "evt");
+    let global_count = Arc::new(AtomicUsize::new(0));
+    let gc = global_count.clone();
+    let _global = ctx.on_with(
+        "evt",
+        move |_args| {
+            let gc = gc.clone();
+            Box::pin(async move {
+                gc.fetch_add(1, Ordering::SeqCst);
+            })
+        },
+        EventOptions {
+            prepend: false,
+            global: true,
+        },
+    );
+
+    order.lock().unwrap().clear();
+    ctx.emit_with(&gated, "evt", serde_json::json!({})).await;
+    assert!(order.lock().unwrap().is_empty());
+    assert_eq!(global_count.load(Ordering::SeqCst), 1);
+}

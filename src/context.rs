@@ -168,10 +168,14 @@ pub struct Context {
     inner: Arc<ContextInner>,
 }
 
+type EventFilter = Arc<dyn Fn(&str) -> bool + Send + Sync>;
+
 struct ContextInner {
     name: String,
     parent: Option<Context>,
     isolated: bool,
+    /// Optional listener filter; `false` excludes a named event for this scope.
+    event_filter: Option<EventFilter>,
     lifecycle: AtomicU8,
     services: RwLock<HashMap<String, Arc<dyn Any + Send + Sync>>>,
     /// Generation per service name. A disposer only removes an entry whose
@@ -187,19 +191,24 @@ struct ContextInner {
 
 impl Context {
     pub fn root(name: impl Into<String>) -> Self {
-        Self::make(name, None, false)
+        Self::make(name, None, false, None)
     }
 
     pub fn child(&self, name: impl Into<String>) -> Self {
-        Self::make(name, Some(self.clone()), false)
+        Self::make(name, Some(self.clone()), false, None)
     }
 
     /// An isolated scope never falls back to its parent for services.
     pub fn isolate(&self, name: impl Into<String>) -> Self {
-        Self::make(name, Some(self.clone()), true)
+        Self::make(name, Some(self.clone()), true, None)
     }
 
-    fn make(name: impl Into<String>, parent: Option<Context>, isolated: bool) -> Self {
+    fn make(
+        name: impl Into<String>,
+        parent: Option<Context>,
+        isolated: bool,
+        event_filter: Option<EventFilter>,
+    ) -> Self {
         let service_added = parent
             .as_ref()
             .map(|p| p.inner.service_added.clone())
@@ -209,6 +218,7 @@ impl Context {
                 name: name.into(),
                 parent,
                 isolated,
+                event_filter,
                 lifecycle: AtomicU8::new(Lifecycle::Pending as u8),
                 services: RwLock::new(HashMap::new()),
                 service_generations: RwLock::new(HashMap::new()),
@@ -254,11 +264,25 @@ impl Context {
     where
         F: Fn(serde_json::Value) -> BoxFuture<'static, ()> + Send + Sync + 'static,
     {
+        self.on_with(name, listener, crate::events::EventOptions::default())
+    }
+
+    /// Register a named listener with upstream-style options (`prepend` /
+    /// `global`). `prepend` inserts at the head of the listener list.
+    pub fn on_with<F>(
+        &self,
+        name: &str,
+        listener: F,
+        options: crate::events::EventOptions,
+    ) -> Disposer
+    where
+        F: Fn(serde_json::Value) -> BoxFuture<'static, ()> + Send + Sync + 'static,
+    {
         use crate::events::named_emit_slot;
         let listener: crate::events::EmitListener<serde_json::Value> = Arc::new(listener);
         let registry = self.event_registry().clone();
         let key = named_emit_slot(name);
-        let id = registry.push(key.clone(), listener);
+        let id = registry.push_with(key.clone(), listener, options);
         Disposer::new(move || {
             let registry = registry.clone();
             let key = key.clone();
@@ -325,6 +349,40 @@ impl Context {
             self.event_registry().snapshot(named_emit_slot(name));
         for listener in listeners {
             listener(args.clone()).await;
+        }
+    }
+
+    /// Derive a child scope that filters which named events are visible.
+    /// `global` listeners bypass the filter during `emit_with`.
+    pub fn filtered<F>(&self, filter: F) -> Self
+    where
+        F: Fn(&str) -> bool + Send + Sync + 'static,
+    {
+        Self::make(
+            format!("{}-filtered", self.inner.name),
+            Some(self.clone()),
+            false,
+            Some(Arc::new(filter)),
+        )
+    }
+
+    /// Emit with an explicit `this` scope: non-global listeners whose event
+    /// name is rejected by `this`'s filter are skipped.
+    pub async fn emit_with(&self, this: &Context, name: &str, args: serde_json::Value) {
+        use crate::events::named_emit_slot;
+        let registry = self.event_registry();
+        let listeners: Vec<(u64, crate::events::EmitListener<serde_json::Value>)> =
+            registry.snapshot_with_ids(named_emit_slot(name));
+        for (id, listener) in listeners {
+            let allowed = registry.is_global(id)
+                || this
+                    .inner
+                    .event_filter
+                    .as_ref()
+                    .is_none_or(|filter| filter(name));
+            if allowed {
+                listener(args.clone()).await;
+            }
         }
     }
 

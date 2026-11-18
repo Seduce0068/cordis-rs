@@ -68,10 +68,34 @@ pub fn named_emit_slot(name: &str) -> SlotKey {
 type ErasedListener = Arc<dyn Any + Send + Sync>;
 type ErasedListeners = Arc<RwLock<Vec<(u64, ErasedListener)>>>;
 
+/// Options for a named listener registration (upstream `EventOptions`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct EventOptions {
+    /// Insert at the head of the listener list instead of the tail.
+    pub prepend: bool,
+    /// Ignore caller-scope filtering during dispatch.
+    pub global: bool,
+}
+
+impl From<bool> for EventOptions {
+    fn from(prepend: bool) -> Self {
+        Self {
+            prepend,
+            global: false,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Default)]
+struct HookMeta {
+    options: EventOptions,
+}
+
 #[derive(Clone, Default)]
 pub struct EventRegistry {
     slots: Arc<RwLock<HashMap<SlotKey, ErasedListeners>>>,
     next_id: Arc<AtomicU64>,
+    meta: Arc<RwLock<HashMap<u64, HookMeta>>>,
 }
 
 impl EventRegistry {
@@ -89,12 +113,54 @@ impl EventRegistry {
     where
         T: Send + Sync + 'static,
     {
+        self.push_with(key, listener, EventOptions::default())
+    }
+
+    /// Push with options, honouring `prepend` ordering.
+    pub fn push_with<T>(&self, key: SlotKey, listener: T, options: EventOptions) -> u64
+    where
+        T: Send + Sync + 'static,
+    {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        self.slot(key)
+        let binding = self.slot(key);
+        let mut slot = binding.write().expect("event slot poisoned");
+        if options.prepend {
+            slot.insert(0, (id, Arc::new(listener)));
+        } else {
+            slot.push((id, Arc::new(listener)));
+        }
+        drop(slot);
+        self.meta
             .write()
-            .expect("event slot poisoned")
-            .push((id, Arc::new(listener)));
+            .expect("event meta poisoned")
+            .insert(id, HookMeta { options });
         id
+    }
+
+    /// Snapshot listeners together with their registration ids.
+    pub fn snapshot_with_ids<T>(&self, key: SlotKey) -> Vec<(u64, T)>
+    where
+        T: Clone + Send + Sync + 'static,
+    {
+        let erased = self.slot(key).read().expect("event slot poisoned").clone();
+        erased
+            .into_iter()
+            .filter_map(|(id, listener)| {
+                listener
+                    .downcast::<T>()
+                    .ok()
+                    .map(|arc| (id, (*arc).clone()))
+            })
+            .collect()
+    }
+
+    /// Whether a listener id is global (ignores scope filtering).
+    pub fn is_global(&self, id: u64) -> bool {
+        self.meta
+            .read()
+            .expect("event meta poisoned")
+            .get(&id)
+            .is_some_and(|meta| meta.options.global)
     }
 
     /// Replace a listener in place by id (used by `once` wrapping).
@@ -110,7 +176,8 @@ impl EventRegistry {
     }
 
     pub fn remove(&self, key: SlotKey, id: u64) -> Result<()> {
-        self.slot(key)
+        let binding = self.slot(key);
+        binding
             .write()
             .expect("event slot poisoned")
             .retain(|(current, _)| *current != id);
