@@ -3805,3 +3805,59 @@ async fn compaction_automation_drives_and_reports_outcomes() {
     assert_eq!(service.config().pressure_threshold, 0.8);
     assert_eq!(service.config().overflow_code, "CONTEXT_WINDOW_EXCEEDED");
 }
+
+#[tokio::test]
+async fn install_default_controls_enables_fail_closed_and_sandbox_gate() {
+    use cordis_rs::core_services::{
+        SandboxMode, ToolDefinition, ToolError, provide_sessions, provide_tools,
+    };
+    use cordis_rs::plugin_ports::{SandboxPolicyConfig, mount_sandbox_policy};
+    use std::sync::Arc;
+
+    let ctx = Context::root("default-controls");
+    provide_sessions(&ctx).await.unwrap();
+    let (registry, pipeline) = provide_tools(&ctx).await.unwrap();
+    registry.register(ToolDefinition::new(
+        "guarded",
+        "guarded tool",
+        Arc::new(|_args, _exec| {
+            Box::pin(async {
+                Ok(cordis_rs::core_services::ToolOutput {
+                    content: serde_json::json!({"ok": true}),
+                    rendered: vec!["ok".to_string()],
+                })
+            })
+        }),
+    ));
+    let exec = cordis_rs::core_services::ToolExecContext::agent("a");
+
+    // Before installing controls the tool runs (fail-open default).
+    assert!(
+        pipeline
+            .run(&registry, "guarded", serde_json::json!({}), exec.clone())
+            .await
+            .is_ok()
+    );
+
+    let policy_ctx = Context::root("control-policy");
+    provide_sessions(&policy_ctx).await.unwrap();
+    let policy_service = mount_sandbox_policy(
+        &policy_ctx,
+        SandboxPolicyConfig {
+            mode: SandboxMode::WorkspaceWrite,
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    let policy = policy_service.resolve(None, None);
+    let _disposers = pipeline.install_default_controls(policy);
+
+    // With controls installed and no approval answerer, execution is denied.
+    let error = pipeline
+        .run(&registry, "guarded", serde_json::json!({}), exec)
+        .await
+        .unwrap_err();
+    assert!(matches!(error, ToolError::Execution(_)));
+    assert!(error.to_string().contains("blocked"));
+}

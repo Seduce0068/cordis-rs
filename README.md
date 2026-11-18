@@ -64,7 +64,7 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 | `user-questions` | phase-1 | timed wait / steer / continued |
 | `sandbox-policy` | phase-1 | 実行ポイント（Shell / FS / Tool）への接続 |
 | `goal-fold` | phase-1 | 書き込み側との統合 |
-| `ToolPipeline` approval 既定 | fail-open | `require_approval()` を既定 fail-closed へ昇格 |
+| `ToolPipeline` approval 既定 | fail-open | production では `install_default_controls(policy)` を呼ぶ（fail-closed approval + hook deny + sandbox gate を一括登録） |
 
 根拠: `src/services/llm.rs:110,166,192` / `telemetry.rs:5` /
 `session_persistence_jsonl.rs:238` / `sandbox_policy.rs:1,6` /
@@ -123,7 +123,7 @@ danger-full-access は allow）。
 テストは `tests/cordis.rs`（ランタイム）、`tests/config_loader.rs`（Loader / `!!js`）、
 `tests/core_services.rs`（コアサービス・port）、`tests/official_plugin_port.rs`
 （`dsh-command-compact`）、`tests/official_plugin_ports.rs`（`command-goal` / `tool-todo`）
-に分かれています（全 183 件）。
+に分かれています（全 184 件）。
 
 `mount_real_composition` は上流 `snapshots/sdk/text-turn/cordis.yml` の
 6 エントリすべてを fiber として起動します。

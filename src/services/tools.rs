@@ -287,6 +287,30 @@ impl ToolPipeline {
         self
     }
 
+    /// Install the production control set: fail-closed approval plus the hook
+    /// deny and sandbox policy gates. Registration order matters: middleware
+    /// added later runs earlier, so sandbox is registered last to block before
+    /// any approval prompt or retry.
+    ///
+    /// `sandbox_policy` is the already-resolved policy for this host/session.
+    pub fn install_default_controls(
+        &self,
+        sandbox_policy: crate::plugin_ports::ResolvedPolicy,
+    ) -> Vec<Disposer> {
+        self.require_approval();
+        self.require_approval();
+        // Hook deny is opt-in: a host with no hook deny effect passes Proceed.
+        // Sandbox is registered last so it runs outermost in the chain.
+        vec![
+            self.use_middleware(hook_deny_middleware(
+                crate::plugin_ports::HookEffect::Proceed,
+            )),
+            self.use_middleware(crate::plugin_ports::sandbox_policy_middleware(
+                sandbox_policy,
+            )),
+        ]
+    }
+
     /// Retry tool executions on retryable HTTP-style errors.
     pub fn with_retry(&self, retry: crate::services::retry::RetryPolicy) {
         self.state.write().expect("tool pipeline poisoned").retry = Some(retry);
