@@ -3616,3 +3616,87 @@ fn user_approval_normalization_is_fail_closed() {
     assert_eq!(outcome_label(ApprovalDecision::Allow), "allowed-once");
     assert_eq!(outcome_label(ApprovalDecision::Deny), "rejected");
 }
+
+#[tokio::test]
+async fn sandbox_policy_middleware_blocks_writes_in_read_only() {
+    use cordis_rs::core_services::{
+        SandboxMode, ToolDefinition, ToolError, ToolOutput, provide_sessions, provide_tools,
+    };
+    use cordis_rs::plugin_ports::{
+        SandboxPolicyConfig, is_write_tool, mount_sandbox_policy, sandbox_policy_middleware,
+    };
+    use std::sync::Arc;
+
+    let ok_output = || ToolOutput {
+        content: serde_json::json!({"ok": true}),
+        rendered: vec!["ok".to_string()],
+    };
+
+    let ctx = Context::root("sandbox-gate");
+    provide_sessions(&ctx).await.unwrap();
+    let (registry, pipeline) = provide_tools(&ctx).await.unwrap();
+    for name in ["bash", "read"] {
+        let handler_output = ok_output();
+        registry.register(ToolDefinition::new(
+            name,
+            "tool",
+            Arc::new(move |_args, _exec| {
+                let output = handler_output.clone();
+                Box::pin(async move { Ok(output) })
+            }),
+        ));
+    }
+    let exec = cordis_rs::core_services::ToolExecContext::agent("a");
+
+    // No gate: both tools run (backwards compatible).
+    assert!(
+        pipeline
+            .run(&registry, "bash", serde_json::json!({}), exec.clone())
+            .await
+            .is_ok()
+    );
+
+    // ReadOnly policy blocks the write tool, allows the read tool.
+    let config = SandboxPolicyConfig {
+        mode: SandboxMode::ReadOnly,
+        ..Default::default()
+    };
+    let config_ctx = Context::root("sandbox-config");
+    provide_sessions(&config_ctx).await.unwrap();
+    let service = mount_sandbox_policy(&config_ctx, config).await.unwrap();
+    let resolved = service.resolve(None, None);
+    let _write_gate = pipeline.use_middleware(sandbox_policy_middleware(resolved.clone()));
+    let error = pipeline
+        .run(&registry, "bash", serde_json::json!({}), exec.clone())
+        .await
+        .unwrap_err();
+    assert!(matches!(error, ToolError::Execution(_)));
+    assert!(error.to_string().contains("blocked"));
+    // ReadOnly blocks every tool at the pipeline level (phase-1 fail-safe).
+    assert!(
+        pipeline
+            .run(&registry, "read", serde_json::json!({}), exec)
+            .await
+            .is_err()
+    );
+
+    // WorkspaceWrite allows writes; is_write_tool is fail-safe.
+    assert!(is_write_tool("bash"));
+    assert!(!is_write_tool("read"));
+    let writable = service.resolve(None, Some(SandboxMode::WorkspaceWrite));
+    let (_, pipeline2) = provide_tools(&Context::root("sandbox-allow"))
+        .await
+        .unwrap();
+    let _gate2 = pipeline2.use_middleware(sandbox_policy_middleware(writable));
+    assert!(
+        pipeline2
+            .run(
+                &registry,
+                "bash",
+                serde_json::json!({}),
+                cordis_rs::core_services::ToolExecContext::agent("a")
+            )
+            .await
+            .is_ok()
+    );
+}

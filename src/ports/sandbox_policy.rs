@@ -139,6 +139,41 @@ impl SandboxPolicyService {
     }
 }
 
+/// Tool names that mutate the filesystem or execute commands. A `ReadOnly`
+/// policy blocks these at the pre-execute point.
+pub const WRITE_TOOLS: [&str; 6] = [
+    "bash",
+    "fs",
+    "str_replace_editor",
+    "apply_patch",
+    "edit",
+    "write",
+];
+
+/// Whether a tool name mutates state (fail-safe: unknown names are read-only).
+pub fn is_write_tool(name: &str) -> bool {
+    WRITE_TOOLS.contains(&name)
+}
+
+/// Build a pre-execute middleware that enforces a resolved sandbox policy.
+/// `ReadOnly` blocks write tools; other modes delegate. Opt-in: register via
+/// `ToolPipeline::use_middleware` (phase 1, no runner-level confinement).
+pub fn sandbox_policy_middleware(
+    resolved: ResolvedPolicy,
+) -> crate::services::tools::ToolMiddleware {
+    std::sync::Arc::new(move |_args, _exec, next| {
+        let blocked = resolved.mode == SandboxMode::ReadOnly;
+        Box::pin(async move {
+            if blocked {
+                return Err(crate::services::tools::ToolError::Execution(
+                    "blocked by sandbox policy: read-only mode".to_string(),
+                ));
+            }
+            next(_args, _exec).await
+        })
+    })
+}
+
 /// Render the model-facing policy context (upstream wording).
 pub fn render_policy_context(policy: &ResolvedPolicy) -> String {
     match policy.mode {

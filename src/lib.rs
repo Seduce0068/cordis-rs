@@ -135,8 +135,9 @@ pub mod plugin_ports {
     };
     pub use crate::ports::sandbox_policy::{
         PROJECTION_KEY as SANDBOX_PROJECTION_KEY, ResolvedPolicy, SANDBOX_INVALID_ROOT,
-        SandboxPolicyConfig, SandboxPolicyService, is_valid_path, mount as mount_sandbox_policy,
-        render_policy_context, sandbox_mode_fold,
+        SandboxPolicyConfig, SandboxPolicyService, is_valid_path, is_write_tool,
+        mount as mount_sandbox_policy, render_policy_context, sandbox_mode_fold,
+        sandbox_policy_middleware,
     };
     pub use crate::ports::session_filename::{
         parse_session_format_log_filename, session_format_log_filename, session_format_version,
