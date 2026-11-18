@@ -395,3 +395,23 @@ async fn parallel_errors_aggregates_all_failures_in_order() {
     assert!(seen.load(std::sync::atomic::Ordering::SeqCst));
     assert!(event.parallel_errors(&ctx, 7).await.is_err());
 }
+
+#[tokio::test]
+async fn old_disposer_does_not_remove_a_newer_service_with_same_name() {
+    let ctx = Context::root("ghost-disposer");
+
+    let first = ctx.provide("shared", 1u32).await.unwrap();
+    ctx.remove_service("shared").unwrap();
+    let second = ctx.provide("shared", 2u32).await.unwrap();
+
+    // The old disposer must be a no-op once the name was re-provided.
+    first.dispose().await.unwrap();
+    assert_eq!(
+        ctx.get::<u32>("shared").map(|value| *value),
+        Some(2),
+        "stale disposer removed the newer service"
+    );
+
+    second.dispose().await.unwrap();
+    assert!(ctx.get::<u32>("shared").is_none());
+}

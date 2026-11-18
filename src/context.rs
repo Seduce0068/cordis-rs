@@ -3,7 +3,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 use std::future::Future;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
 use tokio::sync::Notify;
@@ -159,6 +159,11 @@ struct ContextInner {
     isolated: bool,
     lifecycle: AtomicU8,
     services: RwLock<HashMap<String, Arc<dyn Any + Send + Sync>>>,
+    /// Generation per service name. A disposer only removes an entry whose
+    /// generation still matches the one it was created for (ghost-disposer
+    /// guard, same fencing pattern as ToolRegistry::register).
+    service_generations: RwLock<HashMap<String, u64>>,
+    next_service_generation: AtomicU64,
     events: EventRegistry,
     effects: Arc<Mutex<Vec<Disposer>>>,
     service_added: Arc<Notify>,
@@ -191,6 +196,8 @@ impl Context {
                 isolated,
                 lifecycle: AtomicU8::new(Lifecycle::Pending as u8),
                 services: RwLock::new(HashMap::new()),
+                service_generations: RwLock::new(HashMap::new()),
+                next_service_generation: AtomicU64::new(1),
                 events: EventRegistry::default(),
                 effects: Arc::new(Mutex::new(Vec::new())),
                 service_added,
@@ -248,6 +255,15 @@ impl Context {
         }
         services.insert(name.clone(), Arc::new(service));
         drop(services);
+        let generation = self
+            .inner
+            .next_service_generation
+            .fetch_add(1, Ordering::SeqCst);
+        self.inner
+            .service_generations
+            .write()
+            .expect("service generation registry poisoned")
+            .insert(name.clone(), generation);
         self.inner.service_added.notify_waiters();
         self.notify_fibers();
 
@@ -256,7 +272,7 @@ impl Context {
         let disposer = Disposer::new(move || {
             let ctx = disposer_ctx.clone();
             let name = disposer_name.clone();
-            async move { ctx.remove_service_async(&name).await }
+            async move { ctx.remove_service_generation(&name, generation).await }
         });
         self.inner
             .effects
@@ -266,11 +282,44 @@ impl Context {
         Ok(disposer)
     }
 
+    /// Remove a service only when its generation still matches. Returns
+    /// whether an entry was actually removed; stale disposers are no-ops.
+    async fn remove_service_generation(&self, name: &str, generation: u64) -> Result<()> {
+        let current = self
+            .inner
+            .service_generations
+            .read()
+            .expect("service generation registry poisoned")
+            .get(name)
+            .copied();
+        if current != Some(generation) {
+            return Ok(());
+        }
+        self.inner
+            .services
+            .write()
+            .expect("service registry poisoned")
+            .remove(name);
+        self.inner
+            .service_generations
+            .write()
+            .expect("service generation registry poisoned")
+            .remove(name);
+        self.inner.service_added.notify_waiters();
+        self.drain_dependent_fibers(name).await;
+        Ok(())
+    }
+
     pub fn remove_service(&self, name: &str) -> Result<()> {
         self.inner
             .services
             .write()
             .expect("service registry poisoned")
+            .remove(name);
+        self.inner
+            .service_generations
+            .write()
+            .expect("service generation registry poisoned")
             .remove(name);
         self.inner.service_added.notify_waiters();
         self.notify_fibers();
@@ -285,6 +334,11 @@ impl Context {
             .services
             .write()
             .expect("service registry poisoned")
+            .remove(name);
+        self.inner
+            .service_generations
+            .write()
+            .expect("service generation registry poisoned")
             .remove(name);
         self.inner.service_added.notify_waiters();
         self.drain_dependent_fibers(name).await;
