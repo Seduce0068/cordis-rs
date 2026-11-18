@@ -6,8 +6,7 @@
 //! `docs/capability-seams.md` in deepseek-ai/deepseek-harness (MIT),
 //! read as untrusted reference data.
 
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 use crate::Result;
 use crate::context::Disposer;
@@ -32,10 +31,16 @@ pub struct Session {
     inner: Arc<SessionInner>,
 }
 
+/// seq allocation and event insertion share one lock, so concurrent `append`
+/// calls cannot reorder sequences relative to the log (swarm review R2).
+struct LogState {
+    next_seq: u64,
+    events: Vec<SessionEvent>,
+}
+
 struct SessionInner {
     header: SessionHeader,
-    seq: AtomicU64,
-    events: RwLock<Vec<SessionEvent>>,
+    log: Mutex<LogState>,
 }
 
 impl Session {
@@ -43,8 +48,10 @@ impl Session {
         Self {
             inner: Arc::new(SessionInner {
                 header: SessionHeader { id: id.into(), cwd },
-                seq: AtomicU64::new(0),
-                events: RwLock::new(Vec::new()),
+                log: Mutex::new(LogState {
+                    next_seq: 0,
+                    events: Vec::new(),
+                }),
             }),
         }
     }
@@ -58,30 +65,32 @@ impl Session {
     }
 
     pub fn append(&self, event_type: impl Into<String>, data: serde_json::Value) -> SessionEvent {
-        let seq = self.inner.seq.fetch_add(1, Ordering::SeqCst) + 1;
+        let mut log = self.inner.log.lock().expect("session log poisoned");
+        log.next_seq += 1;
         let event = SessionEvent {
-            seq,
+            seq: log.next_seq,
             event_type: event_type.into(),
             data,
         };
-        self.inner
-            .events
-            .write()
-            .expect("session events poisoned")
-            .push(event.clone());
+        log.events.push(event.clone());
         event
     }
 
     pub fn events(&self) -> Vec<SessionEvent> {
         self.inner
+            .log
+            .lock()
+            .expect("session log poisoned")
             .events
-            .read()
-            .expect("session events poisoned")
             .clone()
     }
 
     pub fn seq(&self) -> u64 {
-        self.inner.seq.load(Ordering::SeqCst)
+        self.inner
+            .log
+            .lock()
+            .expect("session log poisoned")
+            .next_seq
     }
 }
 

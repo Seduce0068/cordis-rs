@@ -4137,3 +4137,29 @@ async fn llm_timeout_error_carries_504_contract_code() {
     let error = cordis_rs::Error::Other(reason);
     assert!(error.to_string().contains("504"));
 }
+
+#[test]
+fn session_append_is_atomic_under_concurrency() {
+    use std::thread;
+
+    let session = cordis_rs::core_services::Session::new("concurrent", None);
+    let mut handles = Vec::new();
+    for _ in 0..8 {
+        let session = session.clone();
+        handles.push(thread::spawn(move || {
+            for _ in 0..50 {
+                session.append("user/message", serde_json::json!({"text": "x"}));
+            }
+        }));
+    }
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    let events = session.events();
+    assert_eq!(events.len(), 400);
+    let seqs: Vec<u64> = events.iter().map(|event| event.seq).collect();
+    let expected: Vec<u64> = (1..=400).collect();
+    assert_eq!(seqs, expected, "seq order must match log order");
+    assert_eq!(session.seq(), 400);
+}
