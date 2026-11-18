@@ -2531,3 +2531,53 @@ async fn native_tool_executor_describes_and_executes_in_model_order() {
     holder.clear();
     assert!(holder.register(other));
 }
+
+#[test]
+fn builtin_command_tokens_resolve_by_name_and_alias() {
+    use cordis_rs::plugin_ports::{
+        BuiltinCommandName, CommandDescriptor, builtin_command_name, resolve_command,
+    };
+
+    let goal_id = BuiltinCommandName::Goal.definition_id();
+    assert_eq!(
+        builtin_command_name(goal_id),
+        Some(BuiltinCommandName::Goal)
+    );
+    assert!(builtin_command_name("other.plugin").is_none());
+
+    let descriptors = vec![
+        CommandDescriptor {
+            definition_id: Some(goal_id.to_string()),
+            name: "goal".to_string(),
+            description: "set goal".to_string(),
+        },
+        CommandDescriptor {
+            definition_id: Some(BuiltinCommandName::Plan.definition_id().to_string()),
+            name: "plan".to_string(),
+            description: "plan mode".to_string(),
+        },
+    ];
+
+    // en/zh aliases resolve via definitionId.
+    assert_eq!(
+        resolve_command("目标", &descriptors).map(|d| d.name),
+        Some("goal".to_string())
+    );
+    assert_eq!(
+        resolve_command("计划", &descriptors).map(|d| d.name),
+        Some("plan".to_string())
+    );
+
+    // Exact name wins over alias, including slash-prefixed local names.
+    let shadowed = vec![CommandDescriptor {
+        definition_id: Some("other.plugin".to_string()),
+        name: "/goal".to_string(),
+        description: "shadow".to_string(),
+    }];
+    assert_eq!(
+        resolve_command("goal", &shadowed).map(|d| d.description),
+        Some("shadow".to_string())
+    );
+
+    assert!(resolve_command("unknown", &descriptors).is_none());
+}
