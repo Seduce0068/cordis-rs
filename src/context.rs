@@ -76,12 +76,27 @@ impl Disposer {
         })
     }
 
-    pub async fn dispose(&self) -> Result<()> {
+    /// Dispose and report whether this call claimed the cleanup (upstream's
+    /// boolean disposer semantics). The cleanup is one-shot: even on error a
+    /// later call returns `false`.
+    pub async fn dispose_checked(&self) -> Result<bool> {
         let maybe_setup = self.inner.lock().expect("disposer poisoned").take();
         match maybe_setup {
-            Some(setup) => setup().await,
-            None => Ok(()),
+            Some(setup) => {
+                setup().await?;
+                Ok(true)
+            }
+            None => Ok(false),
         }
+    }
+
+    pub async fn dispose(&self) -> Result<()> {
+        self.dispose_checked().await.map(|_| ())
+    }
+
+    /// Whether the cleanup has already been claimed, without awaiting it.
+    pub fn is_spent(&self) -> bool {
+        self.inner.lock().expect("disposer poisoned").is_none()
     }
 
     fn same_as(&self, other: &Self) -> bool {
@@ -256,17 +271,50 @@ impl Context {
     where
         F: Fn(serde_json::Value) -> BoxFuture<'static, ()> + Send + Sync + 'static,
     {
-        let fired = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let flag = fired.clone();
-        let listener = Arc::new(listener);
-        self.on(name, move |args| {
-            let listener = listener.clone();
-            let flag = flag.clone();
-            Box::pin(async move {
-                if !flag.swap(true, Ordering::SeqCst) {
-                    listener(args).await;
-                }
-            })
+        // A standalone remover shared by the listener and the disposer avoids
+        // a Disposer <-> closure cycle while still unregistering after first
+        // invocation (upstream `once` semantics).
+        struct OnceRemover {
+            registry: crate::events::EventRegistry,
+            key: crate::events::SlotKey,
+            id: u64,
+            fired: std::sync::atomic::AtomicBool,
+        }
+        let listener: crate::events::EmitListener<serde_json::Value> = Arc::new(listener);
+        let registry = self.event_registry().clone();
+        let key = crate::events::named_emit_slot(name);
+        let id = registry.push(key.clone(), listener.clone());
+        let remover = Arc::new(OnceRemover {
+            registry,
+            key: key.clone(),
+            id,
+            fired: std::sync::atomic::AtomicBool::new(false),
+        });
+
+        let listener_remover = remover.clone();
+        let once_listener: crate::events::EmitListener<serde_json::Value> =
+            Arc::new(move |args: serde_json::Value| {
+                let listener = listener.clone();
+                let remover = listener_remover.clone();
+                Box::pin(async move {
+                    if !remover.fired.swap(true, Ordering::SeqCst) {
+                        listener(args).await;
+                        let _ = remover.registry.remove(remover.key.clone(), remover.id);
+                    }
+                })
+            });
+        // Replace the listener we just pushed with the once-wrapping one.
+        let _ = self
+            .event_registry()
+            .replace(key.clone(), id, once_listener);
+
+        let disposer_remover = remover.clone();
+        Disposer::new(move || {
+            let remover = disposer_remover.clone();
+            async move {
+                let _ = remover.registry.remove(remover.key.clone(), remover.id);
+                Ok(())
+            }
         })
     }
 

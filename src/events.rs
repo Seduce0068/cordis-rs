@@ -97,6 +97,18 @@ impl EventRegistry {
         id
     }
 
+    /// Replace a listener in place by id (used by `once` wrapping).
+    pub fn replace<T: Send + Sync + 'static>(&self, key: SlotKey, id: u64, listener: T) -> bool {
+        let binding = self.slot(key);
+        let mut slot = binding.write().expect("event slot poisoned");
+        if let Some(entry) = slot.iter_mut().find(|(current, _)| *current == id) {
+            entry.1 = Arc::new(listener);
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn remove(&self, key: SlotKey, id: u64) -> Result<()> {
         self.slot(key)
             .write()
@@ -334,7 +346,8 @@ where
     }
 
     /// Fire-and-forget dispatch on the current Tokio runtime.
-    pub fn emit_detached(&self, ctx: &Context, args: A)
+    /// Spawn each listener on the current Tokio runtime (fire-and-forget).
+    pub fn emit_spawn(&self, ctx: &Context, args: A)
     where
         A: Clone + 'static,
     {
@@ -345,6 +358,15 @@ where
             let args = args.clone();
             tokio::spawn(async move { listener(args).await });
         }
+    }
+
+    /// Deprecated alias for [`Event::emit_spawn`].
+    #[deprecated(note = "renamed to `emit_spawn`")]
+    pub fn emit_detached(&self, ctx: &Context, args: A)
+    where
+        A: Clone + 'static,
+    {
+        self.emit_spawn(ctx, args)
     }
 }
 

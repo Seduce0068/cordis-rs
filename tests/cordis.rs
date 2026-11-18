@@ -458,3 +458,58 @@ async fn context_named_on_once_and_emit_share_descriptor_slot() {
     assert_eq!(once_calls.load(Ordering::SeqCst), 1);
     assert_eq!(descriptor_calls.load(Ordering::SeqCst), 2);
 }
+
+#[tokio::test]
+async fn stage_a_dispose_checked_and_once_self_removal() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let ctx = Context::root("stage-a");
+    let count = Arc::new(AtomicUsize::new(0));
+    let c = count.clone();
+    let disposer = ctx.on("evt", move |_args| {
+        let c = c.clone();
+        Box::pin(async move {
+            c.fetch_add(1, Ordering::SeqCst);
+        })
+    });
+
+    ctx.emit("evt", serde_json::json!({})).await;
+    assert_eq!(count.load(Ordering::SeqCst), 1);
+    assert!(disposer.dispose_checked().await.unwrap());
+    assert!(!disposer.dispose_checked().await.unwrap());
+    assert!(disposer.is_spent());
+    ctx.emit("evt", serde_json::json!({})).await;
+    assert_eq!(count.load(Ordering::SeqCst), 1);
+
+    // `once` unregisters itself after the first invocation.
+    let once_count = Arc::new(AtomicUsize::new(0));
+    let oc = once_count.clone();
+    let _once = ctx.once("evt2", move |_args| {
+        let oc = oc.clone();
+        Box::pin(async move {
+            oc.fetch_add(1, Ordering::SeqCst);
+        })
+    });
+    ctx.emit("evt2", serde_json::json!({})).await;
+    ctx.emit("evt2", serde_json::json!({})).await;
+    assert_eq!(once_count.load(Ordering::SeqCst), 1);
+
+    // Deprecated alias still dispatches the same listeners.
+    let event: cordis_rs::events::Event<serde_json::Value> = cordis_rs::Event::new("spawn");
+    let spawned = Arc::new(AtomicUsize::new(0));
+    let sc = spawned.clone();
+    let _d = event.on_emit(&ctx, move |_args| {
+        let sc = sc.clone();
+        Box::pin(async move {
+            sc.fetch_add(1, Ordering::SeqCst);
+        })
+    });
+    #[allow(deprecated)]
+    event.emit_detached(&ctx, serde_json::json!({}));
+    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    assert_eq!(spawned.load(Ordering::SeqCst), 1);
+    event.emit_spawn(&ctx, serde_json::json!({}));
+    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    assert_eq!(spawned.load(Ordering::SeqCst), 2);
+}
