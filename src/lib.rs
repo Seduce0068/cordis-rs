@@ -119,7 +119,7 @@ pub mod plugin_ports {
         mount as mount_hooks_codex, select_tool_hooks, tool_payload,
     };
     pub use crate::ports::llm_attribution::{
-        AppIdentity, attribution_headers, is_product_token, launch_suffix, user_agent,
+        AppIdentity, attribution_headers, is_product_token, user_agent,
     };
     pub use crate::ports::llm_call_config::{LlmCallConfig, call_config_eq};
     pub use crate::ports::llm_deepseek::{
@@ -136,7 +136,7 @@ pub mod plugin_ports {
     };
     pub use crate::ports::mcp_templates::{
         MCP_CREDENTIAL_NOT_FOUND, TemplateSegment, assert_template_syntax, credential_refs_in,
-        parse_segments, resolve_template_string,
+        resolve_template_string,
     };
     pub use crate::ports::message_feedback::{
         FeedbackError, FeedbackItem, MessageFeedback, MessageFeedbackConfig, MessageFeedbackPlugin,
@@ -221,7 +221,7 @@ pub mod plugin_ports {
         mount as mount_tool_jobs,
     };
     pub use crate::ports::tool_pairing::{
-        CutBalance, ToolPairingError, all_cuts, balance_at, balanced_after, balanced_before,
+        CutBalance, ToolPairingError, all_cuts, balanced_after, balanced_before,
     };
     pub use crate::ports::tool_schedule::{ToolSchedule, mount as mount_tool_schedule};
     pub use crate::ports::tool_session_list::{

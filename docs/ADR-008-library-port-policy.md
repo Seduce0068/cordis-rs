@@ -35,6 +35,23 @@ v1.0.0 を待たず次 minor で削除してよい（ADR-005 の「semver major�
 永久保留になり得るため、この方針で上書きする）。移行進捗は CI の
 `-D warnings`（deprecated 使用で即失敗）で担保する。
 
+## 棚卸し結果（2026-11-18）
+
+60 port を走査した結果、実質的な呼び出し0件は「同一 port 内からしか呼ばれて
+いない公開 helper」に絞られた（自動集計の23件の大半は `mount_*` alias の誤検知）。
+
+- **private 化して削減**: `tool_pairing::balance_at` / `mcp_templates::parse_segments`
+  / `llm_attribution::launch_suffix`（外部参照は lib.rs re-export のみで削除済み）。
+- **legacy として残存**: `user_approval::APPROVAL_OUTCOMES` /
+  `tool_fs::READ_LIMIT` / `STREAM_MIN_SIZE`（upstream parity 定数として value あり）。
+- **現状維持**: `sandbox_policy::is_valid_path` / `sandbox_mode_fold`（tool 実行前
+  validation で将来利用）、`goal_fold::apply_goal_event`（round 連続性検証で将来利用）、
+  `compaction_checkpoint::COMPACT_CHECKPOINT_KIND` / `llm_message::CONTEXT_SUMMARY_MAX_CHARS`
+  / `harness_dev_context` の prompt 定数（protocol／upstream 文言として価値あり）。
+
+削除は「private 化 → re-export 削除」の2段階で実施し、CI の `-D warnings` で
+残存参照を検知する。
+
 ## 関連
 
 - [ADR-001](ADR-001-cordis-runtime-reimplementation.md) — ライセンスと意図的な差分

@@ -24,7 +24,7 @@ fn is_ref_char(ch: char) -> bool {
 
 /// Scan `${credential:REF}` occurrences, returning segments in template order.
 /// Unknown `${...}` forms are rejected so misconfiguration fails loud.
-pub fn parse_segments(value: &str, where_path: &str) -> Result<Vec<TemplateSegment>, String> {
+fn parse_segments(value: &str, where_path: &str) -> Result<Vec<TemplateSegment>, String> {
     let mut segments = Vec::new();
     let mut cursor = 0usize;
     while let Some(relative) = value[cursor..].find("${") {

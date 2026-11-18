@@ -44,7 +44,7 @@ pub struct CutBalance {
 }
 
 /// Compute the balance at a cut index. `cut` ranges 0..=events.len().
-pub fn balance_at(events: &[SessionEvent], cut: usize) -> Result<CutBalance, ToolPairingError> {
+fn balance_at(events: &[SessionEvent], cut: usize) -> Result<CutBalance, ToolPairingError> {
     if cut > events.len() {
         return Err(ToolPairingError::UnknownSeq(cut as u64));
     }

@@ -27,7 +27,7 @@ impl Default for AppIdentity {
 
 /// Read `DSH_USER_AGENT_SUFFIX` on each use (a launcher may set it after load).
 /// Returns `None` when unset or empty, `Err` when it is not a product token.
-pub fn launch_suffix() -> Result<Option<String>, String> {
+fn launch_suffix() -> Result<Option<String>, String> {
     let Ok(value) = std::env::var("DSH_USER_AGENT_SUFFIX") else {
         return Ok(None);
     };
