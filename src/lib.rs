@@ -112,6 +112,9 @@ pub mod plugin_ports {
         CredentialError, DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL, DeepSeekConfig, LlmDeepSeek,
         PROVIDER as DEEPSEEK_PROVIDER, mount as mount_llm_deepseek, resolve_api_key,
     };
+    pub use crate::ports::llm_message::{
+        CONTEXT_SUMMARY_MAX_CHARS, bound_context_summary, extract_text_content,
+    };
     pub use crate::ports::mcp_resources::{
         LIST_RESOURCES, LIST_TEMPLATES, MCP_RESOURCES_SERVICE, McpResourceRegistry,
         McpResourcesPlugin, READ_RESOURCE, ResourceProvider, ScopeKey,

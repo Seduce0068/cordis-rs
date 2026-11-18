@@ -106,3 +106,5 @@ pub mod llm_attribution;
 pub mod llm_call_config;
 
 pub mod compaction_checkpoint;
+
+pub mod llm_message;

@@ -3144,3 +3144,33 @@ fn compaction_checkpoint_source_generates_and_recognizes_marker() {
     assert!(!is_compact_checkpoint_source(&serde_json::json!({})));
     assert!(!is_compact_checkpoint_source(&serde_json::Value::Null));
 }
+
+#[test]
+fn llm_message_helpers_bound_summary_and_extract_text() {
+    use cordis_rs::plugin_ports::{bound_context_summary, extract_text_content};
+
+    // 119 / 120 chars unchanged, 121 -> 119 + ellipsis (ellipsis included in 120).
+    let s119 = "a".repeat(119);
+    let s120 = "a".repeat(120);
+    let s121 = "a".repeat(121);
+    assert_eq!(bound_context_summary(&s119), s119);
+    assert_eq!(bound_context_summary(&s120), s120);
+    let clipped = bound_context_summary(&s121);
+    assert_eq!(clipped.chars().count(), 120);
+    assert!(clipped.ends_with('…'));
+
+    // UTF-8 multibyte text never panics at a byte boundary.
+    let unicode = "あ".repeat(130);
+    assert_eq!(bound_context_summary(&unicode).chars().count(), 120);
+
+    // Only text blocks are extracted, order preserved, separator applied.
+    let content = serde_json::json!([
+        {"type": "text", "text": "first"},
+        {"type": "image", "url": "x"},
+        {"type": "text", "text": "second"},
+        {"type": "text", "text": ""}
+    ]);
+    assert_eq!(extract_text_content(&content, " "), "first second");
+    assert_eq!(extract_text_content(&content, "\n"), "first\nsecond");
+    assert_eq!(extract_text_content(&serde_json::json!([]), " "), "");
+}
