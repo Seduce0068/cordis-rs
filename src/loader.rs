@@ -1250,16 +1250,19 @@ fn evaluate_expression(
     expression: &str,
     vars: &VarTable,
     path: &str,
+    limits: Limits,
+    depth: usize,
 ) -> Result<Value, LoaderError> {
+    check_depth(limits, depth)?;
     let expression = expression.trim();
 
     // Nullish coalescing `??` has lower precedence than `||` but must be
     // consumed before the single-`?` ternary check below. Only null/undefined
     // (both represented by Value::Null here) take the right-hand side.
     if let Some((left, right)) = split_once_top_level(expression, "??") {
-        let left_value = evaluate_expression(left.trim(), vars, path)?;
+        let left_value = evaluate_expression(left.trim(), vars, path, limits, depth + 1)?;
         if left_value == Value::Null {
-            return evaluate_expression(right.trim(), vars, path);
+            return evaluate_expression(right.trim(), vars, path, limits, depth + 1);
         }
         return Ok(left_value);
     }
@@ -1279,22 +1282,52 @@ fn evaluate_expression(
                 expression: expression.to_string(),
                 reason: "ternary needs `:`".to_string(),
             })?;
-        let truthy = expression_truthy(&evaluate_expression(condition, vars, path)?);
+        let truthy = expression_truthy(&evaluate_expression(
+            condition,
+            vars,
+            path,
+            limits,
+            depth + 1,
+        )?);
         let selected = if truthy { when_true } else { when_false };
-        return evaluate_expression(selected.trim(), vars, path);
+        return evaluate_expression(selected.trim(), vars, path, limits, depth + 1);
     }
 
     // Logical OR: lowest precedence among the logical operators.
     if let Some((left, right)) = split_once_top_level(expression, "||") {
-        let left_truthy = expression_truthy(&evaluate_expression(left.trim(), vars, path)?);
-        let right_truthy = expression_truthy(&evaluate_expression(right.trim(), vars, path)?);
+        let left_truthy = expression_truthy(&evaluate_expression(
+            left.trim(),
+            vars,
+            path,
+            limits,
+            depth + 1,
+        )?);
+        let right_truthy = expression_truthy(&evaluate_expression(
+            right.trim(),
+            vars,
+            path,
+            limits,
+            depth + 1,
+        )?);
         return Ok(Value::Bool(left_truthy || right_truthy));
     }
 
     // Logical AND.
     if let Some((left, right)) = split_once_top_level(expression, "&&") {
-        let left_truthy = expression_truthy(&evaluate_expression(left.trim(), vars, path)?);
-        let right_truthy = expression_truthy(&evaluate_expression(right.trim(), vars, path)?);
+        let left_truthy = expression_truthy(&evaluate_expression(
+            left.trim(),
+            vars,
+            path,
+            limits,
+            depth + 1,
+        )?);
+        let right_truthy = expression_truthy(&evaluate_expression(
+            right.trim(),
+            vars,
+            path,
+            limits,
+            depth + 1,
+        )?);
         return Ok(Value::Bool(left_truthy && right_truthy));
     }
 
@@ -1307,8 +1340,8 @@ fn evaluate_expression(
             if !spaced {
                 continue;
             }
-            let left_value = evaluate_expression(left.trim(), vars, path)?;
-            let right_value = evaluate_expression(right.trim(), vars, path)?;
+            let left_value = evaluate_expression(left.trim(), vars, path, limits, depth + 1)?;
+            let right_value = evaluate_expression(right.trim(), vars, path, limits, depth + 1)?;
             if let Some(result) = arithmetic(&left_value, operator, &right_value) {
                 return Ok(result);
             }
@@ -1330,8 +1363,8 @@ fn evaluate_expression(
     // as expressions and compared structurally; the result is a Bool.
     for operator in ["===", "!==", "==", "!=", ">=", "<=", ">", "<"] {
         if let Some((left, right)) = split_once_top_level(expression, operator) {
-            let left_value = evaluate_expression(left.trim(), vars, path)?;
-            let right_value = evaluate_expression(right.trim(), vars, path)?;
+            let left_value = evaluate_expression(left.trim(), vars, path, limits, depth + 1)?;
+            let right_value = evaluate_expression(right.trim(), vars, path, limits, depth + 1)?;
             return Ok(Value::Bool(compare_values(
                 &left_value,
                 operator,
@@ -1342,7 +1375,13 @@ fn evaluate_expression(
 
     // Logical NOT (prefix). Placed after comparisons so `!=` is consumed first.
     if let Some(inner) = expression.strip_prefix('!') {
-        let truthy = expression_truthy(&evaluate_expression(inner.trim(), vars, path)?);
+        let truthy = expression_truthy(&evaluate_expression(
+            inner.trim(),
+            vars,
+            path,
+            limits,
+            depth + 1,
+        )?);
         return Ok(Value::Bool(!truthy));
     }
 
@@ -1393,7 +1432,7 @@ fn evaluate_expression(
     // Backtick template literals: strip the ticks and interpolate ${name}.
     if expression.starts_with('`') && expression.ends_with('`') && expression.len() >= 2 {
         let inner = &expression[1..expression.len() - 1];
-        return evaluate_expression(inner, vars, path);
+        return evaluate_expression(inner, vars, path, limits, depth + 1);
     }
 
     if expression.contains("${") {
@@ -1448,7 +1487,7 @@ fn evaluate_expression(
             || inner.contains("&&")
             || inner.contains("||");
         if looks_like_expression {
-            return evaluate_expression(inner, vars, path);
+            return evaluate_expression(inner, vars, path, limits, depth + 1);
         }
     }
     if expression.starts_with('"') && expression.ends_with('"') && expression.len() >= 2 {
@@ -1465,7 +1504,13 @@ fn evaluate_expression(
         let inner = &expression[1..expression.len() - 1];
         let mut items = Vec::new();
         for part in split_flow(inner) {
-            items.push(evaluate_expression(part.trim(), vars, path)?);
+            items.push(evaluate_expression(
+                part.trim(),
+                vars,
+                path,
+                limits,
+                depth + 1,
+            )?);
         }
         return Ok(Value::Array(items));
     }
@@ -1492,7 +1537,10 @@ fn evaluate_expression(
                 })
                 .unwrap_or_else(|| raw_key.trim())
                 .to_string();
-            map.insert(key, evaluate_expression(raw_value.trim(), vars, path)?);
+            map.insert(
+                key,
+                evaluate_expression(raw_value.trim(), vars, path, limits, depth + 1)?,
+            );
         }
         return Ok(Value::Object(map));
     }
@@ -1868,7 +1916,7 @@ fn resolve_value(
     match value {
         Value::Reference(name) => {
             if let Some(expression) = name.strip_prefix("expr:") {
-                return evaluate_expression(expression, vars, path);
+                return evaluate_expression(expression, vars, path, limits, depth);
             }
             vars.get(&name)
                 .cloned()

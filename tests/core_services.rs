@@ -4240,3 +4240,19 @@ fn scoped_fs_rejects_symlink_escape_even_when_target_missing() {
 
     std::fs::remove_dir_all(&base).unwrap();
 }
+
+#[test]
+fn js_expression_recursion_is_bounded() {
+    use cordis_rs::{Composition, LoaderError};
+
+    // A deeply nested `!` chain must be rejected with TooDeep, not stack overflow.
+    let deep = "!".repeat(400) + "true";
+    let yaml = format!(
+        "entries:\n  - id: deep\n    plugin: test\n    config:\n      value: !!js '{deep}'\n"
+    );
+    let result = Composition::parse(&yaml);
+    assert!(
+        matches!(result, Err(LoaderError::TooDeep { .. })),
+        "expected TooDeep, got {result:?}"
+    );
+}
