@@ -238,6 +238,9 @@ struct PipelineState {
     middleware: Vec<ToolMiddleware>,
     post: Vec<ToolPostExecute>,
     approval: Option<crate::services::approval::ApprovalService>,
+    /// Opt-in fail-closed gate: deny execution when no ApprovalService is
+    /// installed (default false preserves existing fail-open behavior).
+    approval_required: bool,
     retry: Option<crate::services::retry::RetryPolicy>,
 }
 
@@ -252,6 +255,17 @@ impl ToolPipeline {
     /// With no answerer registered the request is denied (upstream default).
     pub fn with_approval(&self, approval: crate::services::approval::ApprovalService) {
         self.state.write().expect("tool pipeline poisoned").approval = Some(approval);
+    }
+
+    /// Opt into fail-closed behavior: when no `ApprovalService` is installed,
+    /// tool execution is denied instead of running unapproved. The default is
+    /// fail-open for backwards compatibility with existing hosts and tests.
+    pub fn require_approval(&self) -> &Self {
+        self.state
+            .write()
+            .expect("tool pipeline poisoned")
+            .approval_required = true;
+        self
     }
 
     /// Retry tool executions on retryable HTTP-style errors.
@@ -321,9 +335,13 @@ impl ToolPipeline {
             .post
             .clone();
 
-        let (approval, retry) = {
+        let (approval, retry, approval_required) = {
             let state = self.state.read().expect("tool pipeline poisoned");
-            (state.approval.clone(), state.retry.clone())
+            (
+                state.approval.clone(),
+                state.retry.clone(),
+                state.approval_required,
+            )
         };
         let registry = registry.clone();
         let tool_name = name.to_string();
@@ -333,6 +351,11 @@ impl ToolPipeline {
             let approval = approval.clone();
             let retry = retry.clone();
             Box::pin(async move {
+                if approval.is_none() && approval_required {
+                    return Err(ToolError::Execution(format!(
+                        "tool {tool_name} blocked: approval unavailable"
+                    )));
+                }
                 if let Some(approval) = approval {
                     use crate::services::approval::{ApprovalDecision, ApprovalRequest};
                     let request = ApprovalRequest::new(

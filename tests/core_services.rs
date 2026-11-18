@@ -3493,3 +3493,42 @@ fn goal_fold_strictly_decodes_and_validates_replay() {
     let folded = fold_goal(&session.events()).unwrap();
     assert_eq!(folded.goal.as_ref().unwrap().id, "g1");
 }
+
+#[tokio::test]
+async fn tool_pipeline_require_approval_is_opt_in_fail_closed() {
+    use cordis_rs::core_services::{ToolDefinition, ToolError, provide_tools};
+    use std::sync::Arc;
+
+    let (registry, pipeline) = provide_tools(&Context::root("fail-closed")).await.unwrap();
+    registry.register(ToolDefinition::new(
+        "guarded",
+        "guarded tool",
+        Arc::new(|_args, _exec| {
+            Box::pin(async {
+                Ok(cordis_rs::core_services::ToolOutput {
+                    content: serde_json::json!({"ok": true}),
+                    rendered: vec!["ok".to_string()],
+                })
+            })
+        }),
+    ));
+    let context = cordis_rs::core_services::ToolExecContext::agent("a");
+
+    // Default remains fail-open (backwards compatible).
+    assert!(
+        pipeline
+            .run(&registry, "guarded", serde_json::json!({}), context.clone())
+            .await
+            .is_ok()
+    );
+
+    // Opt-in gate denies when no ApprovalService is installed.
+    pipeline.require_approval();
+    let error = pipeline
+        .run(&registry, "guarded", serde_json::json!({}), context)
+        .await
+        .unwrap_err();
+    assert!(matches!(error, ToolError::Execution(_)));
+    assert!(error.to_string().contains("blocked"));
+    assert!(error.to_string().contains("approval unavailable"));
+}
