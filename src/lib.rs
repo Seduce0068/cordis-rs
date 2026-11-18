@@ -102,6 +102,10 @@ pub mod plugin_ports {
         JsonlPersistence, JsonlSessionHandle, PersistedEvent, PersistenceError,
         mount as mount_session_persistence_jsonl,
     };
+    pub use crate::ports::session_stats::{
+        SessionStats, fold as session_stats_fold, mount as mount_session_stats,
+        view as session_stats_view,
+    };
     pub use crate::ports::session_title_first_prompt_llm::{
         FirstPromptTitleConfig, SessionTitleFirstPromptLlm, first_title_line,
         mount as mount_session_title_first_prompt_llm, strip_emphasis,

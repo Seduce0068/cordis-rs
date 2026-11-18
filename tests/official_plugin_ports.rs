@@ -2380,3 +2380,44 @@ async fn mcp_resources_scope_isolation_and_uri_allowlist() {
         "private"
     ));
 }
+
+#[tokio::test]
+async fn session_stats_folds_steps_tools_and_clears_pending() {
+    use cordis_rs::core_services::{Session, provide_agents, provide_sessions};
+    use cordis_rs::plugin_ports::{mount_session_stats, session_stats_view};
+
+    let ctx = Context::root("session-stats-port");
+    provide_agents(&ctx).await.unwrap();
+    let (sessions, projections) = provide_sessions(&ctx).await.unwrap();
+    mount_session_stats(&ctx).await.unwrap();
+    let session = sessions.create(Some("stats-1".to_string()), None).unwrap();
+
+    session.append("step/start", serde_json::json!({ "turn": 1, "step": 1 }));
+    session.append(
+        "assistant/message",
+        serde_json::json!({
+            "turn": 1, "step": 1, "text": "hi",
+            "usage": { "outputTokens": 5 }
+        }),
+    );
+    session.append("tool/call", serde_json::json!({ "tool": "echo" }));
+    session.append("tool/result", serde_json::json!({ "text": "ok" }));
+    session.append("step/end", serde_json::json!({ "turn": 1 }));
+    session.append("turn/end", serde_json::json!({}));
+
+    let state = projections.view("sessionStats", &session).unwrap();
+    let wire = session_stats_view(&state);
+    assert_eq!(wire["steps"], 1);
+    assert_eq!(wire["turns"], 1);
+    assert_eq!(wire["llmEvents"], 1);
+    assert_eq!(wire["decodeTokens"], 5);
+    assert_eq!(wire["toolMs"], 1); // one event apart (count unit)
+    assert_eq!(wire["approximate"], true);
+
+    // Unmatched results do not poison state; pending cleared at turn/end.
+    session.append("tool/result", serde_json::json!({ "text": "late" }));
+    let state = projections.view("sessionStats", &session).unwrap();
+    assert_eq!(session_stats_view(&state)["unmatched"], 1);
+
+    let _ = Session::new("unused", None);
+}
