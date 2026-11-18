@@ -357,7 +357,8 @@ pub mod core_services {
     };
     pub use crate::services::tools::{
         ToolArgs, ToolDefinition, ToolError, ToolExecContext, ToolHandler, ToolNext, ToolOutput,
-        ToolPipeline, ToolRegistry, invoke_blocking, provide as provide_tools,
+        ToolPipeline, ToolRegistry, hook_deny_middleware, invoke_blocking,
+        provide as provide_tools,
     };
     pub use crate::services::working_directory::{
         WorkingDirectory, provide as provide_working_directory,

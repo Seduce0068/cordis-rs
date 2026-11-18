@@ -3532,3 +3532,55 @@ async fn tool_pipeline_require_approval_is_opt_in_fail_closed() {
     assert!(error.to_string().contains("blocked"));
     assert!(error.to_string().contains("approval unavailable"));
 }
+
+#[tokio::test]
+async fn hook_deny_middleware_blocks_tool_execution() {
+    use cordis_rs::core_services::{
+        ToolDefinition, ToolError, hook_deny_middleware, provide_tools,
+    };
+    use cordis_rs::plugin_ports::HookEffect;
+    use std::sync::Arc;
+
+    let (registry, pipeline) = provide_tools(&Context::root("hook-deny")).await.unwrap();
+    registry.register(ToolDefinition::new(
+        "guarded",
+        "guarded tool",
+        Arc::new(|_args, _exec| {
+            Box::pin(async {
+                Ok(cordis_rs::core_services::ToolOutput {
+                    content: serde_json::json!({"ok": true}),
+                    rendered: vec!["ok".to_string()],
+                })
+            })
+        }),
+    ));
+    let context = cordis_rs::core_services::ToolExecContext::agent("a");
+
+    // No middleware: tool runs.
+    assert!(
+        pipeline
+            .run(&registry, "guarded", serde_json::json!({}), context.clone())
+            .await
+            .is_ok()
+    );
+
+    // Opt-in hook deny blocks execution with a "blocked" diagnostic.
+    let deny_disposer =
+        pipeline.use_middleware(hook_deny_middleware(HookEffect::Reject("policy".into())));
+    let error = pipeline
+        .run(&registry, "guarded", serde_json::json!({}), context.clone())
+        .await
+        .unwrap_err();
+    assert!(matches!(error, ToolError::Execution(_)));
+    assert!(error.to_string().contains("blocked by hook"));
+
+    // Proceed delegates to the inner tool once the deny middleware is removed.
+    deny_disposer.dispose().await.unwrap();
+    let _disposer2 = pipeline.use_middleware(hook_deny_middleware(HookEffect::Proceed));
+    assert!(
+        pipeline
+            .run(&registry, "guarded", serde_json::json!({}), context)
+            .await
+            .is_ok()
+    );
+}

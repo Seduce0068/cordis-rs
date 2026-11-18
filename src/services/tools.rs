@@ -226,6 +226,25 @@ pub type ToolNext = Arc<
         + Sync,
 >;
 
+/// Convert a hook deny effect into a middleware that blocks tool execution.
+/// `Proceed` / `Inject` delegate to the inner tool (context injection is a
+/// phase-2 concern and is intentionally dropped). Register via
+/// `ToolPipeline::use_middleware` to opt into hook enforcement.
+pub fn hook_deny_middleware(effect: crate::plugin_ports::HookEffect) -> ToolMiddleware {
+    Arc::new(move |_args, _exec, next| {
+        let effect = effect.clone();
+        Box::pin(async move {
+            match effect {
+                crate::plugin_ports::HookEffect::Reject(reason)
+                | crate::plugin_ports::HookEffect::Block(reason) => {
+                    Err(ToolError::Execution(format!("blocked by hook: {reason}")))
+                }
+                _ => next(_args, _exec).await,
+            }
+        })
+    })
+}
+
 /// Post-execute observer, mirroring upstream `tools/post-execute`.
 pub type ToolPostExecute = Arc<
     dyn Fn(ToolOutput) -> BoxFuture<'static, std::result::Result<ToolOutput, ToolError>>
