@@ -118,6 +118,9 @@ impl crate::Plugin for FeedbackProducer {
         ctx.effect(move |scope| {
             let event = event.clone();
             async move {
+                // Keep the typed descriptor registration: `produce` emits a
+                // typed `TurnStopping` payload, which occupies a different
+                // registry slot from the named `Value` API (reviewer finding).
                 let disposer = event.on_emit(&scope.ctx().clone(), |_event| Box::pin(async {}));
                 scope.on_dispose(move || async move { disposer.dispose().await });
                 Ok(())
@@ -130,7 +133,20 @@ impl crate::Plugin for FeedbackProducer {
 /// Mount the producer plugin on a context with the given event descriptor.
 pub async fn mount(ctx: &Context, event: TurnStoppingEvent) -> Result<()> {
     ctx.provide("turnStopping", event.clone()).await?;
-    let _fiber = crate::Fiber::mount(ctx, Box::new(FeedbackProducer { event })).await?;
+    let fiber = crate::Fiber::mount(ctx, Box::new(FeedbackProducer { event })).await?;
+    // Keep the fiber alive for the context's lifetime; dropping it would
+    // leave the listener registered with no way to unload (ghost fiber).
+    ctx.effect(move |scope| {
+        let fiber = fiber.clone();
+        async move {
+            scope.on_dispose(move || async move {
+                fiber.unload().await?;
+                Ok(())
+            });
+            Ok(())
+        }
+    })
+    .await?;
     Ok(())
 }
 

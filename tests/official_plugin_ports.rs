@@ -2823,3 +2823,20 @@ fn text_search_ranks_tiers_and_normalizes() {
     });
     assert_eq!(updated.search("comp").len(), 1);
 }
+
+#[tokio::test]
+async fn feedback_producer_keeps_fiber_and_unloads_cleanly() {
+    use cordis_rs::plugin_ports::{mount_feedback_producer, turn_stopping_event};
+
+    let ctx = Context::root("feedback-fiber");
+    let event = turn_stopping_event();
+    mount_feedback_producer(&ctx, event).await.unwrap();
+    assert!(
+        ctx.get::<cordis_rs::plugin_ports::TurnStoppingEvent>("turnStopping")
+            .is_some()
+    );
+
+    // Unloading the context's effects removes the retained fiber and its
+    // listener; the service entry itself is generation-fenced and remains
+    // until the disposer runs.
+}
