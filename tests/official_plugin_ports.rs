@@ -2652,3 +2652,46 @@ fn mcp_templates_scan_validate_and_resolve_atomically() {
     // Literal without `${` is allowed.
     assert!(assert_template_syntax("credential:FOO", "mcp.url").is_ok());
 }
+
+#[tokio::test]
+async fn hooks_codex_uses_snake_case_payload_and_deny_only_mapping() {
+    use cordis_rs::plugin_ports::{
+        HookEvent, codex_audit_pair, codex_effect, codex_outcome, load_codex_config, tool_payload,
+    };
+    use cordis_rs::services::hook_protocol::HookOutput;
+
+    let payload = tool_payload("bash", Some("rm"));
+    assert_eq!(payload["tool_name"], "bash");
+    assert_eq!(payload["command"], "rm");
+
+    // Empty config is a no-op; invalid matcher is rejected (fail closed).
+    assert!(load_codex_config(None).unwrap().hooks.is_empty());
+    let bad = serde_json::json!({
+        "hooks": { "PreToolUse": [{ "matcher": "[", "hooks": [{ "command": "x" }] }] }
+    });
+    assert!(load_codex_config(Some(&bad)).is_err());
+
+    assert_eq!(
+        codex_effect(HookEvent::PreToolUse, true, Some("blocked")),
+        cordis_rs::plugin_ports::HookEffect::Reject("blocked".to_string())
+    );
+    assert_eq!(
+        codex_effect(HookEvent::PostToolUse, true, None),
+        cordis_rs::plugin_ports::HookEffect::Block("".to_string())
+    );
+    assert_eq!(
+        codex_effect(HookEvent::PreToolUse, false, None),
+        cordis_rs::plugin_ports::HookEffect::Proceed
+    );
+
+    let output = HookOutput {
+        decision: cordis_rs::core_services::MergedDecision::Deny,
+        reason: Some("x".to_string()),
+        stop: false,
+        context: None,
+    };
+    let pair = codex_audit_pair(HookEvent::PreToolUse, "cmd", &output, Some(1));
+    assert_eq!(pair[0].1["dialect"], "codex");
+    assert_eq!(pair[1].1["dialect"], "codex");
+    let _ = codex_outcome(true, None);
+}

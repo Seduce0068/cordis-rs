@@ -82,3 +82,5 @@ pub mod command_builtins;
 pub mod command_parse;
 
 pub mod mcp_templates;
+
+pub mod hooks_codex;
