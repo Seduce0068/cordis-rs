@@ -505,5 +505,15 @@ pub fn invoke_blocking(
     args: ToolArgs,
     exec: ToolExecContext,
 ) -> std::result::Result<ToolOutput, ToolError> {
+    // A blocking call from inside a Tokio runtime would stall the only thread
+    // of a current-thread runtime, so `tokio::time::sleep` in the retry path
+    // could never wake (or panic without a reactor). Fail closed and direct
+    // callers to the async API (swarm review R2-BV).
+    if tokio::runtime::Handle::try_current().is_ok() {
+        return Err(ToolError::Execution(
+            "invoke_blocking must not be called from a Tokio runtime; use ToolPipeline::run(...).await"
+                .to_string(),
+        ));
+    }
     futures::executor::block_on(pipeline.run(registry, name, args, exec))
 }

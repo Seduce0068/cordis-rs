@@ -4290,3 +4290,20 @@ async fn effect_setup_during_teardown_does_not_revive_disposer() {
     ctx.dispose_effects().await.unwrap();
     assert_eq!(cleaned.load(Ordering::SeqCst), 1);
 }
+
+#[tokio::test]
+async fn invoke_blocking_rejects_calls_from_tokio_runtime() {
+    let ctx = Context::root("blocking-guard");
+    let (registry, pipeline) = cordis_rs::core_services::provide_tools(&ctx).await.unwrap();
+    let result = cordis_rs::core_services::invoke_blocking(
+        &registry,
+        &pipeline,
+        "nonexistent",
+        serde_json::json!({}),
+        cordis_rs::core_services::ToolExecContext::agent("a"),
+    );
+    // The guard runs before any async work, so an Err is returned promptly
+    // instead of block_on stalling the current-thread runtime.
+    let error = result.unwrap_err();
+    assert!(error.to_string().contains("must not be called"));
+}
