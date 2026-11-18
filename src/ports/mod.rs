@@ -120,3 +120,5 @@ pub mod code_language;
 pub mod attachment_admission;
 
 pub mod workspace_path;
+
+pub mod llm_resilience;

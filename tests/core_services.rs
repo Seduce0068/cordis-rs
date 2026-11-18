@@ -3861,3 +3861,60 @@ async fn install_default_controls_enables_fail_closed_and_sandbox_gate() {
     assert!(matches!(error, ToolError::Execution(_)));
     assert!(error.to_string().contains("blocked"));
 }
+
+#[tokio::test]
+async fn llm_resilience_timeout_yields_retryable_error_chunk() {
+    use cordis_rs::core_services::{LlmRequest, RetryPolicy, StreamChunk};
+    use cordis_rs::plugin_ports::{TIMEOUT_PREFIX, with_llm_retry, with_llm_timeout};
+    use futures::StreamExt;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    // A handler that never yields a chunk.
+    let hanging: cordis_rs::services::llm::StreamHandler =
+        Arc::new(|_request| Box::pin(futures::stream::pending::<StreamChunk>()));
+    let timed = with_llm_timeout(hanging, Duration::from_millis(5));
+    let mut stream = timed(LlmRequest {
+        model: "m".to_string(),
+        messages: Vec::new(),
+    });
+    let first = stream.next().await.unwrap();
+    match first {
+        StreamChunk::Error(reason) => assert!(reason.starts_with(TIMEOUT_PREFIX)),
+        other => panic!("expected timeout error, got {other:?}"),
+    }
+
+    // Retry decorator replays a failing handler up to the policy limit.
+    let attempts = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counter = attempts.clone();
+    let flaky: cordis_rs::services::llm::StreamHandler = Arc::new(move |_request| {
+        let counter = counter.clone();
+        Box::pin(futures::stream::once(async move {
+            let n = counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            if n < 2 {
+                StreamChunk::Error("HTTP 504 gateway timeout".to_string())
+            } else {
+                StreamChunk::Text("ok".to_string())
+            }
+        }))
+    });
+    let policy = RetryPolicy {
+        max_retries: 3,
+        initial_delay_ms: 1,
+        max_delay_ms: 1,
+        ..Default::default()
+    };
+    let retried = with_llm_retry(flaky, policy);
+    let chunks: Vec<_> = retried(LlmRequest {
+        model: "m".to_string(),
+        messages: Vec::new(),
+    })
+    .collect()
+    .await;
+    assert!(
+        chunks
+            .iter()
+            .any(|chunk| matches!(chunk, StreamChunk::Text(text) if text == "ok"))
+    );
+    assert!(attempts.load(std::sync::atomic::Ordering::SeqCst) >= 3);
+}

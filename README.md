@@ -29,7 +29,7 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 | Loader | 軽量 YAML（`entries:` / `name:` / `insert:` / `!!js` 式）、Composition の部分 mount |
 | コアサービス（38） | `tools` / `sessions` / `sessionProjections` / `commands` / `llm` / `agentLoop` / `fs` / `jobs` / `shell` / `skills` / `subagents` / `workingDirectory` / `messageFeedback` / `goals` / `systemPrompt` / `toolResultPruner` / `tokenMeter` / `compaction` / `approval` / `permissionPresets` / `sessionQuery` / `workspace` / `storage` / `agents` / `otel` / `retry` / `sessionTitles` / `schedule` / `planMode` / `credentials` / `timeoutPolicy` / `pluginInventory` / `timeContext` / `sessionReferences` / `fileReferences` / `fileSearch` / `tmuxContext` / `repeatReminder` |
 | library port | `hook-protocol`（matcher と most-restrictive outcome merge、regex 対応） |
-| 再利用 port（60） | `command-compact` / `command-goal` / `command-feedback` / `tool-todo` / `tool-fs` / `tool-bash` / `tool-working-directory` / `tool-subagent` / `tool-session-query` / `skill-filesystem` / `message-feedback` / `session-persistence-jsonl` / `llm-deepseek` / `feedback-producer` / `session-title-all-prompts-llm` / `tool-schedule` / `tool-exit-plan-mode` / `agent-instructions` / `harness-dev-context` / `tool-goal` / `fs-observation-policy` / `tool-session-list` / `tool-str-replace-editor` / `time-context` / `tmux-context` / `tool-jobs` / `timeout-policy` / `compaction-image-offload` / `compaction-tool-result-pruner` / `fs-patch` / `mcp-resources` / `hooks-claude-code` / `session-turn-outline` / `deepseek-llm-api-extensions` / `session-title-first-prompt-llm` / `session-stats` / `session-log-deepseek` / `native-tool-executor` / `command-builtins` / `command-parse` / `mcp-templates` / `hooks-codex` / `duration` / `tool-pairing` / `text-search` / `sandbox-policy` / `user-questions` / `fs-errno` / `session-filename` / `goal-fold` / `llm-attribution` / `llm-call-config` / `compaction-checkpoint` / `llm-message` / `user-approval` / `goal-round-driver` / `compaction-automation` / `code-language` / `attachment-admission` / `workspace-path` |
+| 再利用 port（61） | `command-compact` / `command-goal` / `command-feedback` / `tool-todo` / `tool-fs` / `tool-bash` / `tool-working-directory` / `tool-subagent` / `tool-session-query` / `skill-filesystem` / `message-feedback` / `session-persistence-jsonl` / `llm-deepseek` / `feedback-producer` / `session-title-all-prompts-llm` / `tool-schedule` / `tool-exit-plan-mode` / `agent-instructions` / `harness-dev-context` / `tool-goal` / `fs-observation-policy` / `tool-session-list` / `tool-str-replace-editor` / `time-context` / `tmux-context` / `tool-jobs` / `timeout-policy` / `compaction-image-offload` / `compaction-tool-result-pruner` / `fs-patch` / `mcp-resources` / `hooks-claude-code` / `session-turn-outline` / `deepseek-llm-api-extensions` / `session-title-first-prompt-llm` / `session-stats` / `session-log-deepseek` / `native-tool-executor` / `command-builtins` / `command-parse` / `mcp-templates` / `hooks-codex` / `duration` / `tool-pairing` / `text-search` / `sandbox-policy` / `user-questions` / `fs-errno` / `session-filename` / `goal-fold` / `llm-attribution` / `llm-call-config` / `compaction-checkpoint` / `llm-message` / `user-approval` / `goal-round-driver` / `compaction-automation` / `code-language` / `attachment-admission` / `workspace-path` / `llm-resilience` |
 | GPUI 連携 | 別リポジトリ `dsh-gpui-client-poc`：todo / fs / agent / prompt / 実 composition / plugin トグル / 実 composition トグル / ACP ストリーム UI |
 
 ### 意図的な差分
@@ -50,7 +50,7 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 | ドメイン | まず手に取る API |
 | --- | --- |
 | 実行・ツール基盤 | `ToolPipeline::install_default_controls` / `ToolRegistry` / `provide_tools` |
-| LLM 呼び出し | `LlmService` / `call_config_eq` / `user_agent` / `bound_context_summary` |
+| LLM 呼び出し | `LlmService` / `with_llm_timeout` / `with_llm_retry` / `call_config_eq` |
 | 会話セッション／永続化 | `SessionStore` / `JsonlPersistence` / `provide_sessions` |
 | コンテキスト／圧縮 | `CompactionEngine::maybe_compact` / `mount_compaction_automation` / `fold_goal` |
 | 対話統制（human-in-the-loop） | `mount_hooks_claude_code` / `UserQuestionService` / `mount_sandbox_policy` |
@@ -141,7 +141,7 @@ danger-full-access は allow）。
 テストは `tests/cordis.rs`（ランタイム）、`tests/config_loader.rs`（Loader / `!!js`）、
 `tests/core_services.rs`（コアサービス・port）、`tests/official_plugin_port.rs`
 （`dsh-command-compact`）、`tests/official_plugin_ports.rs`（`command-goal` / `tool-todo`）
-に分かれています（全 184 件）。
+に分かれています（全 185 件）。
 
 `mount_real_composition` は上流 `snapshots/sdk/text-turn/cordis.yml` の
 6 エントリすべてを fiber として起動します。
