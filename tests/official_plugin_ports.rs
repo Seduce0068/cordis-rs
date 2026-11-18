@@ -2950,3 +2950,42 @@ fn parse_command_preserves_newline_separators_as_opaque_raw_input() {
     assert_eq!(parse_command("/goal-").unwrap().name, "goal-");
     assert_eq!(parse_command("/goal_1").unwrap().name, "goal_1");
 }
+
+#[test]
+fn fs_errno_classifies_host_errors_with_cause() {
+    use cordis_rs::plugin_ports::{FsErrorCode, fs_error_from_errno};
+
+    let not_found = std::io::Error::from_raw_os_error(2);
+    let classified = fs_error_from_errno("read", "/tmp/missing", &not_found);
+    assert_eq!(classified.code, FsErrorCode::NotFound);
+    assert_eq!(
+        classified.message,
+        "cannot read \"/tmp/missing\": not found"
+    );
+    assert_eq!(classified.cause().to_string(), not_found.to_string());
+
+    let denied = std::io::Error::from_raw_os_error(13);
+    assert_eq!(
+        fs_error_from_errno("stat", "/secret", &denied).code,
+        FsErrorCode::PermissionDenied
+    );
+    assert_eq!(
+        fs_error_from_errno("stat", "/secret", &std::io::Error::from_raw_os_error(1)).code,
+        FsErrorCode::PermissionDenied
+    );
+    assert_eq!(
+        fs_error_from_errno("read", "/dir", &std::io::Error::from_raw_os_error(21)).code,
+        FsErrorCode::NotRegularFile
+    );
+    assert_eq!(
+        fs_error_from_errno("list", "/dir", &std::io::Error::from_raw_os_error(20)).code,
+        FsErrorCode::NotFound
+    );
+
+    // No raw errno -> generic IO error with the original message preserved.
+    let other = std::io::Error::other("boom");
+    let classified = fs_error_from_errno("read", "/x", &other);
+    assert_eq!(classified.code, FsErrorCode::IoError);
+    assert!(classified.message.contains("boom"));
+    assert_eq!(classified.cause().to_string(), "boom");
+}

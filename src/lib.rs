@@ -73,6 +73,7 @@ pub mod plugin_ports {
         FeedbackProducer, ProducerOutcome, TurnStopping, TurnStoppingEvent,
         mount as mount_feedback_producer, produce, turn_stopping_event,
     };
+    pub use crate::ports::fs_errno::{FsError, FsErrorCode, fs_error_from_errno};
     pub use crate::ports::fs_observation_policy::{
         FsObservationPolicy, FsObservationPolicyPlugin, Observation, PolicyError, WriteIntent,
         provide as provide_fs_observation_policy,

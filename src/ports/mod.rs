@@ -94,3 +94,5 @@ pub mod text_search;
 pub mod sandbox_policy;
 
 pub mod user_questions;
+
+pub mod fs_errno;
