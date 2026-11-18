@@ -620,3 +620,33 @@ async fn typed_event_macro_shares_named_slot_and_records_decode_errors() {
     .unwrap();
     assert_eq!(called.load(Ordering::SeqCst), 2);
 }
+
+#[tokio::test]
+async fn removing_listeners_clears_hook_meta() {
+    use cordis_rs::EventOptions;
+
+    let ctx = Context::root("meta-cleanup");
+    let baseline = ctx.event_registry().meta_len();
+
+    let d1 = ctx.on_with(
+        "meta-evt",
+        |_args| Box::pin(async {}),
+        EventOptions {
+            prepend: false,
+            global: true,
+        },
+    );
+    let d2 = ctx.on_with(
+        "meta-evt",
+        |_args| Box::pin(async {}),
+        EventOptions {
+            prepend: true,
+            global: false,
+        },
+    );
+    assert_eq!(ctx.event_registry().meta_len(), baseline + 2);
+
+    d1.dispose().await.unwrap();
+    d2.dispose().await.unwrap();
+    assert_eq!(ctx.event_registry().meta_len(), baseline);
+}

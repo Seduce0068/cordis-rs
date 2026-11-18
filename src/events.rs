@@ -243,7 +243,15 @@ impl EventRegistry {
             .write()
             .expect("event slot poisoned")
             .retain(|(current, _)| *current != id);
+        // Drop the option metadata too; otherwise HookMeta accumulates in
+        // long-running hosts even after every listener is unloaded.
+        self.meta.write().expect("event meta poisoned").remove(&id);
         Ok(())
+    }
+
+    /// Number of live hook metadata entries (test/observability accessor).
+    pub fn meta_len(&self) -> usize {
+        self.meta.read().expect("event meta poisoned").len()
     }
 
     pub fn snapshot<T>(&self, key: SlotKey) -> Vec<T>
