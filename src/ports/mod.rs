@@ -80,3 +80,5 @@ pub mod native_tool_executor;
 pub mod command_builtins;
 
 pub mod command_parse;
+
+pub mod mcp_templates;

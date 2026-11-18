@@ -98,6 +98,10 @@ pub mod plugin_ports {
         McpResourcesPlugin, READ_RESOURCE, ResourceProvider, ScopeKey,
         mount as mount_mcp_resources,
     };
+    pub use crate::ports::mcp_templates::{
+        MCP_CREDENTIAL_NOT_FOUND, TemplateSegment, assert_template_syntax, credential_refs_in,
+        parse_segments, resolve_template_string,
+    };
     pub use crate::ports::message_feedback::{
         FeedbackError, FeedbackItem, MessageFeedback, MessageFeedbackConfig, MessageFeedbackPlugin,
         Rating, mount as mount_message_feedback,

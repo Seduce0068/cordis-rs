@@ -2610,3 +2610,45 @@ fn parse_command_strict_syntax_preserves_raw_input() {
     let utf8 = parse_command("/goal 日本語").unwrap();
     assert_eq!(utf8.raw_input, " 日本語");
 }
+
+#[test]
+fn mcp_templates_scan_validate_and_resolve_atomically() {
+    use cordis_rs::plugin_ports::{
+        MCP_CREDENTIAL_NOT_FOUND, assert_template_syntax, credential_refs_in,
+        resolve_template_string,
+    };
+
+    let value = "https://${credential:HOST}/v1?k=${credential:KEY}&x=${credential:HOST}";
+    assert_eq!(
+        credential_refs_in(value, "mcp.url").unwrap(),
+        vec!["HOST", "KEY", "HOST"]
+    );
+    assert!(assert_template_syntax(value, "mcp.url").is_ok());
+
+    let resolved = resolve_template_string(value, "mcp.url", |reference| match reference {
+        "HOST" => Some("example.com".to_string()),
+        "KEY" => Some("secret".to_string()),
+        _ => None,
+    })
+    .unwrap();
+    assert_eq!(resolved, "https://example.com/v1?k=secret&x=example.com");
+
+    // Atomic: one missing reference fails the whole string, no partial result.
+    let error = resolve_template_string(value, "mcp.url", |reference| {
+        if reference == "HOST" {
+            Some("example.com".to_string())
+        } else {
+            None
+        }
+    })
+    .unwrap_err();
+    assert!(error.contains(MCP_CREDENTIAL_NOT_FOUND));
+    assert!(error.contains("KEY"));
+
+    // Fail-loud syntax: partial `${x${credential:A}` and unknown placeholders.
+    assert!(assert_template_syntax("${x${credential:A}", "mcp.url").is_err());
+    assert!(assert_template_syntax("${env:FOO}", "mcp.url").is_err());
+    assert!(assert_template_syntax("${credential:REF", "mcp.url").is_err());
+    // Literal without `${` is allowed.
+    assert!(assert_template_syntax("credential:FOO", "mcp.url").is_ok());
+}
