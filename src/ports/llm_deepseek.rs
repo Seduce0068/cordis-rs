@@ -64,6 +64,22 @@ pub fn resolve_api_key(
         .ok_or_else(|| CredentialError::Missing(config.api_key_env.clone()))
 }
 
+/// Build a transport-backed `StreamHandler` for the DeepSeek chat endpoint.
+/// The API key is assembled into `Authorization` here (host side); the
+/// transport never stores the secret, and attribution headers are always
+/// merged so provider requests cannot suppress attribution.
+pub fn handler_with_transport(
+    config: &DeepSeekConfig,
+    api_key: &str,
+    transport: std::sync::Arc<dyn crate::plugin_ports::LlmTransport>,
+) -> crate::services::llm::StreamHandler {
+    let identity = crate::plugin_ports::AppIdentity::default();
+    let mut headers = crate::plugin_ports::attribution_headers(&identity);
+    headers.push(("authorization".to_string(), format!("Bearer {api_key}")));
+    let endpoint = format!("{}/chat/completions", config.base_url.trim_end_matches('/'));
+    crate::plugin_ports::handler_from_transport(transport, endpoint, headers)
+}
+
 /// The `llm-deepseek-api-key` plugin. `inject = ['llm']`.
 pub struct LlmDeepSeek {
     pub config: DeepSeekConfig,

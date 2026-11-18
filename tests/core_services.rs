@@ -3999,3 +3999,43 @@ fn llm_transport_fake_records_wire_request_without_secrets() {
     let _ = HttpRequest::post("x", "y"); // ensure public constructor stays usable
     let _: &dyn LlmTransport = &transport;
 }
+
+#[test]
+fn deepseek_transport_handler_sends_messages_and_redacts_key() {
+    use cordis_rs::plugin_ports::{
+        DeepSeekConfig, FakeTransport, HttpResponse, handler_with_transport,
+    };
+    use futures::StreamExt;
+
+    let transport = FakeTransport::new();
+    transport.push_response(HttpResponse::ok("answer"));
+    let handler = handler_with_transport(
+        &DeepSeekConfig::default(),
+        "super-secret-key",
+        std::sync::Arc::new(transport.clone()),
+    );
+    let request = cordis_rs::core_services::LlmRequest {
+        model: "deepseek-chat".to_string(),
+        messages: vec![cordis_rs::core_services::ChatMessage::user("hello")],
+    };
+    let chunks: Vec<_> = futures::executor::block_on(async { handler(request).collect().await });
+    assert!(chunks.iter().any(|chunk| matches!(
+        chunk,
+        cordis_rs::core_services::StreamChunk::Text(text) if text == "answer"
+    )));
+
+    let requests = transport.requests();
+    assert_eq!(requests.len(), 1);
+    assert!(requests[0].url.ends_with("/chat/completions"));
+    assert!(requests[0].body.contains("hello"));
+    assert!(
+        requests[0]
+            .headers
+            .iter()
+            .any(|(key, value)| { key == "authorization" && value == "Bearer super-secret-key" })
+    );
+    // Debug output must never contain the key.
+    let debug = format!("{:?}", requests);
+    assert!(!debug.contains("super-secret-key"));
+    assert!(debug.contains("<redacted>"));
+}

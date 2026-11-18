@@ -7,12 +7,30 @@
 use std::sync::{Arc, RwLock};
 
 /// An outbound LLM HTTP request (serialized provider payload).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct HttpRequest {
     pub method: String,
     pub url: String,
     pub headers: Vec<(String, String)>,
     pub body: String,
+}
+
+impl std::fmt::Debug for HttpRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Redact header values (Authorization carries the API key) so request
+        // logs and test output can never leak credentials.
+        let redacted: Vec<(&String, &str)> = self
+            .headers
+            .iter()
+            .map(|(name, _)| (name, "<redacted>"))
+            .collect();
+        f.debug_struct("HttpRequest")
+            .field("method", &self.method)
+            .field("url", &self.url)
+            .field("headers", &redacted)
+            .field("body", &self.body)
+            .finish()
+    }
 }
 
 impl HttpRequest {
@@ -62,6 +80,16 @@ pub fn handler_from_transport(
         let endpoint = endpoint.clone();
         let extra_headers = extra_headers.clone();
         let model = request.model.clone();
+        let messages = serde_json::json!(
+            request
+                .messages
+                .iter()
+                .map(|message| serde_json::json!({
+                    "role": message.role,
+                    "content": message.content,
+                }))
+                .collect::<Vec<_>>()
+        );
         Box::pin(futures::stream::once(async move {
             // Merge caller headers (attribution + Authorization assembled by
             // the host) with the endpoint path. The transport never sees a
@@ -70,7 +98,7 @@ pub fn handler_from_transport(
                 endpoint,
                 serde_json::json!({
                     "model": model,
-                    "messages": [],
+                    "messages": messages,
                 })
                 .to_string(),
             );

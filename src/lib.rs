@@ -124,7 +124,8 @@ pub mod plugin_ports {
     pub use crate::ports::llm_call_config::{LlmCallConfig, call_config_eq};
     pub use crate::ports::llm_deepseek::{
         CredentialError, DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL, DeepSeekConfig, LlmDeepSeek,
-        PROVIDER as DEEPSEEK_PROVIDER, mount as mount_llm_deepseek, resolve_api_key,
+        PROVIDER as DEEPSEEK_PROVIDER, handler_with_transport, mount as mount_llm_deepseek,
+        resolve_api_key,
     };
     pub use crate::ports::llm_message::{
         CONTEXT_SUMMARY_MAX_CHARS, bound_context_summary, extract_text_content,
