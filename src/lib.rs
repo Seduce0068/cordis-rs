@@ -43,6 +43,7 @@ pub mod plugin_ports {
     pub use crate::ports::command_goal::{
         CommandGoal, DEFAULT_MAX_GOAL_ROUNDS, USAGE as GOAL_USAGE, mount as mount_command_goal,
     };
+    pub use crate::ports::command_parse::{ParsedCommand, parse_command};
     #[deprecated(note = "use `ImageOffloadDecision` instead")]
     pub use crate::ports::compaction_image_offload::Decision;
     #[deprecated(note = "use `IMAGE_OFFLOAD_EVENT_TYPE` instead")]

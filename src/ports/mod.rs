@@ -78,3 +78,5 @@ pub mod session_log_deepseek;
 pub mod native_tool_executor;
 
 pub mod command_builtins;
+
+pub mod command_parse;

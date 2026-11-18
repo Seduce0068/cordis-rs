@@ -2581,3 +2581,32 @@ fn builtin_command_tokens_resolve_by_name_and_alias() {
 
     assert!(resolve_command("unknown", &descriptors).is_none());
 }
+
+#[test]
+fn parse_command_strict_syntax_preserves_raw_input() {
+    use cordis_rs::plugin_ports::parse_command;
+
+    let bare = parse_command("/goal").unwrap();
+    assert_eq!(bare.name, "goal");
+    assert_eq!(bare.raw_input, "");
+    assert_eq!(bare.registered_name(), "/goal");
+
+    let spaced = parse_command("/goal  foo").unwrap();
+    assert_eq!(spaced.raw_input, "  foo");
+
+    let tabbed = parse_command("/goal\targ").unwrap();
+    assert_eq!(tabbed.raw_input, "\targ");
+
+    assert!(parse_command("/Goal").is_none());
+    // `/goalx` is valid: x matches [a-z0-9_-] (upstream regex).
+    assert_eq!(parse_command("/goalx").unwrap().name, "goalx");
+    assert!(parse_command("goal").is_none());
+    assert!(parse_command("//goal").is_none());
+    assert!(parse_command("/").is_none());
+    assert!(parse_command("/ goal").is_none());
+    assert!(parse_command("/目标").is_none());
+
+    // UTF-8 after a valid separator is preserved verbatim.
+    let utf8 = parse_command("/goal 日本語").unwrap();
+    assert_eq!(utf8.raw_input, " 日本語");
+}
