@@ -110,7 +110,7 @@ impl crate::Plugin for TmuxContextPlugin {
 }
 
 pub async fn mount(ctx: &Context, config: TmuxContextPluginConfig) -> Result<()> {
-    let _fiber = crate::Fiber::mount(ctx, Box::new(TmuxContextPlugin { config })).await?;
+    let _ = crate::Fiber::mount_retained(ctx, Box::new(TmuxContextPlugin { config })).await?;
     Ok(())
 }
 

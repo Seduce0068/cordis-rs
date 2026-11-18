@@ -113,6 +113,6 @@ pub async fn mount(ctx: &Context, config: ToolSubagentConfig) -> Result<ToolRegi
     if ctx.get::<SubagentRegistry>("subagents").is_none() {
         crate::core_services::provide_subagents(ctx).await?;
     }
-    let _fiber = crate::Fiber::mount(ctx, Box::new(ToolSubagent { config })).await?;
+    let _ = crate::Fiber::mount_retained(ctx, Box::new(ToolSubagent { config })).await?;
     Ok((*tools).clone())
 }

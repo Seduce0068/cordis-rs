@@ -149,6 +149,6 @@ pub async fn mount(ctx: &Context, config: SkillFsConfig) -> Result<SkillRegistry
     } else {
         crate::core_services::provide_skills(ctx).await?
     };
-    let _fiber = crate::Fiber::mount(ctx, Box::new(SkillFilesystem { config })).await?;
+    let _ = crate::Fiber::mount_retained(ctx, Box::new(SkillFilesystem { config })).await?;
     Ok(registry)
 }

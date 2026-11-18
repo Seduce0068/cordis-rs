@@ -315,7 +315,7 @@ pub async fn mount(ctx: &Context, fs: FileSystem, config: ToolFsConfig) -> Resul
     if ctx.get::<FileSystem>("fs").is_none() {
         ctx.provide("fs", fs).await?;
     }
-    let fiber = crate::Fiber::mount(ctx, Box::new(ToolFs { config })).await?;
+    let fiber = crate::Fiber::mount_retained(ctx, Box::new(ToolFs { config })).await?;
     // Keep the fiber alive for the context's lifetime. `register_fiber` only
     // stores a Weak, so dropping the mount handle would remove it from the
     // dependent-refresh registry and prevent unload on inject changes.

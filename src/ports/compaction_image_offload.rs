@@ -183,6 +183,6 @@ impl crate::Plugin for CompactionImageOffload {
 }
 
 pub async fn mount(ctx: &Context) -> Result<()> {
-    let _fiber = crate::Fiber::mount(ctx, Box::new(CompactionImageOffload)).await?;
+    let _ = crate::Fiber::mount_retained(ctx, Box::new(CompactionImageOffload)).await?;
     Ok(())
 }

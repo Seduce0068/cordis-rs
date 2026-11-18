@@ -119,6 +119,27 @@ impl Fiber {
         Ok(fiber)
     }
 
+    /// Mount a plugin and retain its Fiber in the context effect list so the
+    /// fiber (and its effects) are unloaded when the context disposes them.
+    /// All port mount helpers should use this instead of `mount` + discarding
+    /// the handle (the ghost-fiber pattern).
+    pub async fn mount_retained(ctx: &Context, plugin: Box<dyn Plugin>) -> Result<Self> {
+        let fiber = Self::mount(ctx, plugin).await?;
+        let retained = fiber.clone();
+        ctx.effect(move |scope| {
+            let fiber = retained;
+            async move {
+                scope.on_dispose(move || async move {
+                    fiber.unload().await?;
+                    Ok(())
+                });
+                Ok(())
+            }
+        })
+        .await?;
+        Ok(fiber)
+    }
+
     pub fn name(&self) -> &str {
         &self.0.name
     }

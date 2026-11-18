@@ -221,6 +221,6 @@ impl crate::Plugin for HooksClaudeCodePlugin {
 }
 
 pub async fn mount(ctx: &Context, config: HooksConfig) -> Result<()> {
-    let _fiber = crate::Fiber::mount(ctx, Box::new(HooksClaudeCodePlugin { config })).await?;
+    let _ = crate::Fiber::mount_retained(ctx, Box::new(HooksClaudeCodePlugin { config })).await?;
     Ok(())
 }

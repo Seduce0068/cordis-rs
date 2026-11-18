@@ -135,7 +135,9 @@ impl crate::Plugin for SessionTitleFirstPromptLlm {
 
 pub async fn mount(ctx: &Context, config: FirstPromptTitleConfig) -> Result<()> {
     config.validate()?;
-    let fiber = crate::Fiber::mount(ctx, Box::new(SessionTitleFirstPromptLlm::new(config))).await?;
+    let fiber =
+        crate::Fiber::mount_retained(ctx, Box::new(SessionTitleFirstPromptLlm::new(config)))
+            .await?;
     ctx.effect(move |scope| {
         let fiber = fiber.clone();
         async move {

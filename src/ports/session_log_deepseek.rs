@@ -227,7 +227,7 @@ pub async fn mount(ctx: &Context, config: SessionLogConfig) -> Result<()> {
             )
             .await?;
     }
-    let fiber = crate::Fiber::mount(ctx, Box::new(SessionLogDeepSeek { config })).await?;
+    let fiber = crate::Fiber::mount_retained(ctx, Box::new(SessionLogDeepSeek { config })).await?;
     ctx.effect(move |scope| {
         let fiber = fiber.clone();
         async move {

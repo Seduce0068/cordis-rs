@@ -439,7 +439,7 @@ pub async fn mount(ctx: &Context, allow_parallel: bool) -> Result<MountedTodo> {
     ctx.provide("tools", tools.clone()).await?;
     ctx.provide("sessionProjections", projections.clone())
         .await?;
-    let fiber = crate::Fiber::mount(ctx, Box::new(ToolTodo { allow_parallel })).await?;
+    let fiber = crate::Fiber::mount_retained(ctx, Box::new(ToolTodo { allow_parallel })).await?;
     if fiber.state() != crate::Lifecycle::Active {
         return Err(Error::Other(format!(
             "tool-todo did not become active: {:?}",

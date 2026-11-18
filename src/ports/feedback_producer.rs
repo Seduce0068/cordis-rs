@@ -133,7 +133,7 @@ impl crate::Plugin for FeedbackProducer {
 /// Mount the producer plugin on a context with the given event descriptor.
 pub async fn mount(ctx: &Context, event: TurnStoppingEvent) -> Result<()> {
     ctx.provide("turnStopping", event.clone()).await?;
-    let fiber = crate::Fiber::mount(ctx, Box::new(FeedbackProducer { event })).await?;
+    let fiber = crate::Fiber::mount_retained(ctx, Box::new(FeedbackProducer { event })).await?;
     // Keep the fiber alive for the context's lifetime; dropping it would
     // leave the listener registered with no way to unload (ghost fiber).
     ctx.effect(move |scope| {

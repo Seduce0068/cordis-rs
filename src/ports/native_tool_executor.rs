@@ -186,7 +186,7 @@ pub async fn mount(ctx: &Context, max_parallel: usize) -> Result<NativeToolExecu
         NativeToolExecutor::new((*tools).clone(), pipeline).with_max_parallel(max_parallel);
     holder.register(executor.clone());
     ctx.provide(SERVICE_NAME, executor.clone()).await?;
-    let fiber = crate::Fiber::mount(ctx, Box::new(NativeToolExecutorPlugin)).await?;
+    let fiber = crate::Fiber::mount_retained(ctx, Box::new(NativeToolExecutorPlugin)).await?;
     ctx.effect(move |scope| {
         let fiber = fiber.clone();
         async move {

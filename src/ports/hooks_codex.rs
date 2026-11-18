@@ -126,7 +126,7 @@ impl crate::Plugin for HooksCodex {
 }
 
 pub async fn mount(ctx: &Context, config: HooksConfig) -> Result<()> {
-    let fiber = crate::Fiber::mount(ctx, Box::new(HooksCodex { config })).await?;
+    let fiber = crate::Fiber::mount_retained(ctx, Box::new(HooksCodex { config })).await?;
     ctx.effect(move |scope| {
         let fiber = fiber.clone();
         async move {

@@ -111,6 +111,6 @@ impl crate::Plugin for TimeoutPolicyPlugin {
 }
 
 pub async fn mount(ctx: &Context, config: TimeoutPolicyPluginConfig) -> Result<()> {
-    let _fiber = crate::Fiber::mount(ctx, Box::new(TimeoutPolicyPlugin { config })).await?;
+    let _ = crate::Fiber::mount_retained(ctx, Box::new(TimeoutPolicyPlugin { config })).await?;
     Ok(())
 }

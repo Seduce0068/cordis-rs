@@ -132,6 +132,6 @@ impl crate::Plugin for CompactionToolResultPruner {
 }
 
 pub async fn mount(ctx: &Context) -> Result<()> {
-    let _fiber = crate::Fiber::mount(ctx, Box::new(CompactionToolResultPruner)).await?;
+    let _ = crate::Fiber::mount_retained(ctx, Box::new(CompactionToolResultPruner)).await?;
     Ok(())
 }

@@ -86,7 +86,7 @@ impl crate::Plugin for CommandCompact {
 /// Mount with the shared commands, compaction and sessions seams.
 pub async fn mount(ctx: &Context, sessions: SessionStore) -> Result<CommandRegistry> {
     let commands = ctx.require::<CommandRegistry>("commands").await?;
-    let _fiber = crate::Fiber::mount(
+    let _ = crate::Fiber::mount_retained(
         ctx,
         Box::new(CommandCompact {
             sessions: sessions.clone(),

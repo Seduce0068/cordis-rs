@@ -130,6 +130,6 @@ pub async fn mount(
     } else {
         crate::core_services::provide_llm(ctx).await?
     };
-    let _fiber = crate::Fiber::mount(ctx, Box::new(LlmDeepSeek { config, env })).await?;
+    let _ = crate::Fiber::mount_retained(ctx, Box::new(LlmDeepSeek { config, env })).await?;
     Ok(llm)
 }

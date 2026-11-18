@@ -201,7 +201,8 @@ impl crate::Plugin for MessageFeedbackPlugin {
 pub async fn mount(ctx: &Context, config: MessageFeedbackConfig) -> Result<MessageFeedback> {
     let service = MessageFeedback::new(config.clone())?;
     ctx.provide("messageFeedback", service.clone()).await?;
-    let fiber = crate::Fiber::mount(ctx, Box::new(MessageFeedbackPlugin { config })).await?;
+    let fiber =
+        crate::Fiber::mount_retained(ctx, Box::new(MessageFeedbackPlugin { config })).await?;
     // Retain the fiber so its effect scope is not dropped without cleanup.
     let effect_ctx = ctx.clone();
     effect_ctx

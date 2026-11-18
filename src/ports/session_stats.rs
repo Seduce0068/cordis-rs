@@ -234,7 +234,7 @@ impl crate::Plugin for SessionStats {
 }
 
 pub async fn mount(ctx: &Context) -> Result<()> {
-    let fiber = crate::Fiber::mount(ctx, Box::new(SessionStats)).await?;
+    let fiber = crate::Fiber::mount_retained(ctx, Box::new(SessionStats)).await?;
     ctx.effect(move |scope| {
         let fiber = fiber.clone();
         async move {

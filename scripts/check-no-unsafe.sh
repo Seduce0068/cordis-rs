@@ -10,3 +10,12 @@ if [ -n "$hits" ]; then
   exit 1
 fi
 echo "no unsafe Rust usage found"
+
+# CI gate: port mount helpers must retain their fiber (no ghost fibers).
+ghost=$(grep -RIn --include='*.rs' 'let _fiber' src/ports 2>/dev/null || true)
+if [ -n "$ghost" ]; then
+  echo "port mount helpers must use Fiber::mount_retained (AGENTS.md §15 style):" >&2
+  echo "$ghost" >&2
+  exit 1
+fi
+echo "no ghost fiber mount helpers found"

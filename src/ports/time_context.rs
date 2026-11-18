@@ -127,6 +127,6 @@ impl crate::Plugin for TimeContextPlugin {
 }
 
 pub async fn mount(ctx: &Context, config: TimeContextPluginConfig) -> Result<()> {
-    let _fiber = crate::Fiber::mount(ctx, Box::new(TimeContextPlugin { config })).await?;
+    let _ = crate::Fiber::mount_retained(ctx, Box::new(TimeContextPlugin { config })).await?;
     Ok(())
 }

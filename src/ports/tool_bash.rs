@@ -202,7 +202,7 @@ pub async fn mount(ctx: &Context, shell: Shell, config: ToolBashConfig) -> Resul
     if ctx.get::<Shell>("shell").is_none() {
         ctx.provide("shell", shell).await?;
     }
-    let _fiber = crate::Fiber::mount(ctx, Box::new(ToolBash { config })).await?;
+    let _ = crate::Fiber::mount_retained(ctx, Box::new(ToolBash { config })).await?;
     Ok((*tools).clone())
 }
 

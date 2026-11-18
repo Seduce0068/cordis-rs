@@ -76,6 +76,6 @@ impl crate::Plugin for SessionTitleLlm {
 
 /// Mount the provider plugin.
 pub async fn mount(ctx: &Context, config: TitleProviderConfig) -> Result<()> {
-    let _fiber = crate::Fiber::mount(ctx, Box::new(SessionTitleLlm::new(config))).await?;
+    let _ = crate::Fiber::mount_retained(ctx, Box::new(SessionTitleLlm::new(config))).await?;
     Ok(())
 }

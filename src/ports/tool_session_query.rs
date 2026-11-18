@@ -158,6 +158,6 @@ pub async fn mount(ctx: &Context, config: ToolSessionQueryConfig) -> Result<Tool
     if ctx.get::<SessionQueryEngine>("sessionQuery").is_none() {
         crate::core_services::provide_session_query(ctx).await?;
     }
-    let _fiber = crate::Fiber::mount(ctx, Box::new(ToolSessionQuery { config })).await?;
+    let _ = crate::Fiber::mount_retained(ctx, Box::new(ToolSessionQuery { config })).await?;
     Ok((*tools).clone())
 }

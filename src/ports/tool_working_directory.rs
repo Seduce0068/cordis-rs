@@ -94,7 +94,7 @@ pub async fn mount(ctx: &Context) -> Result<WorkingDirectory> {
         crate::core_services::provide_working_directory(ctx).await?
     };
     let tools = ctx.require::<ToolRegistry>("tools").await?;
-    let _fiber = crate::Fiber::mount(
+    let _ = crate::Fiber::mount_retained(
         ctx,
         Box::new(ToolWorkingDirectory {
             working_directory: directory.clone(),
