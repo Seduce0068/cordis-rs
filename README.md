@@ -64,7 +64,7 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 | `user-questions` | phase-1 | timed wait / steer / continued |
 | `sandbox-policy` | phase-1 | 実行ポイント（Shell / FS / Tool）への接続 |
 | `goal-fold` | phase-1 | 書き込み側との統合 |
-| `ToolPipeline` approval 既定 | fail-open | production では `install_default_controls(policy)` を呼ぶ（fail-closed approval + hook deny + sandbox gate を一括登録） |
+| `ToolPipeline` approval 既定 | fail-open | production では `install_default_controls(hook_effect, policy)` を呼ぶ（fail-closed approval + 実際の hook deny effect + sandbox gate を一括登録） |
 
 根拠: `src/services/llm.rs:110,166,192` / `telemetry.rs:5` /
 `session_persistence_jsonl.rs:238` / `sandbox_policy.rs:1,6` /

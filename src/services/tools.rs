@@ -287,28 +287,34 @@ impl ToolPipeline {
         self
     }
 
-    /// Install the production control set: fail-closed approval plus the hook
-    /// deny and sandbox policy gates. Registration order matters: middleware
-    /// added later runs earlier, so sandbox is registered last to block before
-    /// any approval prompt or retry.
+    /// Install the production control set: fail-closed approval, an optional
+    /// hook-deny gate, and the sandbox gate. Middleware runs in registration
+    /// order (`run()` wraps with `.rev()`), so the sandbox gate registered last
+    /// runs after the hook gate but still before approval/retry (which live in
+    /// the innermost `next`).
     ///
-    /// `sandbox_policy` is the already-resolved policy for this host/session.
+    /// `sandbox_policy` is a snapshot resolved at install time; re-install on
+    /// session changes. Pass the actual `hook_effect` (from `map_outcome`) — a
+    /// `Proceed` effect registers no deny middleware, since a no-op hook gate
+    /// would be a misleading control.
     pub fn install_default_controls(
         &self,
+        hook_effect: Option<crate::plugin_ports::HookEffect>,
         sandbox_policy: crate::plugin_ports::ResolvedPolicy,
     ) -> Vec<Disposer> {
         self.require_approval();
-        self.require_approval();
-        // Hook deny is opt-in: a host with no hook deny effect passes Proceed.
-        // Sandbox is registered last so it runs outermost in the chain.
-        vec![
-            self.use_middleware(hook_deny_middleware(
-                crate::plugin_ports::HookEffect::Proceed,
-            )),
+        let mut disposers = Vec::new();
+        if let Some(effect) = hook_effect
+            && !matches!(effect, crate::plugin_ports::HookEffect::Proceed)
+        {
+            disposers.push(self.use_middleware(hook_deny_middleware(effect)));
+        }
+        disposers.push(
             self.use_middleware(crate::plugin_ports::sandbox_policy_middleware(
                 sandbox_policy,
             )),
-        ]
+        );
+        disposers
     }
 
     /// Retry tool executions on retryable HTTP-style errors.

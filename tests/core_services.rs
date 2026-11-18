@@ -3851,7 +3851,7 @@ async fn install_default_controls_enables_fail_closed_and_sandbox_gate() {
     .await
     .unwrap();
     let policy = policy_service.resolve(None, None);
-    let _disposers = pipeline.install_default_controls(policy);
+    let _disposers = pipeline.install_default_controls(None, policy);
 
     // With controls installed and no approval answerer, execution is denied.
     let error = pipeline
