@@ -35,7 +35,7 @@ deprecated 属性は re-export 時のみに付け、port モジュール内の�
 
 1. 今回: 新名を追加し旧名を deprecated alias として公開
 2. 次リリース: README / examples を新名へ統一
-3. その後: 旧 alias を削除（semver major）
+3. その後: 旧 alias を削除（旧名参照が0件になったコミット。0.x では minor が破壊変更に相当し v1.0.0 を待たない。ADR-008 参照）
 
 ## 検証
 

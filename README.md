@@ -42,6 +42,24 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 - `!!js` は変数参照・補間・比較（`===` 含む）・算術・論理・三項・member access・文字列メソッド（`includes` / `startsWith` / `endsWith`）・配列／オブジェクト／テンプレートリテラル・`process.env`・`dshHomePath` をサポート。任意の JavaScript は評価しない。
 - `emit` は試験の決定性のため await する（`emit_detached` で fire-and-forget も提供）。
 
+## 推奨エントリポイント（ドメイン別）
+
+`plugin_ports` は多数の helper を Flat に re-export する。用途に応じて次の
+エントリポイントから始めること（旧名 alias は v1.0.0 で削除予定）。
+
+| ドメイン | まず手に取る API |
+| --- | --- |
+| 実行・ツール基盤 | `ToolPipeline::install_default_controls` / `ToolRegistry` / `provide_tools` |
+| LLM 呼び出し | `LlmService` / `call_config_eq` / `user_agent` / `bound_context_summary` |
+| 会話セッション／永続化 | `SessionStore` / `JsonlPersistence` / `provide_sessions` |
+| コンテキスト／圧縮 | `CompactionEngine::maybe_compact` / `mount_compaction_automation` / `fold_goal` |
+| 対話統制（human-in-the-loop） | `mount_hooks_claude_code` / `UserQuestionService` / `mount_sandbox_policy` |
+| 純粋ユーティリティ | `parse_patch` / `normalize_search` / `language_for_path` / `fs_error_from_errno` |
+
+安定性ラベル（stable / beta / phase-1 / stub / fail-open）は下記マトリクス側で管理し、この表には混在させない。
+
+新規 library port の追加基準は [ADR-008](docs/ADR-008-library-port-policy.md) を参照。
+
 ## 安定性マトリクス（production-ready の前に読む）
 
 **このリポジトリは PoC であり、production-ready ではない。** port 数・テスト数は
