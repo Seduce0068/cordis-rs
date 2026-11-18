@@ -568,3 +568,55 @@ async fn stage_b_prepend_global_and_filtered_dispatch() {
     assert!(order.lock().unwrap().is_empty());
     assert_eq!(global_count.load(Ordering::SeqCst), 1);
 }
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+struct TypedPayload {
+    text: String,
+}
+
+cordis_rs::typed_event!(
+    TypedTestEvent,
+    "typed-test",
+    TypedPayload,
+    TYPED_TEST_DECODE_ERRORS
+);
+
+#[tokio::test]
+async fn typed_event_macro_shares_named_slot_and_records_decode_errors() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let ctx = Context::root("typed-macro");
+    let called = Arc::new(AtomicUsize::new(0));
+    let counter = called.clone();
+    let _d = TypedTestEvent::on(&ctx, move |payload: TypedPayload| {
+        let counter = counter.clone();
+        Box::pin(async move {
+            assert_eq!(payload.text, "hello");
+            counter.fetch_add(1, Ordering::SeqCst);
+        })
+    });
+
+    // A plain named emit reaches the typed listener.
+    ctx.emit(TypedTestEvent::NAME, serde_json::json!({ "text": "hello" }))
+        .await;
+    assert_eq!(called.load(Ordering::SeqCst), 1);
+
+    // Malformed payload is recorded, never silently defaulted.
+    ctx.emit(TypedTestEvent::NAME, serde_json::json!({ "bad": 1 }))
+        .await;
+    let errors = TypedTestEvent::take_decode_errors();
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].event, "typed-test");
+
+    // Typed emit also flows through the same named slot.
+    TypedTestEvent::emit(
+        &ctx,
+        &TypedPayload {
+            text: "hello".to_string(),
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(called.load(Ordering::SeqCst), 2);
+}

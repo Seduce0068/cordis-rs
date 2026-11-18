@@ -28,6 +28,68 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use crate::context::{Context, Disposer};
 
+/// A decode failure observed by a `typed_event!` listener.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct EventDecodeError {
+    pub event: &'static str,
+    pub reason: String,
+}
+
+/// Declares a typed event dispatched through the named `Value` slot, so
+/// `ctx.on(name, ...)` listeners and typed listeners share one stream.
+/// Payload must implement `Serialize` + `DeserializeOwned`. Decode failures
+/// are recorded (never silently dropped) via `take_decode_errors()`.
+#[macro_export]
+macro_rules! typed_event {
+    ($name:ident, $event_name:expr, $payload:ty, $store:ident) => {
+        static $store: std::sync::OnceLock<std::sync::Mutex<Vec<$crate::EventDecodeError>>> =
+            std::sync::OnceLock::new();
+
+        pub struct $name;
+
+        impl $name {
+            pub const NAME: &'static str = $event_name;
+
+            pub fn take_decode_errors() -> Vec<$crate::EventDecodeError> {
+                let store = $store.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+                std::mem::take(&mut *store.lock().expect("decode error store poisoned"))
+            }
+
+            pub fn on<F>(ctx: &$crate::Context, listener: F) -> $crate::Disposer
+            where
+                F: Fn($payload) -> $crate::events::BoxFuture<'static, ()> + Send + Sync + 'static,
+            {
+                let listener = std::sync::Arc::new(listener);
+                ctx.on(Self::NAME, move |value: serde_json::Value| {
+                    let listener = listener.clone();
+                    Box::pin(async move {
+                        match serde_json::from_value::<$payload>(value) {
+                            Ok(typed) => listener(typed).await,
+                            Err(error) => {
+                                let store =
+                                    $store.get_or_init(|| std::sync::Mutex::new(Vec::new()));
+                                store.lock().expect("decode error store poisoned").push(
+                                    $crate::EventDecodeError {
+                                        event: Self::NAME,
+                                        reason: error.to_string(),
+                                    },
+                                );
+                            }
+                        }
+                    })
+                })
+            }
+
+            pub async fn emit(ctx: &$crate::Context, payload: &$payload) -> $crate::Result<()> {
+                let value = serde_json::to_value(payload)
+                    .map_err(|error| $crate::Error::Other(error.to_string()))?;
+                ctx.emit(Self::NAME, value).await;
+                Ok(())
+            }
+        }
+    };
+}
+
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 pub type Shared<A> = Arc<Mutex<A>>;
 
