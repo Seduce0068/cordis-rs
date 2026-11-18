@@ -20,6 +20,8 @@ jobs:
   gates:
     uses: Seduce0068/workflows/.github/workflows/rust-gates.yml@v1
     with:
-      clippy_args: -A clippy::type_complexity
+      clippy_args: -A clippy::type_complexity -D clippy::undocumented_unsafe_blocks
+      audit: true
       extra_gates: |
         bash scripts/smoke-examples.sh
+        bash scripts/check-no-unsafe.sh
