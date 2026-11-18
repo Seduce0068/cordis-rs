@@ -2989,3 +2989,37 @@ fn fs_errno_classifies_host_errors_with_cause() {
     assert!(classified.message.contains("boom"));
     assert_eq!(classified.cause().to_string(), "boom");
 }
+
+#[test]
+fn session_filename_generates_and_parses_canonical_names() {
+    use cordis_rs::plugin_ports::{
+        parse_session_format_log_filename, session_format_log_filename, session_format_version,
+    };
+
+    // Round-trip for v0, v1 and v12.
+    for version in [0u32, 1, 12] {
+        let name = session_format_log_filename(version);
+        assert_eq!(parse_session_format_log_filename(&name), Some(version));
+    }
+    assert_eq!(session_format_log_filename(0), "session.jsonl");
+    assert_eq!(session_format_log_filename(1), "session.v1.jsonl");
+
+    // Non-canonical names are rejected.
+    for name in [
+        "session.v01.jsonl",
+        "session.v0.jsonl",
+        "session.V1.jsonl",
+        "session.v1.jsonl.gz",
+        "session.jsonl.tmp",
+        "SESSION.jsonl",
+        "other.jsonl",
+        "session.v1.jsonl\n",
+    ] {
+        assert_eq!(parse_session_format_log_filename(name), None, "{name}");
+    }
+
+    // Version validation.
+    assert_eq!(session_format_version(3, "label").unwrap(), 3);
+    assert!(session_format_version(-1, "label").is_err());
+    assert!(session_format_version(i64::MAX, "label").is_err());
+}

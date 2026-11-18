@@ -122,6 +122,9 @@ pub mod plugin_ports {
         SandboxPolicyConfig, SandboxPolicyService, is_valid_path, mount as mount_sandbox_policy,
         render_policy_context, sandbox_mode_fold,
     };
+    pub use crate::ports::session_filename::{
+        parse_session_format_log_filename, session_format_log_filename, session_format_version,
+    };
     pub use crate::ports::session_log_deepseek::{
         FIELD_NAME, SessionLogConfig, SessionLogDeepSeek, WATERMARK_EVENT, accepted_seq,
         fitting_prefix, mount as mount_session_log_deepseek, prepare_field,
