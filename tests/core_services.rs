@@ -3089,3 +3089,88 @@ async fn agent_loop_with_pipeline_applies_tool_middleware() {
     loop_.run("go").await.unwrap();
     assert!(!flag.load(std::sync::atomic::Ordering::SeqCst));
 }
+
+#[tokio::test]
+async fn agent_loop_propagates_caller_and_session_to_tool_exec() {
+    use std::sync::Arc as StdArc;
+    use std::sync::Mutex as StdMutex;
+
+    use cordis_rs::core_services::{
+        AgentLoop, LlmProvider, StreamChunk, ToolDefinition, ToolError, ToolExecContext,
+        ToolOutput, provide_llm, provide_tools,
+    };
+    use cordis_rs::events::BoxFuture;
+
+    let ctx = Context::root("agent-loop-caller");
+    let (registry, pipeline) = provide_tools(&ctx).await.unwrap();
+    let llm = provide_llm(&ctx).await.unwrap();
+
+    type ExecLog = StdArc<StdMutex<Vec<(Option<String>, Option<String>)>>>;
+    let seen: ExecLog = StdArc::new(StdMutex::new(Vec::new()));
+    let captured = seen.clone();
+    let _guard = pipeline.use_middleware(StdArc::new(
+        move |_args: serde_json::Value,
+              exec: ToolExecContext,
+              next: cordis_rs::core_services::ToolNext| {
+            let captured = captured.clone();
+            Box::pin(async move {
+                captured
+                    .lock()
+                    .unwrap()
+                    .push((exec.agent.clone(), exec.session.clone()));
+                next(_args, exec).await
+            }) as BoxFuture<'static, Result<ToolOutput, ToolError>>
+        },
+    ));
+
+    let _tool = registry.register(ToolDefinition::new(
+        "echo",
+        "echo",
+        StdArc::new(|_args, _exec| Box::pin(async { Ok(ToolOutput::text("ok")) })),
+    ));
+
+    let first = StdArc::new(std::sync::atomic::AtomicBool::new(true));
+    let flag = first.clone();
+    let provider = LlmProvider::new(
+        "scripted",
+        "scripted-1",
+        StdArc::new(move |_request| {
+            let flag = flag.clone();
+            let text = if flag.swap(false, std::sync::atomic::Ordering::SeqCst) {
+                "call echo".to_string()
+            } else {
+                "done".to_string()
+            };
+            Box::pin(futures::stream::iter(vec![
+                StreamChunk::Text(text),
+                StreamChunk::Done,
+            ]))
+        }),
+    );
+    llm.register(provider);
+
+    let parser: cordis_rs::core_services::CallParser = StdArc::new(|text: &str| {
+        if text == "call echo" {
+            vec![cordis_rs::core_services::ToolCall::new(
+                "echo",
+                serde_json::json!({}),
+            )]
+        } else {
+            Vec::new()
+        }
+    });
+
+    AgentLoop::new(llm, registry)
+        .with_pipeline(pipeline)
+        .with_call_parser(parser)
+        .with_caller("agent-42")
+        .with_tool_session("session-7")
+        .run("go")
+        .await
+        .unwrap();
+
+    let captured = seen.lock().unwrap();
+    assert_eq!(captured.len(), 1);
+    assert_eq!(captured[0].0.as_deref(), Some("agent-42"));
+    assert_eq!(captured[0].1.as_deref(), Some("session-7"));
+}

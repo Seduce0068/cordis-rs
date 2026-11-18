@@ -66,6 +66,10 @@ pub struct AgentLoop {
     /// `with_pipeline`; the default pipeline has no approval answerer and is
     /// therefore fail-open for approval unless the host installs one.
     pipeline: Option<crate::services::tools::ToolPipeline>,
+    /// Caller identity attached to tool executions (audit / scope separation).
+    caller: String,
+    /// Optional session id attached to tool executions.
+    session_id: Option<String>,
     model: Option<String>,
     max_steps: usize,
     parse_calls: CallParser,
@@ -85,6 +89,10 @@ impl AgentLoop {
             // Always route through the pipeline: even a default one enforces
             // the cancelled-execution check that direct invoke bypasses.
             pipeline: Some(crate::services::tools::ToolPipeline::default()),
+            // Default keeps the legacy caller; session scope stays off unless
+            // explicitly opted in (mcp scope visibility depends on it).
+            caller: "agent-1".to_string(),
+            session_id: None,
             model: None,
             max_steps: 4,
             parse_calls: Arc::new(no_calls),
@@ -95,6 +103,19 @@ impl AgentLoop {
             compaction: None,
             retry: None,
         }
+    }
+
+    /// Set the caller identity attached to tool executions (audit / scope).
+    pub fn with_caller(mut self, caller: impl Into<String>) -> Self {
+        self.caller = caller.into();
+        self
+    }
+
+    /// Opt in to session scoping for tool executions. By default tool calls
+    /// carry no session id, preserving the legacy Agent/Global scope.
+    pub fn with_tool_session(mut self, session_id: impl Into<String>) -> Self {
+        self.session_id = Some(session_id.into());
+        self
     }
 
     /// Route tool calls through the shared pipeline so middleware (approval,
@@ -276,7 +297,11 @@ impl AgentLoop {
 
             let mut tool_results = Vec::new();
             for call in calls {
-                let exec = ToolExecContext::agent("agent-1");
+                let exec = ToolExecContext {
+                    agent: Some(self.caller.clone()),
+                    session: self.session_id.clone(),
+                    signal_cancelled: false,
+                };
                 let result = match &self.pipeline {
                     Some(pipeline) => pipeline.run(&self.tools, &call.name, call.args, exec).await,
                     None => self.tools.invoke(&call.name, call.args, exec).await,
