@@ -4039,3 +4039,41 @@ fn deepseek_transport_handler_sends_messages_and_redacts_key() {
     assert!(!debug.contains("super-secret-key"));
     assert!(debug.contains("<redacted>"));
 }
+
+#[test]
+fn otel_exporter_redacts_secrets_and_builds_otlp_payload() {
+    use cordis_rs::plugin_ports::{
+        FakeCollector, OTelExporter, RedactingExporter, otlp_payload, redact_record,
+    };
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    let mut attributes = HashMap::new();
+    attributes.insert("tool".to_string(), "bash".to_string());
+    attributes.insert("api_key".to_string(), "super-secret".to_string());
+    let record = cordis_rs::core_services::EventRecord {
+        name: "tool\ncall".to_string(),
+        attributes,
+        seq: 1,
+    };
+
+    // Redaction strips control chars from names and masks unlisted attributes.
+    let redacted = redact_record(&record);
+    assert_eq!(redacted.name, "toolcall");
+    assert_eq!(redacted.attributes["tool"], "bash");
+    assert_eq!(redacted.attributes["api_key"], "[redacted]");
+
+    // The wrapper applies redaction exactly once before delegating.
+    let collector = FakeCollector::new();
+    let exporter = RedactingExporter::new(Arc::new(collector.clone()) as Arc<dyn OTelExporter>);
+    exporter.export(&[record]).unwrap();
+    let batches = collector.batches();
+    assert_eq!(batches.len(), 1);
+    assert_eq!(batches[0][0].attributes["api_key"], "[redacted]");
+
+    // OTLP payload uses the redacted values.
+    let payload = otlp_payload(&batches[0]);
+    let text = payload.to_string();
+    assert!(!text.contains("super-secret"));
+    assert!(text.contains("resourceLogs"));
+}

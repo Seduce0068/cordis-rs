@@ -124,3 +124,5 @@ pub mod workspace_path;
 pub mod llm_resilience;
 
 pub mod llm_transport;
+
+pub mod otel_exporter;

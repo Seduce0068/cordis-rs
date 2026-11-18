@@ -152,6 +152,10 @@ pub mod plugin_ports {
         NativeToolExecutorPlugin, SERVICE_NAME as NATIVE_EXECUTOR_SERVICE, ToolCallSpec,
         ToolSchema, mount as mount_native_tool_executor,
     };
+    pub use crate::ports::otel_exporter::{
+        ALLOWED_ATTRIBUTE_KEYS, FakeCollector, OTelExporter, RedactingExporter, otlp_payload,
+        redact_record,
+    };
     pub use crate::ports::sandbox_policy::{
         PROJECTION_KEY as SANDBOX_PROJECTION_KEY, ResolvedPolicy, SANDBOX_INVALID_ROOT,
         SandboxPolicyConfig, SandboxPolicyService, is_valid_path, is_write_tool,
