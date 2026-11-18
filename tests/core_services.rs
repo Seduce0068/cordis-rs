@@ -3700,3 +3700,61 @@ async fn sandbox_policy_middleware_blocks_writes_in_read_only() {
             .is_ok()
     );
 }
+
+#[tokio::test]
+async fn goal_round_driver_queues_and_fences_rounds() {
+    use cordis_rs::core_services::{AgentRecord, provide_agents, provide_goals, provide_sessions};
+    use cordis_rs::plugin_ports::DriveOutcome;
+    use cordis_rs::plugin_ports::GoalRoundDriver;
+
+    let ctx = Context::root("goal-driver");
+    let (sessions, _) = provide_sessions(&ctx).await.unwrap();
+    let goals = provide_goals(&ctx).await.unwrap();
+    let agents = provide_agents(&ctx).await.unwrap();
+
+    let session = sessions
+        .create(Some("driver-session".to_string()), None)
+        .unwrap();
+    agents
+        .register(AgentRecord {
+            id: "a1".to_string(),
+            session_id: session.id().to_string(),
+            cwd: None,
+        })
+        .unwrap();
+    goals.set("Ship it".to_string(), 3).unwrap();
+
+    let driver = GoalRoundDriver::new();
+    assert_eq!(
+        driver.drive(&ctx, "a1").unwrap(),
+        DriveOutcome::Queued { round: 1 }
+    );
+    // Duplicate guard: no second round without an intervening step/competition.
+    assert_eq!(driver.drive(&ctx, "a1").unwrap(), DriveOutcome::Noop);
+    let prompts = session.events();
+    assert_eq!(prompts.len(), 1);
+    assert_eq!(prompts[0].data["source"]["kind"], "goal");
+    assert!(
+        prompts[0].data["content"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Round: 1/3")
+    );
+
+    // A competing human input drops the attempt so the next drive advances.
+    driver.note_competing();
+    assert_eq!(driver.drive(&ctx, "a1").unwrap(), DriveOutcome::Noop);
+    assert_eq!(
+        driver.drive(&ctx, "a1").unwrap(),
+        DriveOutcome::Queued { round: 2 }
+    );
+
+    // Unknown agent is a no-op.
+    assert_eq!(driver.drive(&ctx, "missing").unwrap(), DriveOutcome::Noop);
+
+    // Prompt rendering preserves the upstream frame.
+    let prompt = GoalRoundDriver::prompt("obj", 2, 5);
+    assert!(prompt.starts_with("<goal_round>"));
+    assert!(prompt.contains("Objective: obj"));
+    assert!(prompt.contains("Round: 2/5"));
+}

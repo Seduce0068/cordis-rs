@@ -91,6 +91,9 @@ pub mod plugin_ports {
         GoalSnapshot, apply_goal_change, apply_goal_event, decode_goal_change,
         empty_goal_fold_state, fold_goal, goal_change_ref,
     };
+    pub use crate::ports::goal_round_driver::{
+        DriveOutcome, GoalRoundDriver, GoalRoundDriverPlugin, mount as mount_goal_round_driver,
+    };
     pub use crate::ports::harness_dev_context::{
         HARNESS_SOURCE_KEY, HARNESS_SOURCE_PROMPT, WEB_GUI_URL_KEY, WEB_SURFACE_PROMPT,
         harness_context_value, with_harness_context,

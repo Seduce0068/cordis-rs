@@ -110,3 +110,5 @@ pub mod compaction_checkpoint;
 pub mod llm_message;
 
 pub mod user_approval;
+
+pub mod goal_round_driver;
