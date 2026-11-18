@@ -42,6 +42,34 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 - `!!js` は変数参照・補間・比較（`===` 含む）・算術・論理・三項・member access・文字列メソッド（`includes` / `startsWith` / `endsWith`）・配列／オブジェクト／テンプレートリテラル・`process.env`・`dshHomePath` をサポート。任意の JavaScript は評価しない。
 - `emit` は試験の決定性のため await する（`emit_detached` で fire-and-forget も提供）。
 
+## 安定性マトリクス（production-ready の前に読む）
+
+分類: **stable** = API/挙動固定＋回帰テストあり、**beta** = 動くが自動配線でない、
+**phase-1** = 機能一部・未配線を明記、**stub** = 外部 I/O を模擬のみ、
+**fail-open** = 統制が計算されるが強制されない（暫定ラベル）。
+
+| コンポーネント | 分類 | 解消条件 |
+| --- | --- | --- |
+| Context / registry / typed events | stable | — |
+| LlmService seam (`register` / `stream`) | stable | — |
+| 組み込み LLM provider (`from_async_text`) | stub | 実 HTTP / timeout / retry の end-to-end 検証 |
+| OTLP (`ctx.otel`) | stub | 実送信の実装（現在 in-memory） |
+| JSONL 永続化 (`mount`) | beta | 通常 turn への自動配線 |
+| `hooks-claude-code` / `hooks-codex` | phase-1 | Ask / Stop / Subagent の実装と配線 |
+| `user-questions` | phase-1 | timed wait / steer / continued |
+| `sandbox-policy` | phase-1 | 実行ポイント（Shell / FS / Tool）への接続 |
+| `goal-fold` | phase-1 | 書き込み側との統合 |
+| `ToolPipeline` approval 既定 | fail-open | `require_approval()` を既定 fail-closed へ昇格 |
+
+根拠: `src/services/llm.rs:110,166,192` / `telemetry.rs:5` /
+`session_persistence_jsonl.rs:238` / `sandbox_policy.rs:1,6` /
+`approval.rs:157` / `hooks_claude_code.rs:139`。
+
+**既知の fail-open / stub は「未対応」ではなく現状の制約**。fail-open 行は
+解消条件を満たした時点で stable へ移動する暫定ラベルであり、永久分類ではない。
+本番では `require_approval()` と answerer 登録、実行ポイントへの policy 接続を
+明示的に行うこと。
+
 ## 検証
 
 ```bash
