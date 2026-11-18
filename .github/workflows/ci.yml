@@ -25,3 +25,4 @@ jobs:
       extra_gates: |
         bash scripts/smoke-examples.sh
         bash scripts/check-no-unsafe.sh
+        bash scripts/check-doc-counts.sh
