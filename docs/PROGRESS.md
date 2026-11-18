@@ -20,8 +20,8 @@ DSH の GPUI 再実装における最大の障壁だった Cordis プラグイ�
 
 - コアサービス 38 個（service 37 module + port 経由の `messageFeedback`）
 - 再利用 port 20 個、library port 1 個（`hook-protocol`）
-- テスト 168 件（5 テストファイル）、example 7 個
-- GitHub タグ `v0.1.0` 〜 `v0.148.0`、commits 210
+- テスト 169 件（5 テストファイル）、example 7 個
+- GitHub タグ `v0.1.0` 〜 `v0.149.0`、commits 213
 - ライセンス: AGPL-3.0-or-later（上流 MIT 通知は THIRD_PARTY_NOTICES.md に保持）
 - 上流 `snapshots/sdk/text-turn/cordis.yml` の 6 エントリすべてを mount
 
@@ -49,7 +49,7 @@ DSH の GPUI 再実装における最大の障壁だった Cordis プラグイ�
 
 ## 未対応
 
-- 公式プラグイン 332 個の全移植（現状 49 port）
+- 公式プラグイン 332 個の全移植（現状 50 port）
 - Schemastery DSL の完全互換とファイル監視 HMR
 - OTLP 実送信（`ctx.otel` は in-memory レコードのみ）
 - モデル側残高不足により ACP ストリーミング本文の実描画は未検証
