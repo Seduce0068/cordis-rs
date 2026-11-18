@@ -2274,3 +2274,39 @@ async fn session_title_first_prompt_validates_and_strips_emphasis() {
     );
     assert_eq!(first_title_line("\n\n"), None);
 }
+
+#[tokio::test]
+async fn security_review_second_pass_regressions() {
+    use cordis_rs::plugin_ports::{mount_mcp_resources, parse_config};
+
+    // Malformed regex matcher is rejected at config load (fail closed),
+    // instead of silently never matching a deny hook.
+    let bad_matcher = serde_json::json!({
+        "hooks": { "PreToolUse": [{ "matcher": "[", "hooks": [{ "command": "check" }] }] }
+    });
+    assert!(parse_config(&bad_matcher).is_err());
+
+    // Blank commands are rejected too.
+    let blank_command = serde_json::json!({
+        "hooks": { "PreToolUse": [{ "hooks": [{ "command": "  " }] }] }
+    });
+    assert!(parse_config(&blank_command).is_err());
+
+    // Unregistered server errors no longer enumerate registered servers.
+    let ctx = Context::root("mcp-no-enum");
+    let (tools, _) = cordis_rs::core_services::provide_tools(&ctx).await.unwrap();
+    let _registry = mount_mcp_resources(&ctx).await.unwrap();
+    _registry.register(
+        "secret-server".to_string(),
+        std::sync::Arc::new(|_method, _params| Ok(serde_json::Value::Null)),
+    );
+    let error = tools
+        .invoke(
+            "read_mcp_resource",
+            serde_json::json!({ "server": "missing", "uri": "x" }),
+            cordis_rs::core_services::ToolExecContext::agent("a"),
+        )
+        .await
+        .unwrap_err();
+    assert!(!error.to_string().contains("secret-server"));
+}

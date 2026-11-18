@@ -61,9 +61,10 @@ pub type CheckpointHook = Arc<dyn Fn(&Session) -> crate::Result<()> + Send + Syn
 pub struct AgentLoop {
     llm: LlmService,
     tools: ToolRegistry,
-    /// When set, tool calls pass through the pipeline so middleware such as
-    /// timeout-policy and approval gates applies. Unset keeps legacy direct
-    /// invoke (no gates) for backwards compatibility.
+    /// Tool calls pass through this pipeline so cancellation checks always
+    /// apply. A host can inject approval/retry/timeout middleware via
+    /// `with_pipeline`; the default pipeline has no approval answerer and is
+    /// therefore fail-open for approval unless the host installs one.
     pipeline: Option<crate::services::tools::ToolPipeline>,
     model: Option<String>,
     max_steps: usize,
@@ -81,7 +82,9 @@ impl AgentLoop {
         Self {
             llm,
             tools,
-            pipeline: None,
+            // Always route through the pipeline: even a default one enforces
+            // the cancelled-execution check that direct invoke bypasses.
+            pipeline: Some(crate::services::tools::ToolPipeline::default()),
             model: None,
             max_steps: 4,
             parse_calls: Arc::new(no_calls),

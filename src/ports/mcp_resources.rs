@@ -74,10 +74,8 @@ impl McpResourceRegistry {
             .get(server)
             .cloned()
             .ok_or_else(|| {
-                ToolError::InvalidArgs(format!(
-                    "No MCP resource provider for server '{server}' (registered: {})",
-                    self.servers().join(", ")
-                ))
+                // Do not enumerate registered servers to the model (info leak).
+                ToolError::InvalidArgs(format!("No MCP resource provider for server '{server}'"))
             })?;
         provider(method, params).map_err(|error| ToolError::Execution(error.to_string()))
     }

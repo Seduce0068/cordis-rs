@@ -88,11 +88,21 @@ pub fn parse_config(value: &serde_json::Value) -> std::result::Result<HooksConfi
                 .get("matcher")
                 .and_then(|v| v.as_str())
                 .map(str::to_string);
+            // Fail closed: a malformed regex matcher would silently never
+            // match at dispatch time, disabling deny hooks (security review).
+            if let Some(diagnostic) =
+                crate::core_services::matcher_diagnostic(matcher.as_deref(), false)
+            {
+                return Err(diagnostic);
+            }
             let Some(entries) = group.get("hooks").and_then(|v| v.as_array()) else {
                 continue;
             };
             for entry in entries {
                 if let Some(command) = entry.get("command").and_then(|v| v.as_str()) {
+                    if command.trim().is_empty() {
+                        return Err("hook command must be non-blank".to_string());
+                    }
                     config.hooks.push(HookEntry {
                         event,
                         matcher: matcher.clone(),
