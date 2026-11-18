@@ -63,6 +63,21 @@ impl ToolOutput {
         }
     }
 
+    /// Normalize a tool error into an observable output for post-execute
+    /// observers. All codes start with `TOOL_` so `is_error()` succeeds.
+    pub fn from_error(error: &ToolError) -> Self {
+        let code = match error {
+            ToolError::UnknownTool(_) => "TOOL_UNKNOWN",
+            ToolError::InvalidArgs(_) => "TOOL_INVALID_ARGS",
+            ToolError::Cancelled(_) => "TOOL_CANCELLED",
+            ToolError::Execution(_) => "TOOL_EXECUTION_ERROR",
+        };
+        Self {
+            content: serde_json::json!({ "code": code, "message": error.to_string() }),
+            rendered: vec![error.to_string()],
+        }
+    }
+
     /// Model-facing error flag (e.g. a structured TOOL_TIMEOUT result).
     /// Implemented as a method so existing struct literals stay valid. Note:
     /// a tool that returns `"code": "TOOL_TIMEOUT"` as ordinary data would
@@ -382,11 +397,22 @@ impl ToolPipeline {
         if exec.signal_cancelled {
             return Err(ToolError::Cancelled("execution was cancelled".to_string()));
         }
-        let mut output = next(args, exec).await?;
+        let execution = next(args, exec).await;
+        // Upstream runs post-execute observers even for thrown tools. Normalize
+        // the failure into an observable output, run the observers, then
+        // restore the original error (unless an observer itself fails).
+        let original_error = execution.as_ref().err().cloned();
+        let mut output = match execution {
+            Ok(output) => output,
+            Err(error) => ToolOutput::from_error(&error),
+        };
         for observer in post {
             output = observer(output).await?;
         }
-        Ok(output)
+        match original_error {
+            Some(error) => Err(error),
+            None => Ok(output),
+        }
     }
 }
 

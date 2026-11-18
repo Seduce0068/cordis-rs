@@ -3204,3 +3204,48 @@ async fn checkpoint_try_load_fails_closed_on_corruption_and_tool_output_exposes_
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[tokio::test]
+async fn tool_pipeline_post_execute_observes_failed_tools() {
+    use std::sync::Arc as StdArc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use cordis_rs::core_services::{
+        ToolDefinition, ToolError, ToolExecContext, ToolOutput, provide_tools,
+    };
+    use cordis_rs::events::BoxFuture;
+
+    let (registry, pipeline) = provide_tools(&Context::root("post-on-failure"))
+        .await
+        .unwrap();
+    let _tool = registry.register(ToolDefinition::new(
+        "fails",
+        "always fails",
+        StdArc::new(|_args, _exec| {
+            Box::pin(async { Err(ToolError::Execution("boom".to_string())) })
+        }),
+    ));
+
+    let observed = StdArc::new(AtomicUsize::new(0));
+    let counter = observed.clone();
+    let _observer = pipeline.on_post_execute(StdArc::new(move |output: ToolOutput| {
+        let counter = counter.clone();
+        Box::pin(async move {
+            if output.is_error() {
+                counter.fetch_add(1, Ordering::SeqCst);
+            }
+            Ok(output)
+        }) as BoxFuture<'static, Result<ToolOutput, ToolError>>
+    }));
+
+    let result = pipeline
+        .run(
+            &registry,
+            "fails",
+            serde_json::json!({}),
+            ToolExecContext::agent("a"),
+        )
+        .await;
+    assert!(matches!(result, Err(ToolError::Execution(_))));
+    assert_eq!(observed.load(Ordering::SeqCst), 1);
+}
