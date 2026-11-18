@@ -82,6 +82,11 @@ pub mod plugin_ports {
         ApplyHunksResult, FsPatchLibrary, HunkApplyFailure, PatchHunk, PatchOperation,
         PatchParseError, apply_hunks, parse_patch,
     };
+    pub use crate::ports::goal_fold::{
+        GOAL_CHANGE_VERSION, GoalBlockReason, GoalChange, GoalFoldState, GoalPhase, GoalRef,
+        GoalSnapshot, apply_goal_change, apply_goal_event, decode_goal_change,
+        empty_goal_fold_state, fold_goal, goal_change_ref,
+    };
     pub use crate::ports::harness_dev_context::{
         HARNESS_SOURCE_KEY, HARNESS_SOURCE_PROMPT, WEB_GUI_URL_KEY, WEB_SURFACE_PROMPT,
         harness_context_value, with_harness_context,

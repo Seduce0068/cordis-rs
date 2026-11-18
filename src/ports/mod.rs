@@ -98,3 +98,5 @@ pub mod user_questions;
 pub mod fs_errno;
 
 pub mod session_filename;
+
+pub mod goal_fold;

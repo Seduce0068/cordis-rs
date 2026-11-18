@@ -3436,3 +3436,60 @@ fn jsonl_persistence_rejects_path_traversal_session_ids() {
     }
     assert!(!root.parent().unwrap().join("evil.jsonl").exists());
 }
+
+#[test]
+fn goal_fold_strictly_decodes_and_validates_replay() {
+    use cordis_rs::core_services::Session;
+    use cordis_rs::plugin_ports::{
+        GoalPhase, apply_goal_change, decode_goal_change, empty_goal_fold_state, fold_goal,
+        goal_change_ref,
+    };
+
+    let create = serde_json::json!({
+        "kind": "goal/change", "version": 1, "operation": "create",
+        "goal": {
+            "id": "g1", "revision": 1, "objective": "Ship it",
+            "phase": "active", "maxGoalRounds": 5
+        },
+        "roundsStarted": 0, "createdAt": 100, "updatedAt": 100
+    });
+    let change = decode_goal_change(&create).unwrap().unwrap();
+    assert_eq!(goal_change_ref(&change).revision, 1);
+    let mut state = empty_goal_fold_state();
+    apply_goal_change(&mut state, change).unwrap();
+    assert_eq!(state.goal.as_ref().unwrap().phase, GoalPhase::Active);
+
+    // Revision jump is rejected (CAS on the read side).
+    let edit = serde_json::json!({
+        "kind": "goal/change", "version": 1, "operation": "edit",
+        "goal": {
+            "id": "g1", "revision": 3, "objective": "Ship more",
+            "phase": "active", "maxGoalRounds": 5
+        },
+        "roundsStarted": 0, "createdAt": 100, "updatedAt": 110
+    });
+    let bad = decode_goal_change(&edit).unwrap().unwrap();
+    let mut before = state.clone();
+    assert!(apply_goal_change(&mut before, bad).is_err());
+    assert_eq!(before.goal.as_ref().unwrap().revision, 1);
+
+    // Malformed changes fail loudly.
+    assert!(
+        decode_goal_change(&serde_json::json!({
+            "kind": "goal/change", "version": 2, "operation": "create"
+        }))
+        .is_err()
+    );
+    assert!(
+        decode_goal_change(&serde_json::json!({"kind": "other"}))
+            .unwrap()
+            .is_none()
+    );
+
+    // Fold through session events, ignoring unrelated ones.
+    let session = Session::new("fold", None);
+    session.append("user/message", serde_json::json!({}));
+    session.append("goal/change", create);
+    let folded = fold_goal(&session.events()).unwrap();
+    assert_eq!(folded.goal.as_ref().unwrap().id, "g1");
+}
