@@ -2875,3 +2875,30 @@ async fn duplicate_provider_paths_are_mutually_exclusive() {
             .is_some()
     );
 }
+
+#[tokio::test]
+async fn hooks_codex_rejects_malformed_config_shapes() {
+    use cordis_rs::plugin_ports::load_codex_config;
+
+    // No config is fine; an empty object is a legitimate no-hook config.
+    assert!(load_codex_config(None).unwrap().hooks.is_empty());
+    assert!(
+        load_codex_config(Some(&serde_json::json!({})))
+            .unwrap()
+            .hooks
+            .is_empty()
+    );
+
+    // Wrong shapes must fail closed instead of becoming allow-all.
+    assert!(load_codex_config(Some(&serde_json::json!("bad"))).is_err());
+    assert!(load_codex_config(Some(&serde_json::json!([]))).is_err());
+    assert!(load_codex_config(Some(&serde_json::json!({ "hooks": "bad" }))).is_err());
+
+    // Invalid regex is still rejected (delegated to parse_config).
+    assert!(
+        load_codex_config(Some(&serde_json::json!({
+            "hooks": { "PreToolUse": [{ "matcher": "[", "hooks": [{ "command": "x" }] }] }
+        })))
+        .is_err()
+    );
+}

@@ -56,15 +56,24 @@ pub fn codex_effect(
     map_outcome(event, &codex_outcome(deny, reason))
 }
 
-/// Load a Codex hooks config. Invalid JSON is a no-op (empty config); invalid
-/// matchers are rejected (fail closed, shared with the Claude port).
+/// Load a Codex hooks config. `None` means "no config" (empty config); a
+/// supplied non-object value or a non-object `hooks` key is rejected so a
+/// typo cannot silently turn deny hooks into allow-all (fail closed).
 pub fn load_codex_config(
     value: Option<&serde_json::Value>,
 ) -> std::result::Result<HooksConfig, String> {
-    match value {
-        None => Ok(HooksConfig::default()),
-        Some(value) => parse_config(value),
+    let Some(value) = value else {
+        return Ok(HooksConfig::default());
+    };
+    if !value.is_object() {
+        return Err("invalid hooks config: expected a JSON object".to_string());
     }
+    if let Some(hooks) = value.get("hooks")
+        && !hooks.is_object()
+    {
+        return Err("invalid hooks config: `hooks` must be an object".to_string());
+    }
+    parse_config(value)
 }
 
 /// Select matching entries for a tool hook (Codex uses the same regex matcher).
@@ -112,6 +121,18 @@ impl crate::Plugin for HooksCodex {
     }
 
     async fn apply(&self, ctx: &Context) -> Result<()> {
+        // Hosts may construct `HooksConfig` directly and bypass
+        // `load_codex_config`; validate every matcher here too so an invalid
+        // regex cannot silently disable a deny hook (fail closed).
+        for entry in &self.config.hooks {
+            if let Some(reason) =
+                crate::services::hook_protocol::matcher_diagnostic(entry.matcher.as_deref(), false)
+            {
+                return Err(crate::Error::Other(format!(
+                    "hooks-codex: invalid matcher: {reason}"
+                )));
+            }
+        }
         let _ = ctx
             .require::<crate::services::shell::Shell>("shell")
             .await?;
