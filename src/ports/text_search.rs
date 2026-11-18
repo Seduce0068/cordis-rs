@@ -34,10 +34,32 @@ pub fn normalize(value: &str) -> String {
             '\u{00f8}' | '\u{00d8}' => 'o',
             '\u{0142}' | '\u{0141}' => 'l',
             '\u{0111}' | '\u{0110}' => 'd',
+            // Latin-1 precomposed accents (upper and lower case) → base
+            // letter, so `café` / `CAFÉ` / `cafe\u{0301}` normalize alike.
+            // Partial NFKD only: × (00d7) and ÷ (00f7) are symbols, excluded.
+            '\u{00c0}'..='\u{00c5}' => 'a',
+            '\u{00c7}' => 'c',
+            '\u{00c8}'..='\u{00cb}' => 'e',
+            '\u{00cc}'..='\u{00cf}' => 'i',
+            '\u{00d1}' => 'n',
+            '\u{00d2}'..='\u{00d6}' => 'o',
+            '\u{00d9}'..='\u{00dc}' => 'u',
+            '\u{00dd}' => 'y',
+            '\u{00e0}'..='\u{00e5}' => 'a',
+            '\u{00e8}'..='\u{00eb}' => 'e',
+            '\u{00ec}'..='\u{00ef}' => 'i',
+            '\u{00f2}'..='\u{00f6}' => 'o',
+            '\u{00f9}'..='\u{00fc}' => 'u',
+            '\u{00e7}' => 'c',
+            '\u{00f1}' => 'n',
+            '\u{00fd}' | '\u{00ff}' => 'y',
             other => other,
         };
         for lowered in mapped.to_lowercase() {
-            out.push(lowered);
+            // Lowercasing can expose new combining marks (e.g. İ → i + U+0307).
+            if !('\u{0300}'..='\u{036f}').contains(&lowered) {
+                out.push(lowered);
+            }
         }
     }
     out

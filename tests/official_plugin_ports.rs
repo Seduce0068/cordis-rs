@@ -2902,3 +2902,30 @@ async fn hooks_codex_rejects_malformed_config_shapes() {
         .is_err()
     );
 }
+
+#[test]
+fn text_search_normalize_handles_precomposed_and_lowercase_marks() {
+    use cordis_rs::plugin_ports::normalize_search;
+
+    // Precomposed and decomposed forms normalize identically.
+    assert_eq!(normalize_search("café"), "cafe");
+    assert_eq!(normalize_search("cafe\u{0301}"), "cafe");
+    assert_eq!(normalize_search("CAFÉ"), "cafe");
+    assert_eq!(normalize_search("ÉCOLE"), "ecole");
+    assert_eq!(normalize_search("İSTANBUL"), "istanbul");
+    // × and ÷ are symbols, never folded by the Latin-1 ranges.
+    assert_eq!(normalize_search("÷×"), "÷×");
+
+    // U+0130 lowercases to i + U+0307; the mark is dropped afterwards.
+    assert_eq!(normalize_search("İ"), "i");
+
+    // Fullwidth and stroke letters fold to ASCII.
+    assert_eq!(normalize_search("ＡＢＣ"), "abc");
+    assert_eq!(normalize_search("øłđ"), "old");
+
+    // A combining-mark-only query normalizes to empty.
+    assert_eq!(normalize_search("\u{0301}\u{0300}"), "");
+
+    // Multibyte text is preserved through normalization.
+    assert_eq!(normalize_search("日本語"), "日本語");
+}
