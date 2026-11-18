@@ -3330,13 +3330,14 @@ async fn sandbox_policy_resolves_explicit_session_and_default_modes() {
 
 #[tokio::test]
 async fn user_questions_phase1_validates_and_routes_answers() {
-    use cordis_rs::core_services::provide_sessions;
+    use cordis_rs::core_services::{provide_sessions, provide_tools};
     use cordis_rs::plugin_ports::{
         Answer, AskQuestion, AskRequest, UserQuestionError, mount_user_questions,
     };
 
     let ctx = Context::root("user-questions");
     provide_sessions(&ctx).await.unwrap();
+    provide_tools(&ctx).await.unwrap();
     let service = mount_user_questions(&ctx).await.unwrap();
 
     // An empty question list is rejected before dispatch.
@@ -3383,7 +3384,7 @@ async fn user_questions_phase1_validates_and_routes_answers() {
     );
 
     // A registered answerer supplies the answer through the waterfall seam.
-    let _disposer = service.on_answerer(&ctx, |shared, _next| {
+    let _disposer = service.on_answerer(|shared, _next| {
         let shared = shared.clone();
         Box::pin(async move {
             let agent = shared.lock().expect("ask request poisoned").agent.clone();

@@ -3,17 +3,22 @@
 //! Source: `packages/interaction/user-questions/src/index.ts` in
 //! deepseek-ai/deepseek-harness (MIT), read as untrusted reference data.
 //! Phase 1 provides blocking `ask` / `answer`, a minimal projection, an
-//! answerer waterfall seam. Timed waits, `continued` state, `steer()` and the
-//! `ask_user_question` tool are phase 2 and intentionally absent (the tool
-//! handler would need a context handle that creates an effect lifecycle cycle).
+//! answerer waterfall seam and the `ask_user_question` tool. Timed waits,
+//! `continued` state and `steer()` are phase 2 and intentionally absent.
 
 use std::sync::Arc;
 
 use crate::services::sessions::{SessionEvent, SessionProjectionRegistry};
-use crate::{Context, Error, Event, Result};
+use crate::{
+    Context, Error, Event, Result,
+    events::EventRegistry,
+    services::tools::{
+        ToolArgs, ToolDefinition, ToolError, ToolExecContext, ToolOutput, ToolRegistry,
+    },
+};
 
 pub const PROJECTION_KEY: &str = "userQuestions";
-pub const PHASE2_TOOL_NAME: &str = "ask_user_question";
+pub const TOOL_NAME: &str = "ask_user_question";
 
 /// Stable error codes (upstream `HarnessError` subset).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -129,7 +134,7 @@ type AnswererEvent = Event<AskRequest, Answer>;
 #[derive(Clone)]
 pub struct UserQuestionService {
     answerers: Arc<AnswererEvent>,
-    ctx: Context,
+    registry: EventRegistry,
 }
 
 impl UserQuestionService {
@@ -147,7 +152,7 @@ impl UserQuestionService {
         }
         let answer = self
             .answerers
-            .waterfall(&self.ctx, request, no_provider)
+            .waterfall_with_registry(&self.registry, request, no_provider)
             .await
             .map_err(|_| UserQuestionError::ProviderError)?;
         if answer.answers.is_empty() {
@@ -158,7 +163,7 @@ impl UserQuestionService {
     }
 
     /// Register an answerer via the waterfall seam.
-    pub fn on_answerer<F>(&self, ctx: &Context, listener: F) -> crate::Disposer
+    pub fn on_answerer<F>(&self, listener: F) -> crate::Disposer
     where
         F: Fn(
                 crate::events::Shared<AskRequest>,
@@ -168,7 +173,8 @@ impl UserQuestionService {
             + Sync
             + 'static,
     {
-        self.answerers.on_waterfall(ctx, listener)
+        self.answerers
+            .on_waterfall_with_registry(&self.registry, listener)
     }
 }
 
@@ -190,6 +196,36 @@ impl crate::Plugin for UserQuestionsPlugin {
     }
 }
 
+/// Register the `ask_user_question` tool.
+async fn register_tool(ctx: &Context, service: UserQuestionService) -> Result<crate::Disposer> {
+    let definition = ToolDefinition::new(
+        TOOL_NAME,
+        "Ask the user one or more questions",
+        Arc::new(move |args: ToolArgs, exec: ToolExecContext| {
+            let service = service.clone();
+            Box::pin(async move {
+                let request: AskRequest = serde_json::from_value(args)
+                    .map_err(|error| ToolError::InvalidArgs(error.to_string()))?;
+                if request.questions.is_empty() {
+                    return Err(ToolError::InvalidArgs("empty questions".to_string()));
+                }
+                let answer = service
+                    .ask(request, exec.signal_cancelled)
+                    .await
+                    .map_err(|error| ToolError::Execution(error.to_string()))?;
+                let content = serde_json::to_value(&answer)
+                    .map_err(|error| ToolError::Execution(error.to_string()))?;
+                Ok(ToolOutput {
+                    content,
+                    rendered: vec![format!("{} answers", answer.answers.len())],
+                })
+            })
+        }),
+    );
+    let tools = ctx.require::<ToolRegistry>("tools").await?;
+    Ok(tools.register(definition))
+}
+
 /// Mount the service, projection fold and tool.
 pub async fn mount(ctx: &Context) -> Result<UserQuestionService> {
     let projections = ctx
@@ -203,10 +239,10 @@ pub async fn mount(ctx: &Context) -> Result<UserQuestionService> {
     let projection_disposer = projections.register(PROJECTION_KEY, Arc::new(user_questions_fold));
     let service = UserQuestionService {
         answerers: Arc::new(Event::new("user/question-answerer")),
-        ctx: ctx.clone(),
+        registry: ctx.event_registry().clone(),
     };
     ctx.provide("userQuestions", service.clone()).await?;
-    let tool_disposer = crate::Disposer::new(|| async { Ok(()) });
+    let tool_disposer = register_tool(ctx, service.clone()).await?;
     let fiber = crate::Fiber::mount_retained(ctx, Box::new(UserQuestionsPlugin)).await?;
     ctx.effect(move |scope| {
         let projection_disposer = projection_disposer.clone();

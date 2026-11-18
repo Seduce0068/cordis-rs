@@ -311,8 +311,15 @@ where
     where
         F: Fn(Shared<A>, Next<A, R>) -> BoxFuture<'static, Result<R>> + Send + Sync + 'static,
     {
+        self.on_waterfall_with_registry(ctx.event_registry(), listener)
+    }
+
+    pub fn on_waterfall_with_registry<F>(&self, registry: &EventRegistry, listener: F) -> Disposer
+    where
+        F: Fn(Shared<A>, Next<A, R>) -> BoxFuture<'static, Result<R>> + Send + Sync + 'static,
+    {
         let listener: WaterfallListener<A, R> = Arc::new(listener);
-        let registry = ctx.event_registry().clone();
+        let registry = registry.clone();
         let key = self.key::<WaterfallListener<A, R>>();
         let id = registry.push::<WaterfallListener<A, R>>(key.clone(), listener.clone());
         Disposer::new(move || {
@@ -332,6 +339,22 @@ where
     where
         F: Fn(&A) -> R + Send + Sync + 'static,
     {
+        self.waterfall_with_registry(ctx.event_registry(), args, terminal)
+            .await
+    }
+
+    /// Dispatch with an explicit registry, so a service can hold only the
+    /// registry (Arc-backed, no Context back-reference) instead of a full
+    /// Context and avoid an ownership cycle.
+    pub async fn waterfall_with_registry<F>(
+        &self,
+        registry: &EventRegistry,
+        args: A,
+        terminal: F,
+    ) -> Result<R>
+    where
+        F: Fn(&A) -> R + Send + Sync + 'static,
+    {
         let terminal: Arc<dyn Fn(&A) -> R + Send + Sync> = Arc::new(terminal);
         let mut next: Next<A, R> = Arc::new(move |shared: Shared<A>| {
             let terminal = terminal.clone();
@@ -344,9 +367,8 @@ where
         // One flag per chain so a discarded second future is still detected
         // after the chain completes (reviewer hardening).
         let double_called = Arc::new(AtomicBool::new(false));
-        let listeners: Vec<WaterfallListener<A, R>> = ctx
-            .event_registry()
-            .snapshot(self.key::<WaterfallListener<A, R>>());
+        let listeners: Vec<WaterfallListener<A, R>> =
+            registry.snapshot(self.key::<WaterfallListener<A, R>>());
         for listener in listeners.into_iter().rev() {
             let listener = listener.clone();
             let inner = next.clone();

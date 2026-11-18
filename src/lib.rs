@@ -218,8 +218,8 @@ pub mod plugin_ports {
         execute as execute_working_directory, mount as mount_working_directory,
     };
     pub use crate::ports::user_questions::{
-        Answer, AnswerItem, AskQuestion, AskRequest, PHASE2_TOOL_NAME, QuestionOption,
-        UserQuestionError, UserQuestionService, mount as mount_user_questions, user_questions_fold,
+        Answer, AnswerItem, AskQuestion, AskRequest, QuestionOption, TOOL_NAME, UserQuestionError,
+        UserQuestionService, mount as mount_user_questions, user_questions_fold,
     };
 }
 
