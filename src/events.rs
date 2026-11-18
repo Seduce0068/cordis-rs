@@ -53,7 +53,17 @@ impl std::error::Error for EmitErrors {}
 pub type SerialListener<A, R> = Arc<dyn Fn(A) -> BoxFuture<'static, Option<R>> + Send + Sync>;
 pub type BailListener<A, R> = Arc<dyn Fn(A) -> Option<R> + Send + Sync>;
 
-type SlotKey = (String, TypeId, TypeId, TypeId);
+pub type SlotKey = (String, TypeId, TypeId, TypeId);
+
+/// Build a slot key for a named emit listener from `ctx.on(name, ...)`.
+pub fn named_emit_slot(name: &str) -> SlotKey {
+    (
+        name.to_string(),
+        TypeId::of::<serde_json::Value>(),
+        TypeId::of::<()>(),
+        TypeId::of::<EmitListener<serde_json::Value>>(),
+    )
+}
 
 type ErasedListener = Arc<dyn Any + Send + Sync>;
 type ErasedListeners = Arc<RwLock<Vec<(u64, ErasedListener)>>>;
@@ -75,7 +85,7 @@ impl EventRegistry {
     }
 
     /// `T` is an owned listener handle such as `Arc<dyn Fn...>`.
-    fn push<T>(&self, key: SlotKey, listener: T) -> u64
+    pub fn push<T>(&self, key: SlotKey, listener: T) -> u64
     where
         T: Send + Sync + 'static,
     {
@@ -87,7 +97,7 @@ impl EventRegistry {
         id
     }
 
-    fn remove(&self, key: SlotKey, id: u64) -> Result<()> {
+    pub fn remove(&self, key: SlotKey, id: u64) -> Result<()> {
         self.slot(key)
             .write()
             .expect("event slot poisoned")
@@ -95,7 +105,7 @@ impl EventRegistry {
         Ok(())
     }
 
-    fn snapshot<T>(&self, key: SlotKey) -> Vec<T>
+    pub fn snapshot<T>(&self, key: SlotKey) -> Vec<T>
     where
         T: Clone + Send + Sync + 'static,
     {

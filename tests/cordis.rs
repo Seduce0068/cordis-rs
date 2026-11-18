@@ -415,3 +415,46 @@ async fn old_disposer_does_not_remove_a_newer_service_with_same_name() {
     second.dispose().await.unwrap();
     assert!(ctx.get::<u32>("shared").is_none());
 }
+
+#[tokio::test]
+async fn context_named_on_once_and_emit_share_descriptor_slot() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let ctx = Context::root("named-events");
+    let calls = Arc::new(AtomicUsize::new(0));
+    let c = calls.clone();
+    let _d = ctx.on("custom", move |_args| {
+        let c = c.clone();
+        Box::pin(async move {
+            c.fetch_add(1, Ordering::SeqCst);
+        })
+    });
+
+    let once_calls = Arc::new(AtomicUsize::new(0));
+    let oc = once_calls.clone();
+    let _od = ctx.once("custom", move |_args| {
+        let oc = oc.clone();
+        Box::pin(async move {
+            oc.fetch_add(1, Ordering::SeqCst);
+        })
+    });
+
+    // A typed descriptor with the same name and payload type shares the slot.
+    let descriptor_calls = Arc::new(AtomicUsize::new(0));
+    let dc = descriptor_calls.clone();
+    let event: cordis_rs::events::Event<serde_json::Value> = cordis_rs::Event::new("custom");
+    let _dd = event.on_emit(&ctx, move |_args| {
+        let dc = dc.clone();
+        Box::pin(async move {
+            dc.fetch_add(1, Ordering::SeqCst);
+        })
+    });
+
+    ctx.emit("custom", serde_json::json!({ "x": 1 })).await;
+    ctx.emit("custom", serde_json::json!({ "x": 2 })).await;
+
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+    assert_eq!(once_calls.load(Ordering::SeqCst), 1);
+    assert_eq!(descriptor_calls.load(Ordering::SeqCst), 2);
+}

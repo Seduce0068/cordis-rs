@@ -231,6 +231,55 @@ impl Context {
         &self.inner.events
     }
 
+    /// Register a named emit listener (upstream-style `ctx.on(name, listener)`).
+    /// Payloads are `serde_json::Value`; this occupies the same slot as
+    /// `Event::<serde_json::Value, ()>::new(name).on_emit(...)`, so both forms
+    /// are dispatched together.
+    pub fn on<F>(&self, name: &str, listener: F) -> Disposer
+    where
+        F: Fn(serde_json::Value) -> BoxFuture<'static, ()> + Send + Sync + 'static,
+    {
+        use crate::events::named_emit_slot;
+        let listener: crate::events::EmitListener<serde_json::Value> = Arc::new(listener);
+        let registry = self.event_registry().clone();
+        let key = named_emit_slot(name);
+        let id = registry.push(key.clone(), listener);
+        Disposer::new(move || {
+            let registry = registry.clone();
+            let key = key.clone();
+            async move { registry.remove(key, id) }
+        })
+    }
+
+    /// Like `on` but the listener is ignored after its first invocation.
+    pub fn once<F>(&self, name: &str, listener: F) -> Disposer
+    where
+        F: Fn(serde_json::Value) -> BoxFuture<'static, ()> + Send + Sync + 'static,
+    {
+        let fired = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let flag = fired.clone();
+        let listener = Arc::new(listener);
+        self.on(name, move |args| {
+            let listener = listener.clone();
+            let flag = flag.clone();
+            Box::pin(async move {
+                if !flag.swap(true, Ordering::SeqCst) {
+                    listener(args).await;
+                }
+            })
+        })
+    }
+
+    /// Emit a named event to all `on`/`once` listeners in registration order.
+    pub async fn emit(&self, name: &str, args: serde_json::Value) {
+        use crate::events::named_emit_slot;
+        let listeners: Vec<crate::events::EmitListener<serde_json::Value>> =
+            self.event_registry().snapshot(named_emit_slot(name));
+        for listener in listeners {
+            listener(args.clone()).await;
+        }
+    }
+
     fn effect_list(&self) -> Arc<Mutex<Vec<Disposer>>> {
         // The list is owned by the inner context; expose it as an Arc so an
         // in-flight effect can be replaced atomically after setup completes.
