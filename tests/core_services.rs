@@ -4163,3 +4163,36 @@ fn session_append_is_atomic_under_concurrency() {
     assert_eq!(seqs, expected, "seq order must match log order");
     assert_eq!(session.seq(), 400);
 }
+
+#[test]
+fn jsonl_rejects_invalid_seq_and_type_instead_of_sentinels() {
+    use cordis_rs::plugin_ports::{JsonlPersistence, PersistenceError};
+    use std::io::Write;
+
+    let root = std::env::temp_dir().join(format!("cordis-schema-{}", std::process::id()));
+    let store = JsonlPersistence::new(&root);
+    let session = cordis_rs::core_services::Session::new("schema", None);
+    let good = session.append("user/message", serde_json::json!({"text": "ok"}));
+
+    // First line is valid; second line has a string seq and no type.
+    let handle = store.create("schema").unwrap();
+    handle.append(&good).unwrap();
+    {
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .open(handle.path())
+            .unwrap();
+        writeln!(file, "{{\"seq\":\"bad\",\"data\":{{}}}}").unwrap();
+    }
+
+    // Strict read fails closed with a line-numbered Corrupt error.
+    assert!(matches!(
+        handle.read(),
+        Err(PersistenceError::Corrupt { .. })
+    ));
+
+    // Recovery stops at the malformed line and reports the truncation.
+    let recovered = handle.read_recovered().unwrap();
+    assert_eq!(recovered.events.len(), 1);
+    assert_eq!(recovered.truncated_at_line, Some(2));
+}

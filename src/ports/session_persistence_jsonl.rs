@@ -94,6 +94,40 @@ impl JsonlSessionHandle {
             .map_err(|error| Error::Other(error.to_string()))
     }
 
+    /// Decode one persisted line with strict schema checks. Missing or
+    /// wrong-typed `seq` / `type` is corruption, never a sentinel value
+    /// (swarm review R2-DI, high).
+    fn decode_line(
+        &self,
+        line: &str,
+        index: usize,
+    ) -> std::result::Result<PersistedEvent, PersistenceError> {
+        let corrupt = |reason: String| PersistenceError::Corrupt {
+            path: self.path.to_string_lossy().to_string(),
+            reason: format!("line {}: {reason}", index + 1),
+        };
+        let value: serde_json::Value =
+            serde_json::from_str(line).map_err(|error| corrupt(error.to_string()))?;
+        let seq = value
+            .get("seq")
+            .and_then(|value| value.as_u64())
+            .ok_or_else(|| corrupt("missing or invalid seq".to_string()))?;
+        let event_type = value
+            .get("type")
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| corrupt("missing or invalid type".to_string()))?
+            .to_string();
+        let data = value
+            .get("data")
+            .cloned()
+            .ok_or_else(|| corrupt("missing data".to_string()))?;
+        Ok(PersistedEvent {
+            seq,
+            event_type,
+            data,
+        })
+    }
+
     pub fn read(&self) -> std::result::Result<Vec<PersistedEvent>, PersistenceError> {
         let file =
             File::open(&self.path).map_err(|_| PersistenceError::NotFound(self.id.clone()))?;
@@ -106,16 +140,7 @@ impl JsonlSessionHandle {
             if line.trim().is_empty() {
                 continue; // tolerate a trailing blank line
             }
-            let value: serde_json::Value =
-                serde_json::from_str(&line).map_err(|error| PersistenceError::Corrupt {
-                    path: self.path.to_string_lossy().to_string(),
-                    reason: format!("line {}: {error}", index + 1),
-                })?;
-            events.push(PersistedEvent {
-                seq: value["seq"].as_u64().unwrap_or(0),
-                event_type: value["type"].as_str().unwrap_or_default().to_string(),
-                data: value["data"].clone(),
-            });
+            events.push(self.decode_line(&line, index)?);
         }
         Ok(events)
     }
@@ -127,6 +152,8 @@ impl JsonlSessionHandle {
 pub struct RecoveryReport {
     pub events: Vec<PersistedEvent>,
     pub truncated_at_line: Option<usize>,
+    /// Why the log was truncated (torn JSON or schema violation), when known.
+    pub reason: Option<String>,
 }
 
 impl JsonlSessionHandle {
@@ -138,6 +165,7 @@ impl JsonlSessionHandle {
             File::open(&self.path).map_err(|_| PersistenceError::NotFound(self.id.clone()))?;
         let mut events = Vec::new();
         let mut truncated_at_line = None;
+        let mut reason = None;
         for (index, line) in BufReader::new(file).lines().enumerate() {
             let line = line.map_err(|error| PersistenceError::Corrupt {
                 path: self.path.to_string_lossy().to_string(),
@@ -146,15 +174,14 @@ impl JsonlSessionHandle {
             if line.trim().is_empty() {
                 continue; // tolerate a trailing blank line
             }
-            match serde_json::from_str::<serde_json::Value>(&line) {
-                Ok(value) => events.push(PersistedEvent {
-                    seq: value["seq"].as_u64().unwrap_or(0),
-                    event_type: value["type"].as_str().unwrap_or_default().to_string(),
-                    data: value["data"].clone(),
-                }),
-                Err(_) => {
-                    // Stop here: anything after a torn write is untrustworthy.
+            match self.decode_line(&line, index) {
+                Ok(event) => events.push(event),
+                Err(error) => {
+                    // Stop here: anything after a torn or malformed write is
+                    // untrustworthy. Both the line and the reason are reported
+                    // so a host can decide whether to accept the recovery.
                     truncated_at_line = Some(index + 1);
+                    reason = Some(error.to_string());
                     break;
                 }
             }
@@ -162,6 +189,7 @@ impl JsonlSessionHandle {
         Ok(RecoveryReport {
             events,
             truncated_at_line,
+            reason,
         })
     }
 }
