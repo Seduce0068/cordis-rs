@@ -44,6 +44,11 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 
 ## 安定性マトリクス（production-ready の前に読む）
 
+**このリポジトリは PoC であり、production-ready ではない。** port 数・テスト数は
+実装カバレッジを示すだけで、実モデル呼び出し・テレメトリ送信の失敗系
+（timeout / retry / 部分失敗 / 再起動復元）は未検証。下記の stub / fail-open 行を
+解消するまでは本番利用を想定しないこと。
+
 分類: **stable** = API/挙動固定＋回帰テストあり、**beta** = 動くが自動配線でない、
 **phase-1** = 機能一部・未配線を明記、**stub** = 外部 I/O を模擬のみ、
 **fail-open** = 統制が計算されるが強制されない（暫定ラベル）。
