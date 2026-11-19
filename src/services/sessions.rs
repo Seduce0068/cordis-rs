@@ -238,21 +238,29 @@ impl SessionProjectionRegistry {
 #[derive(Default, Clone)]
 pub struct CheckpointCursor {
     written: Arc<std::sync::Mutex<usize>>,
+    /// Monotonic counter for unique temp-file names across repeated saves.
+    save_seq: Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl CheckpointCursor {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            written: Arc::new(std::sync::Mutex::new(0)),
+            save_seq: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+        }
     }
 
     /// Events committed since the last `commit` call.
     pub fn pending(&self, session: &Session) -> Vec<SessionEvent> {
+        // Hold the cursor lock while taking the session snapshot so a
+        // concurrent commit() cannot make us slice with a stale `written`
+        // (swarm R2-BV TOCTOU).
+        let written = self.written.lock().expect("checkpoint cursor poisoned");
         let events = session.events();
-        let written = *self.written.lock().expect("checkpoint cursor poisoned");
-        if written >= events.len() {
+        if *written >= events.len() {
             Vec::new()
         } else {
-            events[written..].to_vec()
+            events[*written..].to_vec()
         }
     }
 
@@ -275,7 +283,17 @@ impl CheckpointCursor {
         // Write to a sibling temp file and rename it into place. A crash
         // between write and rename leaves the previous cursor intact rather
         // than a half-written file that would reset progress to zero.
-        let temp = path.with_extension("tmp");
+        // Use a unique sibling temp name: a fixed `.tmp` suffix collides when
+        // two cursors (or two processes) save the same path concurrently, and
+        // one rename could then persist the other's data (swarm R2-DI).
+        let unique = format!(
+            "{}.{}.{}.tmp",
+            path.file_name().unwrap_or_default().to_string_lossy(),
+            std::process::id(),
+            self.save_seq
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        );
+        let temp = path.with_file_name(unique);
         std::fs::write(&temp, json.to_string())
             .map_err(|error| crate::Error::Other(error.to_string()))?;
         std::fs::rename(&temp, path).map_err(|error| {
@@ -305,6 +323,7 @@ impl CheckpointCursor {
             .map_err(|_| "checkpoint cursor 'written' out of range".to_string())?;
         Ok(Self {
             written: Arc::new(std::sync::Mutex::new(written)),
+            save_seq: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         })
     }
 

@@ -43,7 +43,7 @@ status: current
 - [ ] **サービス削除 API が3系統存在し副作用とエラー意味が異なる** — 根拠 `src/context.rs:440-501` / R1-AP / 重大度 medium / confirmed
 - [x] **キャンセル判定が実行前の1回のみで実行中の変化が伝播しない** — 2026-11-19 修正（共有 cancel_flag を追加し実行後に成功を再分類、retry/user_questions も対応、R4 指摘反映）。
 - [x] **SessionProjectionRegistry::view が read guard 保持中にユーザ fold を呼ぶ** — 2026-11-19 修正（Arc を clone して guard を drop してから fold 実行、R1 指摘反映）。
-- [ ] **CheckpointCursor の pending/commit が TOCTOU で二重永続化し固定 tmp 名が競合** — 根拠 `src/services/sessions.rs:235-270` / R2-BV,R2-DI / 重大度 medium / likely
+- [x] **CheckpointCursor の pending/commit が TOCTOU で二重永続化し固定 tmp 名が競合** — 2026-11-19 修正（pending で cursor lock 内 snapshot、tmp 名に pid+連番、R1 指摘反映）。
 - [ ] **JsonlPersistence::create の path.exists → File::create に TOCTOU があり既存ログを truncate し得る** — 根拠 `src/ports/session_persistence_jsonl.rs:193-218` / R2-DI / 重大度 medium / likely
 - [ ] **JsonlPersistence::list がメモリマップのみで再起動後にディスク上セッションを列挙できない** — 根拠 `src/ports/session_persistence_jsonl.rs:247-258` / R2-DI / 重大度 medium / confirmed
 - [ ] **restore が永続化 seq を破棄して再採番し seq が再起動をまたいで不安定** — 根拠 `src/ports/session_persistence_jsonl.rs:261-272` / R2-DI / 重大度 medium / confirmed
