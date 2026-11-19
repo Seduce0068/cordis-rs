@@ -229,13 +229,20 @@ impl JsonlPersistence {
             reason: error.to_string(),
         })?;
         let path = self.path_for(&id);
-        if path.exists() {
-            return Err(PersistenceError::AlreadyExists(id));
-        }
-        File::create(&path).map_err(|error| PersistenceError::Corrupt {
-            path: path.to_string_lossy().to_string(),
-            reason: error.to_string(),
-        })?;
+        // Atomically fail if the file already exists: a separate exists()
+        // check followed by File::create could truncate a concurrent create
+        // (swarm review R2-DI).
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .map_err(|error| match error.kind() {
+                std::io::ErrorKind::AlreadyExists => PersistenceError::AlreadyExists(id.clone()),
+                _ => PersistenceError::Corrupt {
+                    path: path.to_string_lossy().to_string(),
+                    reason: format!("cannot create session log: {error}"),
+                },
+            })?;
         let handle = JsonlSessionHandle { id, path };
         self.state
             .write()

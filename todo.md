@@ -44,7 +44,7 @@ status: current
 - [x] **キャンセル判定が実行前の1回のみで実行中の変化が伝播しない** — 2026-11-19 修正（共有 cancel_flag を追加し実行後に成功を再分類、retry/user_questions も対応、R4 指摘反映）。
 - [x] **SessionProjectionRegistry::view が read guard 保持中にユーザ fold を呼ぶ** — 2026-11-19 修正（Arc を clone して guard を drop してから fold 実行、R1 指摘反映）。
 - [x] **CheckpointCursor の pending/commit が TOCTOU で二重永続化し固定 tmp 名が競合** — 2026-11-19 修正（pending で cursor lock 内 snapshot、tmp 名に pid+連番、R1 指摘反映）。
-- [ ] **JsonlPersistence::create の path.exists → File::create に TOCTOU があり既存ログを truncate し得る** — 根拠 `src/ports/session_persistence_jsonl.rs:193-218` / R2-DI / 重大度 medium / likely
+- [x] **JsonlPersistence::create の path.exists → File::create に TOCTOU があり既存ログを truncate し得る** — 2026-11-19 修正（create_new(true) で原子的作成、AlreadyExists を正しく分類）。
 - [ ] **JsonlPersistence::list がメモリマップのみで再起動後にディスク上セッションを列挙できない** — 根拠 `src/ports/session_persistence_jsonl.rs:247-258` / R2-DI / 重大度 medium / confirmed
 - [ ] **restore が永続化 seq を破棄して再採番し seq が再起動をまたいで不安定** — 根拠 `src/ports/session_persistence_jsonl.rs:261-272` / R2-DI / 重大度 medium / confirmed
 - [ ] **VarTable::from_env が全環境変数を無制限に取り込み式から任意の環境変数を参照可能** — 根拠 `src/loader.rs:149-159,1632-1658` / R3-IV / 重大度 medium / confirmed
@@ -75,6 +75,8 @@ status: current
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
 
 ## メモ
+
+- **残課題（2026-11-19、R1 指摘）**: `JsonlPersistence::create()` は `create_new()` 成功後に `state.handles` へ登録するが、その隙間で同じ id の `open()` が別ハンドルを登録し得る（両者が同じファイルへ append）。完全解消には `create_new()` と `handles.insert()` を単一の `state.write()` クリティカルセクションで覆う必要がある。今回は truncate 防止（R2-DI）に限定したため未対応。
 
 - **ゴール上限到達（2026-11-19、256 ラウンド）**: 本セッションの自律ループは上限に達した。残り未着手30件は次セッション以降の引き継ぎ。優先順位: (1) 高優先度の context/plugin 依存逆転・context/events 循環は設計変更を伴うため、まず ADR 化してから段階実装する。(2) 中優先度のうち限定範囲で安全なもの（型付き Event のスコープフィルタ無視、イベントレジストリの階層継承、!!js コメント正規化、YAML 重複キー等）から順に swarm-coding を継続する。(3) discovery 未レビュー分（swarm 出力切り詰め）の代替走査も未実施。
 
