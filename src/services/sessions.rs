@@ -214,11 +214,16 @@ impl SessionProjectionRegistry {
 
     /// Fold all events of a session into the named projection.
     pub fn view(&self, key: &str, session: &Session) -> Option<serde_json::Value> {
-        let folds = self.state.read().expect("session projections poisoned");
-        let fold = folds
-            .iter()
-            .find(|(current, _)| current == key)
-            .map(|(_, fold)| fold)?;
+        // Clone the fold and drop the read guard before invoking user code:
+        // a fold that registers/unregisters a projection would otherwise
+        // deadlock on this RwLock (swarm review R2-BV).
+        let fold = {
+            let folds = self.state.read().expect("session projections poisoned");
+            folds
+                .iter()
+                .find(|(current, _)| current == key)
+                .map(|(_, fold)| fold.clone())?
+        };
         let mut value = serde_json::Value::Null;
         for event in session.events() {
             value = fold(value, &event);

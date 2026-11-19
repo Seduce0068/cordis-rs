@@ -4347,3 +4347,36 @@ async fn cancellation_during_tool_body_reclassifies_success() {
         cordis_rs::core_services::ToolError::Cancelled(_)
     ));
 }
+
+#[test]
+fn projection_fold_can_reenter_registry_without_deadlock() {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    let registry = cordis_rs::core_services::SessionProjectionRegistry::default();
+    let session = cordis_rs::core_services::Session::new("proj", None);
+    session.append("user/message", serde_json::json!({"text": "x"}));
+
+    // The fold re-enters the registry (has()) while view() is running. Before
+    // the fix, view() held the read guard and this deadlocked.
+    let registry_for_fold = registry.clone();
+    registry.register(
+        "reentrant",
+        std::sync::Arc::new(move |value, _event| {
+            let _ = registry_for_fold.has("reentrant");
+            value
+        }),
+    );
+
+    let (tx, rx) = mpsc::channel();
+    let registry_for_thread = registry.clone();
+    let session_for_thread = session.clone();
+    std::thread::spawn(move || {
+        let result = registry_for_thread.view("reentrant", &session_for_thread);
+        tx.send(result).unwrap();
+    });
+    let result = rx
+        .recv_timeout(Duration::from_secs(2))
+        .expect("view deadlocked while fold re-entered the registry");
+    assert!(result.is_some());
+}
