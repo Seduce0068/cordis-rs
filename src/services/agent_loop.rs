@@ -301,6 +301,7 @@ impl AgentLoop {
                     agent: Some(self.caller.clone()),
                     session: self.session_id.clone(),
                     signal_cancelled: false,
+                    cancel_flag: None,
                 };
                 let result = match &self.pipeline {
                     Some(pipeline) => pipeline.run(&self.tools, &call.name, call.args, exec).await,

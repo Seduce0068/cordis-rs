@@ -2667,6 +2667,7 @@ async fn cancelled_exec_context_skips_tool_body() {
 
     let exec = ToolExecContext {
         signal_cancelled: true,
+        cancel_flag: None,
         ..ToolExecContext::anonymous()
     };
     let error = pipeline
@@ -4306,4 +4307,43 @@ async fn invoke_blocking_rejects_calls_from_tokio_runtime() {
     // instead of block_on stalling the current-thread runtime.
     let error = result.unwrap_err();
     assert!(error.to_string().contains("must not be called"));
+}
+
+#[tokio::test]
+async fn cancellation_during_tool_body_reclassifies_success() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    let ctx = Context::root("cancel-during");
+    let (registry, pipeline) = cordis_rs::core_services::provide_tools(&ctx).await.unwrap();
+    let flag = Arc::new(AtomicBool::new(false));
+    let flag_for_tool = flag.clone();
+    registry.register(ToolDefinition::new(
+        "slow",
+        "slow tool",
+        Arc::new(move |_args, _exec| {
+            let flag = flag_for_tool.clone();
+            Box::pin(async move {
+                flag.store(true, Ordering::Release);
+                Ok(cordis_rs::core_services::ToolOutput {
+                    content: serde_json::json!({"ok": true}),
+                    rendered: vec!["ok".to_string()],
+                })
+            })
+        }),
+    ));
+    let exec = cordis_rs::core_services::ToolExecContext {
+        agent: Some("a".to_string()),
+        session: None,
+        signal_cancelled: false,
+        cancel_flag: Some(flag.clone()),
+    };
+    let error = pipeline
+        .run(&registry, "slow", serde_json::json!({}), exec)
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        error,
+        cordis_rs::core_services::ToolError::Cancelled(_)
+    ));
 }

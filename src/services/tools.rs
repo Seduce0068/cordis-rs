@@ -23,19 +23,48 @@ pub type ToolHandler = Arc<
 
 pub type ToolArgs = serde_json::Value;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct ToolExecContext {
     pub agent: Option<String>,
     pub session: Option<String>,
     pub signal_cancelled: bool,
+    /// Optional shared cancellation flag. A host may set it while the tool
+    /// body is running; the pipeline observes it after the body completes and
+    /// reclassifies a successful result as cancelled (upstream
+    /// `toolAbortedResult(prior)` semantics). The body is never cut short.
+    pub cancel_flag: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+}
+
+impl PartialEq for ToolExecContext {
+    fn eq(&self, other: &Self) -> bool {
+        self.agent == other.agent
+            && self.session == other.session
+            && self.signal_cancelled == other.signal_cancelled
+            && match (&self.cancel_flag, &other.cancel_flag) {
+                (Some(a), Some(b)) => std::sync::Arc::ptr_eq(a, b),
+                (None, None) => true,
+                _ => false,
+            }
+    }
 }
 
 impl ToolExecContext {
+    /// True when cancellation was signalled before dispatch or while running.
+    pub fn is_cancelled(&self) -> bool {
+        use std::sync::atomic::Ordering;
+        self.signal_cancelled
+            || self
+                .cancel_flag
+                .as_ref()
+                .is_some_and(|flag| flag.load(Ordering::Acquire))
+    }
+
     pub fn agent(name: impl Into<String>) -> Self {
         Self {
             agent: Some(name.into()),
             session: None,
             signal_cancelled: false,
+            cancel_flag: None,
         }
     }
 
@@ -44,6 +73,7 @@ impl ToolExecContext {
             agent: None,
             session: None,
             signal_cancelled: false,
+            cancel_flag: None,
         }
     }
 }
@@ -433,6 +463,11 @@ impl ToolPipeline {
                     {
                         Ok(output) => return Ok(output),
                         Err(error) => {
+                            // Do not re-dispatch after cancellation was
+                            // signalled during a previous attempt (R4 review).
+                            if exec.is_cancelled() {
+                                return Err(error);
+                            }
                             let decision = retry
                                 .as_ref()
                                 .map(|policy| {
@@ -466,10 +501,23 @@ impl ToolPipeline {
         }
 
         // A cancelled execution must never reach the tool body.
-        if exec.signal_cancelled {
+        if exec.is_cancelled() {
             return Err(ToolError::Cancelled("execution was cancelled".to_string()));
         }
-        let execution = next(args, exec).await;
+        let cancelled_during_run = exec.cancel_flag.clone();
+        let mut execution = next(args, exec).await;
+        // Upstream `toolAbortedResult(prior)`: let the body finish, then
+        // reclassify a successful result when cancellation was signalled
+        // mid-flight. Failures keep their original identity.
+        if execution.is_ok()
+            && cancelled_during_run
+                .as_ref()
+                .is_some_and(|flag| flag.load(std::sync::atomic::Ordering::Acquire))
+        {
+            execution = Err(ToolError::Cancelled(
+                "execution was cancelled during tool body".to_string(),
+            ));
+        }
         // Upstream runs post-execute observers even for thrown tools. Normalize
         // the failure into an observable output, run the observers, then
         // restore the original error (unless an observer itself fails).

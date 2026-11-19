@@ -210,7 +210,7 @@ async fn register_tool(ctx: &Context, service: UserQuestionService) -> Result<cr
                     return Err(ToolError::InvalidArgs("empty questions".to_string()));
                 }
                 let answer = service
-                    .ask(request, exec.signal_cancelled)
+                    .ask(request, exec.is_cancelled())
                     .await
                     .map_err(|error| ToolError::Execution(error.to_string()))?;
                 let content = serde_json::to_value(&answer)

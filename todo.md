@@ -41,7 +41,7 @@ status: current
 - [ ] **イベントレジストリがコンテキスト階層を継承せずサービス lookup と非対称** — 根拠 `src/context.rs:206-231,560-584` / R1-AP / 重大度 medium / confirmed
 - [x] **Lifecycle に validation なしの公開 setter があり不正遷移／未知 u8 を Failed に丸める** — 検証せず却下（下記メモ参照）。
 - [ ] **サービス削除 API が3系統存在し副作用とエラー意味が異なる** — 根拠 `src/context.rs:440-501` / R1-AP / 重大度 medium / confirmed
-- [ ] **キャンセル判定が実行前の1回のみで実行中の変化が伝播しない** — 根拠 `src/services/tools.rs:468-471` / R2-BV / 重大度 medium / confirmed
+- [x] **キャンセル判定が実行前の1回のみで実行中の変化が伝播しない** — 2026-11-19 修正（共有 cancel_flag を追加し実行後に成功を再分類、retry/user_questions も対応、R4 指摘反映）。
 - [ ] **SessionProjectionRegistry::view が read guard 保持中にユーザ fold を呼ぶ** — 根拠 `src/services/sessions.rs:208-215` / R2-BV / 重大度 medium / likely
 - [ ] **CheckpointCursor の pending/commit が TOCTOU で二重永続化し固定 tmp 名が競合** — 根拠 `src/services/sessions.rs:235-270` / R2-BV,R2-DI / 重大度 medium / likely
 - [ ] **JsonlPersistence::create の path.exists → File::create に TOCTOU があり既存ログを truncate し得る** — 根拠 `src/ports/session_persistence_jsonl.rs:193-218` / R2-DI / 重大度 medium / likely

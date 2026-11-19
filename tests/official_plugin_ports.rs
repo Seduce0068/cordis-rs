@@ -2333,6 +2333,7 @@ async fn mcp_resources_scope_isolation_and_uri_allowlist() {
         agent: Some("agent-a".to_string()),
         session: Some("session-a".to_string()),
         signal_cancelled: false,
+        cancel_flag: None,
     };
     assert!(
         tools
@@ -2350,6 +2351,7 @@ async fn mcp_resources_scope_isolation_and_uri_allowlist() {
         agent: Some("agent-b".to_string()),
         session: Some("session-b".to_string()),
         signal_cancelled: false,
+        cancel_flag: None,
     };
     assert!(
         tools
