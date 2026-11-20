@@ -53,7 +53,7 @@ status: current
 - [x] **永続化された有効/無効オーバーライドが mount 経路で反映されない** — 2026-11-21 修正（mount_with / mount_available_with を追加、既存 mount は adapter 化、R1 指摘反映）。
 - [x] **状態ファイル破損時に警告なく YAML デフォルトへフォールバック** — 2026-11-21 修正（try_load で fail-closed、既存 load は後方互換 adapter）。
 - [ ] **未認識の設定キーがサイレントに破棄される** — 根拠 `src/loader.rs:272-275,1131-1175` / R1-CF / 重大度 medium / confirmed
-- [ ] **PreparedExtensions::accept が Mutex ガード保持中に外部コールバックを実行し再入デッドロック** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:139-152` / R2-ER / 重大度 medium / likely
+- [x] **PreparedExtensions::accept が Mutex ガード保持中に外部コールバックを実行し再入デッドロック** — 2026-11-21 修正（AcceptState + Condvar で並行冪等性を維持しつつガードを drop、R1 指摘反映）。
 - [ ] **schedule edit が set_status_public の失敗を握り潰して成功応答を返す** — 根拠 `src/ports/tool_schedule.rs:120-126` / R2-ER / 重大度 medium / confirmed
 - [ ] **FileSearch が I/O エラーを握り潰し不完全な検索結果を完全なものとして返す** — 根拠 `src/services/file_search.rs:143-161` / R2-ER / 重大度 medium / confirmed
 - [ ] **goal_fold の厳密キー一致がスキーマ進化を硬直化させる** — 根拠 `src/ports/goal_fold.rs:247-282,494-500` / R2-DI / 重大度 medium / likely

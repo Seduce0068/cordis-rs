@@ -107,9 +107,17 @@ impl DeepSeekLlmApiExtensionRegistry {
             fields: serde_json::Value::Object(fields),
             failures,
             callbacks: Arc::new(Mutex::new(callbacks)),
-            accepted: Arc::new(Mutex::new(None)),
+            accepted: Arc::new((Mutex::new(AcceptState::Pending), std::sync::Condvar::new())),
         }
     }
+}
+
+/// Settlement state for acceptance callbacks, so concurrent callers join the
+/// same result instead of re-running callbacks (swarm review R2-ER).
+enum AcceptState {
+    Pending,
+    Running,
+    Done(std::result::Result<(), String>),
 }
 
 #[derive(Clone)]
@@ -119,7 +127,7 @@ pub struct PreparedExtensions {
     /// first error per field (upstream's warn-once behaviour, made observable).
     pub failures: Vec<(String, String)>,
     callbacks: Arc<Mutex<Vec<AcceptCallback>>>,
-    accepted: Arc<Mutex<Option<std::result::Result<(), String>>>>,
+    accepted: Arc<(Mutex<AcceptState>, std::sync::Condvar)>,
 }
 
 impl PreparedExtensions {
@@ -128,24 +136,40 @@ impl PreparedExtensions {
             fields: serde_json::Value::Object(serde_json::Map::new()),
             failures: Vec::new(),
             callbacks: Arc::new(Mutex::new(Vec::new())),
-            accepted: Arc::new(Mutex::new(None)),
+            accepted: Arc::new((Mutex::new(AcceptState::Pending), std::sync::Condvar::new())),
         }
     }
 
-    /// Run every acceptance callback once. Repeated calls join the same
+    /// Run every acceptance callback once. Concurrent callers join the same
     /// settlement (idempotent). Rust has no `AggregateError`: multiple
     /// failures are joined into one message.
     pub fn accept(&self) -> std::result::Result<(), String> {
-        let mut slot = self.accepted.lock().expect("extension acceptance poisoned");
-        if let Some(result) = slot.as_ref() {
-            return result.clone();
+        let (lock, cvar) = self.accepted.as_ref();
+        let mut state = lock.lock().expect("extension acceptance poisoned");
+        loop {
+            match &*state {
+                AcceptState::Done(result) => return result.clone(),
+                AcceptState::Running => {
+                    state = cvar.wait(state).expect("extension acceptance poisoned");
+                }
+                AcceptState::Pending => {
+                    *state = AcceptState::Running;
+                    break;
+                }
+            }
         }
+        // Release the guard before invoking user code: callbacks may re-enter
+        // `accept` or register more callbacks (swarm review R2-ER).
+        drop(state);
+
+        // Clone the callback list so its guard is not held during callbacks.
         let callbacks = self
             .callbacks
             .lock()
-            .expect("extension acceptance poisoned");
+            .expect("extension acceptance poisoned")
+            .clone();
         let mut failures = Vec::new();
-        for callback in callbacks.iter() {
+        for callback in &callbacks {
             if let Err(error) = callback() {
                 failures.push(error);
             }
@@ -158,7 +182,8 @@ impl PreparedExtensions {
                 failures.join("; ")
             )),
         };
-        *slot = Some(result.clone());
+        *lock.lock().expect("extension acceptance poisoned") = AcceptState::Done(result.clone());
+        cvar.notify_all();
         result
     }
 }

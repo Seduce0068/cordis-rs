@@ -3294,3 +3294,44 @@ fn workspace_path_helpers_handle_posix_windows_and_control_chars() {
     assert!(validate_segment("a\nb").is_err());
     assert!(validate_segment("a\u{202e}b").is_err());
 }
+
+#[tokio::test]
+async fn deepseek_llm_api_extensions_accept_is_thread_safe_and_idempotent() {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use cordis_rs::plugin_ports::{PreparedField, mount_deepseek_llm_api_extensions};
+
+    let ctx = Context::root("llm-api-extensions-parallel");
+    let registry = mount_deepseek_llm_api_extensions(&ctx).await.unwrap();
+    let calls = Arc::new(AtomicUsize::new(0));
+    let counter = calls.clone();
+    registry.register(
+        "trace",
+        Arc::new(move |_| {
+            let counter = counter.clone();
+            Ok(Some(PreparedField {
+                value: serde_json::json!({ "id": "t1" }),
+                accept: Some(Arc::new(move || {
+                    counter.fetch_add(1, Ordering::SeqCst);
+                    Ok(())
+                })),
+            }))
+        }),
+    );
+
+    let prepared = Arc::new(registry.prepare(&serde_json::json!({}), false));
+    let mut handles = Vec::new();
+    for _ in 0..4 {
+        let prepared = prepared.clone();
+        handles.push(std::thread::spawn(move || prepared.accept()));
+    }
+    for handle in handles {
+        assert!(handle.join().unwrap().is_ok());
+    }
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "parallel callers must join one settlement"
+    );
+}
