@@ -1243,8 +1243,18 @@ fn parse_entry(
     let mut config = Value::object();
     let mut disabled = false;
     let mut inject = Vec::new();
+    let mut seen_keys = std::collections::BTreeSet::new();
 
     for (key, node) in node.into_map()? {
+        // Warn on repeated entry keys while keeping the established last-wins
+        // behaviour (swarm review R3-IV). `plugin`/`name` are distinct keys
+        // (aliases), so each is tracked independently.
+        if !seen_keys.insert(key.clone()) {
+            warnings.push(CompositionWarning {
+                entry: label.clone(),
+                key: format!("duplicate:{}", key.escape_debug()),
+            });
+        }
         let path = format!("{label}.{key}");
         match key.as_str() {
             "id" => id = Some(expect_scalar(&node, &path)?),

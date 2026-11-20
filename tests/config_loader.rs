@@ -1192,3 +1192,28 @@ fn composition_reports_unknown_entry_keys_as_warnings() {
     assert!(clean.warnings.is_empty());
     let _ = CompositionState::new();
 }
+
+#[test]
+fn composition_warns_on_duplicate_entry_keys_but_keeps_last_wins() {
+    use cordis_rs::Composition;
+
+    let yaml = "entries:\n  - id: first\n    id: second\n    plugin: demo/x\n    config: {}\n";
+    let composition = Composition::parse(yaml).unwrap();
+    assert_eq!(composition.entries.len(), 1);
+    // Last-wins: the second `id` is kept.
+    assert_eq!(composition.entries[0].id, "second");
+    assert!(
+        composition.warnings.iter().any(|w| w.key == "duplicate:id"),
+        "duplicate key must be reported as a warning"
+    );
+
+    // plugin/name are distinct aliases, not a duplicate.
+    let alias = "entries:\n  - id: a\n    plugin: demo/x\n    name: demo/y\n    config: {}\n";
+    let composition = Composition::parse(alias).unwrap();
+    assert!(
+        composition
+            .warnings
+            .iter()
+            .all(|w| !w.key.starts_with("duplicate:"))
+    );
+}
