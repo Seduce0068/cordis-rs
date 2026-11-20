@@ -67,7 +67,7 @@ status: current
 - [x] **deprecated re-export に since がなく注記書式も不統一** — 2026-11-21 修正（全8箇所の note を use X instead に統一、since 省略の理由を ADR-005 に記録、R1 指摘反映）。
 - [x] **EmitErrors が件数しか表示せず source() も実装しない** — 2026-11-21 修正（details() と source() を追加、Display 文言は維持、R1 指摘反映）。
 - [x] **YAML マッピングの重複キーが黙って上書きされる** — 2026-11-21 修正（entry レベルの重複を warnings に記録、last-wins 維持、R1 指摘反映）。
-- [ ] **コメント除去とインデント正規化がブロックスカラー結合前に適用され式本文が変わる** — 根拠 `src/loader.rs:587-606,928-969` / R3-IV / 重大度 low / confirmed
+- [x] **コメント除去とインデント正規化がブロックスカラー結合前に適用され式本文が変わる** — 2026-11-21 修正（Line.raw を追加し block scalar 本文は元行を参照、R1 指摘反映）。
 - [x] **SkillRegistry::catalog が provider 失敗を空カタログとして握り潰す** — 2026-11-21 修正（SkillCatalog::failures と SkillProviderFailure を追加、PartialEq は skills のみ比較、R1 指摘反映）。
 
 ## 完了
@@ -75,6 +75,8 @@ status: current
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
 
 ## メモ
+
+- **残課題（2026-11-21、R1 指摘）**: ブロック本文の空行は tokenize がドロップするため、literal block の `"a\n\nb"` が `"a\nb"` になる。空行を残すと既存パーサ（parse_map/parse_seq の indent ループ）が壊れるリスクがあり、block 専用の元行保持など別設計が必要。裸の `#` と相対インデントは Line.raw により保持されるよう修正済み。
 
 - **残課題（2026-11-21、R1 指摘）**: `ScheduleError::Cancelled` は定義と Display のみで生成箇所がなく、`set_status()` に「cancelled な schedule は再開不可」ガードが無い。上流セマンティクスが cancel を終端とするなら別タスクで対応が必要。今回の失敗伝播では届かない。
 

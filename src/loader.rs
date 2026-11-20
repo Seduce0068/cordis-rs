@@ -646,6 +646,9 @@ fn check_depth(limits: Limits, depth: usize) -> Result<(), LoaderError> {
 struct Line {
     indent: usize,
     text: String,
+    /// Original line before comment stripping / indent trimming. Block scalar
+    /// bodies use this so relative indentation and bare `#` survive (R3-IV).
+    raw: String,
     number: usize,
 }
 
@@ -720,6 +723,7 @@ fn tokenize(input: &str) -> Result<Vec<Line>, LoaderError> {
         lines.push(Line {
             indent,
             text: trimmed_end.trim_start().to_string(),
+            raw: raw.to_string(),
             number: index + 1,
         });
     }
@@ -1058,8 +1062,12 @@ fn parse_value_after_key(
         let chomp = indicator.ends_with('-');
         let mut parts: Vec<String> = Vec::new();
         let mut next = *index + 1;
+        let mut base_indent: Option<usize> = None;
         while next < lines.len() && lines[next].indent > indent {
-            parts.push(lines[next].text.clone());
+            let line = &lines[next];
+            let base = *base_indent.get_or_insert(line.indent);
+            let content = line.raw.get(base..).unwrap_or("");
+            parts.push(content.to_string());
             next += 1;
         }
         if parts.is_empty() {

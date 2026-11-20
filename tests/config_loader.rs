@@ -1217,3 +1217,35 @@ fn composition_warns_on_duplicate_entry_keys_but_keeps_last_wins() {
             .all(|w| !w.key.starts_with("duplicate:"))
     );
 }
+
+#[test]
+fn js_literal_block_preserves_bare_hash() {
+    use cordis_rs::config::Value;
+    use cordis_rs::loader::{Composition, VarTable};
+
+    // The tokeniser used to strip `#` from block bodies as a comment before
+    // assembly, truncating quoted literals (R3-IV). The raw line is now used.
+    let yaml = concat!(
+        "entries:\n",
+        "  - id: t\n",
+        "    plugin: demo/x\n",
+        "    config:\n",
+        "      expr: !!js |\n",
+        "        [\n",
+        "          'a#b',\n",
+        "          'c'\n",
+        "        ]\n",
+        "      after: sibling\n",
+    );
+    let composition = Composition::parse_with_vars(yaml, &VarTable::new()).unwrap();
+    let map = match &composition.entries[0].config {
+        Value::Object(map) => map.clone(),
+        _ => panic!("expected object"),
+    };
+    let debug = format!("{map:?}");
+    assert!(debug.contains("a#b"), "bare # must survive: {debug}");
+    assert_eq!(
+        map.get("after"),
+        Some(&Value::String("sibling".to_string()))
+    );
+}
