@@ -19,16 +19,34 @@ status: proposed
 **`EventSink` 抽象の導入と既存 `with_registry` パターンの拡張**で一方向化する。
 
 1. `EventSink` trait を `context` 側に定義する。
-   `registry(&self) -> &EventRegistry` と `allows(&self, name: &str) -> bool`
-   （スコープフィルタ判定）を提供する。
-2. `impl EventSink for Context` を追加。フィルタ判定は Context の責務として残す。
-3. `events.rs` の各 dispatch API（`on_serial` / `serial` / `on_bail` / `on_emit` /
-   `emit` / `emit_spawn` / `emit_detached` / `parallel` / `parallel_errors` 等）を
-   `&dyn EventSink` 受け取り版へ統一する。
+   `registry(&self) -> &EventRegistry` を提供する。
+2. `impl EventSink for Context` を追加。
+3. `events.rs` の dispatch API のうち、**スコープフィルタを必要としない**
+   もの（`on_serial` / `serial` / `on_bail` / `parallel` / `parallel_errors` 等）
+   に `&dyn EventSink` 受け取り版を追加する。
 4. 既存の `&Context` 受け取り版は adapter として残し、呼び出し元（`typed_event!`
    の生成コードを含む）を無変更にする。
-5. `events.rs` は `Context` と `Disposer` の import を落とし、`EventSink` と
-   `Disposer` の配置は別案件（primitives 整理）として切り出す。
+5. **`emit_with` は `&Context` 版に残す**（下記「R1 修正」参照）。
+   `events.rs` の `Context` import はこれが残るため削除しない。
+6. `Disposer` の配置は別案件（primitives 整理）として切り出す。
+
+### R1 修正（実装前レビュー）
+
+当初の `allows(name)` シグネチャでは `emit_with` の2スコープを表現できない。
+
+`emit_with`（context.rs:376-387）は **registry 所有者 `self`** ではなく
+**dispatch 先スコープ `this`** の `event_filter` で判定しており、
+`allows(&self, name)` では `this` を渡せない。対策として:
+
+- `EventSink` から `allows()` を外し、`emit` 系は `&Context` 版を維持。
+- ADR-010 の範囲を「全 dispatch API の EventSink 化」から
+  「**filter 非依存の dispatch API の EventSink 化**」へ縮小。
+- 「events.rs の Context import を落とす」目標は**未達**として明示。
+  完全な一方向化には `EventScopeView` などの別抽象が必要で、第2段 ADR に委ねる。
+- 実装フェーズ（R2）は一度着手したが、`EventSink` trait の可視性
+  （`pub(crate)` trait を公開メソッドの引数にできない）と filter 2スコープの
+  設計論点が残るため**停止**。次イテレーションで `EventScopeView` の設計を
+  ADR-011 として先に合意してから実装する。status は proposed を維持。
 
 ## 根拠
 
