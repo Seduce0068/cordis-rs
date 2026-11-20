@@ -76,6 +76,29 @@ impl Session {
         event
     }
 
+    /// Replay a persisted event with its original seq. Used only by JSONL
+    /// restore so sequences survive a restart (swarm review R2-DI). Returns
+    /// `false` when `seq` is not greater than the current cursor (duplicate or
+    /// out-of-order), leaving the log untouched.
+    pub fn append_with_seq(
+        &self,
+        seq: u64,
+        event_type: impl Into<String>,
+        data: serde_json::Value,
+    ) -> bool {
+        let mut log = self.inner.log.lock().expect("session log poisoned");
+        if seq <= log.next_seq {
+            return false;
+        }
+        log.next_seq = seq;
+        log.events.push(SessionEvent {
+            seq,
+            event_type: event_type.into(),
+            data,
+        });
+        true
+    }
+
     pub fn events(&self) -> Vec<SessionEvent> {
         self.inner
             .log

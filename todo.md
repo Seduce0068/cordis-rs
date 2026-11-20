@@ -46,7 +46,7 @@ status: current
 - [x] **CheckpointCursor の pending/commit が TOCTOU で二重永続化し固定 tmp 名が競合** — 2026-11-19 修正（pending で cursor lock 内 snapshot、tmp 名に pid+連番、R1 指摘反映）。
 - [x] **JsonlPersistence::create の path.exists → File::create に TOCTOU があり既存ログを truncate し得る** — 2026-11-19 修正（create_new(true) で原子的作成、AlreadyExists を正しく分類）。
 - [x] **JsonlPersistence::list がメモリマップのみで再起動後にディスク上セッションを列挙できない** — 2026-11-21 修正（ディスクの .jsonl を統合、validate_session_id で逆変換フィルタ、R1 指摘反映）。
-- [ ] **restore が永続化 seq を破棄して再採番し seq が再起動をまたいで不安定** — 根拠 `src/ports/session_persistence_jsonl.rs:261-272` / R2-DI / 重大度 medium / confirmed
+- [x] **restore が永続化 seq を破棄して再採番し seq が再起動をまたいで不安定** — 2026-11-21 修正（append_with_seq で seq 保持、単調性違反は Corrupt、R1 指摘反映）。
 - [ ] **VarTable::from_env が全環境変数を無制限に取り込み式から任意の環境変数を参照可能** — 根拠 `src/loader.rs:149-159,1632-1658` / R3-IV / 重大度 medium / confirmed
 - [ ] **inject 名の内部化が Box::leak で無上限に蓄積** — 根拠 `src/loader.rs:414-427` / R3-IV / 重大度 medium / confirmed
 - [ ] **errno 分類が Linux 固有の数値ハードコードで OS によって誤分类** — 根拠 `src/ports/fs_errno.rs:62-92` / R3-IV / 重大度 medium / likely

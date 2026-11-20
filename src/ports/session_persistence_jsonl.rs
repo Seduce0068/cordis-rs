@@ -326,7 +326,12 @@ impl JsonlPersistence {
         let handle = self.open(id)?;
         let session = Session::new(id, cwd);
         for event in handle.read()? {
-            session.append(event.event_type, event.data);
+            if !session.append_with_seq(event.seq, event.event_type, event.data) {
+                return Err(PersistenceError::Corrupt {
+                    path: handle.path().to_string_lossy().to_string(),
+                    reason: format!("non-monotonic persisted seq {} during restore", event.seq),
+                });
+            }
         }
         Ok(session)
     }

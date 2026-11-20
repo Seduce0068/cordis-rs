@@ -4406,3 +4406,43 @@ fn jsonl_persistence_lists_sessions_from_disk_after_restart() {
 
     fs::remove_dir_all(&root).unwrap();
 }
+
+#[test]
+fn jsonl_restore_preserves_persisted_seq_and_rejects_nonmonotonic() {
+    use cordis_rs::plugin_ports::{JsonlPersistence, PersistenceError};
+    use std::io::Write;
+
+    let root = std::env::temp_dir().join(format!("cordis-restore-seq-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    let store = JsonlPersistence::new(&root);
+    let handle = store.create("seq").unwrap();
+
+    // Write three events with explicit seq values, including a gap (1, 3, 5).
+    {
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .open(handle.path())
+            .unwrap();
+        writeln!(file, "{{\"seq\":1,\"type\":\"a\",\"data\":{{}}}}").unwrap();
+        writeln!(file, "{{\"seq\":3,\"type\":\"b\",\"data\":{{}}}}").unwrap();
+        writeln!(file, "{{\"seq\":5,\"type\":\"c\",\"data\":{{}}}}").unwrap();
+    }
+    let restored = store.restore("seq", None).unwrap();
+    assert_eq!(restored.seq(), 5);
+    assert_eq!(restored.events()[1].seq, 3);
+    assert_eq!(restored.append("d", serde_json::json!({})).seq, 6);
+
+    // A non-monotonic log fails closed on restore.
+    std::fs::write(
+        handle.path(),
+        "{\"seq\":2,\"type\":\"a\",\"data\":{}}\n{\"seq\":1,\"type\":\"b\",\"data\":{}}\n",
+    )
+    .unwrap();
+    let restarted = JsonlPersistence::new(&root);
+    assert!(matches!(
+        restarted.restore("seq", None),
+        Err(PersistenceError::Corrupt { .. })
+    ));
+
+    std::fs::remove_dir_all(&root).unwrap();
+}
