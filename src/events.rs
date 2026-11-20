@@ -105,13 +105,34 @@ pub type FallibleEmitListener<A> = Arc<dyn Fn(A) -> BoxFuture<'static, Result<()
 #[derive(Debug)]
 pub struct EmitErrors(pub Vec<Error>);
 
+impl EmitErrors {
+    /// Numbered breakdown of listener failures for diagnostics. The public
+    /// tuple field already exposes the errors; this is a convenience for
+    /// logging (swarm review R1-AP).
+    pub fn details(&self) -> String {
+        self.0
+            .iter()
+            .enumerate()
+            .map(|(index, error)| format!("{}: {error}", index + 1))
+            .collect::<Vec<_>>()
+            .join("; ")
+    }
+}
+
 impl std::fmt::Display for EmitErrors {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Keep the established message: callers and tests depend on it.
         write!(f, "{} listener error(s)", self.0.len())
     }
 }
 
-impl std::error::Error for EmitErrors {}
+impl std::error::Error for EmitErrors {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.0
+            .first()
+            .map(|error| error as &(dyn std::error::Error + 'static))
+    }
+}
 pub type SerialListener<A, R> = Arc<dyn Fn(A) -> BoxFuture<'static, Option<R>> + Send + Sync>;
 pub type BailListener<A, R> = Arc<dyn Fn(A) -> Option<R> + Send + Sync>;
 

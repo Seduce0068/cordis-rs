@@ -65,7 +65,7 @@ status: current
 - [x] **tokio の exact pin が dependencies と dev-dependencies で二重定義** — 2026-11-21 対応（feature union と pin 共有が意図的であることをコメント化、R1 指摘反映）。
 - [ ] **smoke 対象 example が手動配列で実体と drift しうる** — 根拠 `scripts/smoke-examples.sh:5-13` / R1-CF / 重大度 low / confirmed
 - [ ] **deprecated re-export に since がなく注記書式も不統一** — 根拠 `src/lib.rs:62-75`, `src/events.rs:522-529` / R1-AP / 重大度 low / confirmed
-- [ ] **EmitErrors が件数しか表示せず source() も実装しない** — 根拠 `src/events.rs:104-114` / R1-AP / 重大度 low / confirmed
+- [x] **EmitErrors が件数しか表示せず source() も実装しない** — 2026-11-21 修正（details() と source() を追加、Display 文言は維持、R1 指摘反映）。
 - [ ] **YAML マッピングの重複キーが黙って上書きされる** — 根拠 `src/loader.rs:1131-1176,1203-1213` / R3-IV / 重大度 low / confirmed
 - [ ] **コメント除去とインデント正規化がブロックスカラー結合前に適用され式本文が変わる** — 根拠 `src/loader.rs:587-606,928-969` / R3-IV / 重大度 low / confirmed
 - [ ] **SkillRegistry::catalog が provider 失敗を空カタログとして握り潰す** — 根拠 `src/services/skills.rs:68-81` / R2-ER / 重大度 low / confirmed

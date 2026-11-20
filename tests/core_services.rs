@@ -4546,3 +4546,22 @@ fn goal_change_decoding_tolerates_unknown_fields_but_requires_known_ones() {
         .insert("future".into(), serde_json::json!(1));
     assert!(decode_goal_change(&wrong_version).is_err());
 }
+
+#[test]
+fn emit_errors_keeps_message_and_exposes_details_and_source() {
+    use cordis_rs::EmitErrors;
+    use std::error::Error as _;
+
+    let errors = EmitErrors(vec![
+        cordis_rs::Error::Other("first".to_string()),
+        cordis_rs::Error::Other("second".to_string()),
+    ]);
+    // Established Display message is unchanged.
+    assert_eq!(errors.to_string(), "2 listener error(s)");
+    // Details expose per-listener failures for diagnostics.
+    let details = errors.details();
+    assert!(details.contains("1:") && details.contains("first"));
+    assert!(details.contains("2:") && details.contains("second"));
+    // source() returns the first failure (Rust's source() is single-valued).
+    assert_eq!(errors.source().unwrap().to_string(), "first");
+}
