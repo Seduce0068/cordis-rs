@@ -16,6 +16,7 @@ status: current
 ## 進行中
 
 - [x] context/plugin 依存逆転（ADR-009、R1 design + R2 coding 完了、2026-11-20）
+- [ ] context ↔ events 設計（ADR-010 proposed + ADR-011 EventScopeView proposed、R1/R4 完了、R2 実装は次イテレーション以降）
 
 ## 未着手
 
