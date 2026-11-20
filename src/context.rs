@@ -10,7 +10,15 @@ use tokio::sync::Notify;
 
 use crate::error::{Error, Result};
 use crate::events::{BoxFuture, EventRegistry};
-use crate::plugin::FiberInner;
+
+/// Seam for fibers that react to service changes. Defined here so `Context`
+/// does not depend on the `plugin` module's concrete `FiberInner` type
+/// (ADR-009). Implementations must not re-enter the notifying `Context`.
+pub(crate) trait FiberObserver: Send + Sync {
+    fn injects(&self, name: &str) -> bool;
+    fn is_retiring(&self) -> bool;
+    fn refresh(&self) -> BoxFuture<'_, crate::Result<()>>;
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lifecycle {
@@ -186,7 +194,7 @@ struct ContextInner {
     events: EventRegistry,
     effects: Arc<Mutex<Vec<Disposer>>>,
     service_added: Arc<Notify>,
-    fibers: RwLock<Vec<std::sync::Weak<FiberInner>>>,
+    fibers: RwLock<Vec<std::sync::Weak<dyn FiberObserver>>>,
 }
 
 impl Context {
@@ -507,19 +515,19 @@ impl Context {
         }
     }
 
-    pub(crate) fn register_fiber(&self, fiber: &std::sync::Arc<FiberInner>) {
+    /// Register a weak observer. The observer must not strongly reference the
+    /// context or re-enter it from `refresh` (ADR-009).
+    pub(crate) fn register_fiber(&self, observer: std::sync::Weak<dyn FiberObserver>) {
         self.root_context()
             .inner
             .fibers
             .write()
             .expect("fiber registry poisoned")
-            .push(std::sync::Arc::downgrade(fiber));
+            .push(observer);
     }
 
-    /// Re-evaluate every mounted fiber. Upstream's `reflect.notify()` is
-    /// notification-driven rather than polling; spawning the refresh keeps
-    /// service registration non-blocking.
-    fn dependent_fibers(&self) -> Vec<std::sync::Weak<FiberInner>> {
+    /// Weak snapshots of live observers; dead entries are self-pruned.
+    fn dependent_fibers(&self) -> Vec<std::sync::Weak<dyn FiberObserver>> {
         let mut guard = self
             .root_context()
             .inner
@@ -530,29 +538,30 @@ impl Context {
         guard.clone()
     }
 
+    /// Re-evaluate every mounted observer. Upstream's `reflect.notify()` is
+    /// notification-driven rather than polling; spawning the refresh keeps
+    /// service registration non-blocking.
     pub(crate) fn notify_fibers(&self) {
         for weak in self.dependent_fibers() {
-            if let Some(fiber) = weak.upgrade() {
-                let fiber = crate::plugin::Fiber::from_inner(fiber);
+            if let Some(observer) = weak.upgrade() {
                 tokio::spawn(async move {
-                    let _ = fiber.refresh().await;
+                    let _ = observer.refresh().await;
                 });
             }
         }
     }
 
-    /// Notify fibers that inject `name` and await their refresh, so callers
+    /// Notify observers that inject `name` and await their refresh, so callers
     /// can drain dependents before removing a service they depend on.
-    /// Fibers already retiring are skipped to avoid a self-deadlock.
+    /// Retiring observers are skipped to avoid a self-deadlock.
     pub(crate) async fn drain_dependent_fibers(&self, name: &str) {
         use futures::future::join_all;
         let tasks: Vec<_> = self
             .dependent_fibers()
             .into_iter()
             .filter_map(|weak| weak.upgrade())
-            .filter(|inner| inner.injects(name) && !inner.is_retiring())
-            .map(crate::plugin::Fiber::from_inner)
-            .map(|fiber| async move { fiber.refresh().await })
+            .filter(|observer| observer.injects(name) && !observer.is_retiring())
+            .map(|observer| async move { observer.refresh().await })
             .collect();
         let _ = join_all(tasks).await;
     }

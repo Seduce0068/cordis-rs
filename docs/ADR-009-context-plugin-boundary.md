@@ -9,10 +9,10 @@ tags:
 resource: https://github.com/Seduce0068/cordis-rs
 generated: 2026-11-20T19:35:00+09:00
 verified: 2026-11-20T19:35:00+09:00
-status: proposed
+status: accepted
 ---
 
-## 決定（提案）
+## 決定
 
 `Context` が `plugin::FiberInner` を直接 import する双方向依存を、次の構成で一方向的へ逆転する。
 

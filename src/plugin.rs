@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use tokio::sync::Mutex as AsyncMutex;
 
-use crate::context::{Context, Lifecycle};
+use crate::context::{Context, FiberObserver, Lifecycle};
 use crate::error::{Error, Result};
 
 /// A Cordis plugin. Upstream accepts a function, a constructor, or an object
@@ -85,16 +85,63 @@ impl FiberInner {
     pub(crate) fn injects(&self, name: &str) -> bool {
         self.inject.iter().any(|item| item == name)
     }
+
+    async fn refresh_inner(&self) -> Result<()> {
+        let _guard = self.guard.lock().await;
+        let resolved = self
+            .inject
+            .iter()
+            .all(|name| self.ctx.get_untyped(name).is_some());
+        let state = *self.state.lock().expect("fiber state poisoned");
+
+        if state == Lifecycle::Active && !resolved {
+            self.retiring
+                .store(true, std::sync::atomic::Ordering::SeqCst);
+            self.ctx.set_lifecycle(Lifecycle::Unloading);
+            self.ctx.dispose_effects().await?;
+            *self.state.lock().expect("fiber state poisoned") = Lifecycle::Pending;
+            self.ctx.set_lifecycle(Lifecycle::Pending);
+        } else if matches!(state, Lifecycle::Pending | Lifecycle::Failed) && resolved {
+            *self.state.lock().expect("fiber state poisoned") = Lifecycle::Loading;
+            self.ctx.set_lifecycle(Lifecycle::Loading);
+            match self.plugin.apply(&self.ctx).await {
+                Ok(()) => {
+                    *self.state.lock().expect("fiber state poisoned") = Lifecycle::Active;
+                    self.ctx.set_lifecycle(Lifecycle::Active);
+                }
+                Err(error) => {
+                    // Clean up any effects the failed apply already registered.
+                    let _ = self.ctx.dispose_effects().await;
+                    *self.state.lock().expect("fiber state poisoned") = Lifecycle::Failed;
+                    // Keep the context lifecycle Unloaded: require()/effect()
+                    // guards only treat Unloading/Unloaded as closed.
+                    self.ctx.set_lifecycle(Lifecycle::Unloaded);
+                    return Err(Error::Plugin(self.name.clone(), error.to_string()));
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl FiberObserver for FiberInner {
+    fn injects(&self, name: &str) -> bool {
+        FiberInner::injects(self, name)
+    }
+
+    fn is_retiring(&self) -> bool {
+        FiberInner::is_retiring(self)
+    }
+
+    fn refresh(&self) -> crate::events::BoxFuture<'_, crate::Result<()>> {
+        Box::pin(self.refresh_inner())
+    }
 }
 
 #[derive(Clone)]
 pub struct Fiber(Arc<FiberInner>);
 
 impl Fiber {
-    pub(crate) fn from_inner(inner: Arc<FiberInner>) -> Self {
-        Self(inner)
-    }
-
     /// Mount a plugin. The plugin body does not run until its `inject`
     /// dependencies are available. `await`ing this function waits for load.
     pub async fn mount(ctx: &Context, plugin: Box<dyn Plugin>) -> Result<Self> {
@@ -114,7 +161,8 @@ impl Fiber {
             guard: AsyncMutex::new(()),
             retiring: std::sync::atomic::AtomicBool::new(false),
         }));
-        ctx.register_fiber(&fiber.0);
+        let arc: Arc<dyn FiberObserver> = fiber.0.clone();
+        ctx.register_fiber(Arc::downgrade(&arc));
         fiber.refresh().await?;
         Ok(fiber)
     }
@@ -153,42 +201,7 @@ impl Fiber {
     }
 
     pub async fn refresh(&self) -> Result<()> {
-        let _guard = self.0.guard.lock().await;
-        let resolved = self
-            .0
-            .inject
-            .iter()
-            .all(|name| self.0.ctx.get_untyped(name).is_some());
-        let state = self.state();
-
-        if state == Lifecycle::Active && !resolved {
-            self.0
-                .retiring
-                .store(true, std::sync::atomic::Ordering::SeqCst);
-            self.0.ctx.set_lifecycle(Lifecycle::Unloading);
-            self.0.ctx.dispose_effects().await?;
-            *self.0.state.lock().expect("fiber state poisoned") = Lifecycle::Pending;
-            self.0.ctx.set_lifecycle(Lifecycle::Pending);
-        } else if matches!(state, Lifecycle::Pending | Lifecycle::Failed) && resolved {
-            *self.0.state.lock().expect("fiber state poisoned") = Lifecycle::Loading;
-            self.0.ctx.set_lifecycle(Lifecycle::Loading);
-            match self.0.plugin.apply(&self.0.ctx).await {
-                Ok(()) => {
-                    *self.0.state.lock().expect("fiber state poisoned") = Lifecycle::Active;
-                    self.0.ctx.set_lifecycle(Lifecycle::Active);
-                }
-                Err(error) => {
-                    // Clean up any effects the failed apply already registered.
-                    let _ = self.0.ctx.dispose_effects().await;
-                    *self.0.state.lock().expect("fiber state poisoned") = Lifecycle::Failed;
-                    // Keep the context lifecycle Unloaded: require()/effect()
-                    // guards only treat Unloading/Unloaded as closed.
-                    self.0.ctx.set_lifecycle(Lifecycle::Unloaded);
-                    return Err(Error::Plugin(self.0.name.clone(), error.to_string()));
-                }
-            }
-        }
-        Ok(())
+        self.0.refresh_inner().await
     }
 
     /// Unload the fiber and dispose every effect it registered.
