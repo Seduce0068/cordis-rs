@@ -59,35 +59,63 @@ impl std::error::Error for FsError {
     }
 }
 
-/// Classify an `std::io::Error` by its raw OS errno. Values without a raw
-/// errno (or an already-classified `FsError`) are returned unchanged as a
-/// generic IO error.
+/// Classify an `std::io::Error` by its `ErrorKind` first so the mapping works
+/// on every platform, then fall back to raw OS errno for kinds Rust does not
+/// distinguish (swarm review R3-IV).
+///
+/// `cause` keeps only the original message: it is a freshly built
+/// `Error::other(...)`, so `source().raw_os_error()` is `None`. Callers must
+/// re-classify via this function, not via `source()`.
 pub fn fs_error_from_errno(operation: &str, display_path: &str, error: &std::io::Error) -> FsError {
+    use std::io::ErrorKind;
+
     let failure = format!("cannot {operation} \"{display_path}\"");
     let cause = std::sync::Arc::new(std::io::Error::other(error.to_string()));
-    match error.raw_os_error() {
-        // ENOENT / ENOTDIR
-        Some(2) | Some(20) => FsError {
-            code: FsErrorCode::NotFound,
-            message: format!("{failure}: not found"),
-            cause,
-        },
-        // EACCES / EPERM
-        Some(13) | Some(1) => FsError {
-            code: FsErrorCode::PermissionDenied,
-            message: format!("{failure}: permission denied"),
-            cause,
-        },
-        // EISDIR
-        Some(21) => FsError {
-            code: FsErrorCode::NotRegularFile,
-            message: format!("{failure}: not a regular file"),
-            cause,
-        },
-        _ => FsError {
-            code: FsErrorCode::IoError,
-            message: format!("{failure}: {cause}"),
-            cause,
-        },
+
+    let code = match error.kind() {
+        // ENOENT maps to NotFound; ENOTDIR has its own kind on recent Rust.
+        ErrorKind::NotFound | ErrorKind::NotADirectory => Some(FsErrorCode::NotFound),
+        ErrorKind::PermissionDenied => Some(FsErrorCode::PermissionDenied),
+        // EISDIR has its own kind on recent Rust.
+        ErrorKind::IsADirectory => Some(FsErrorCode::NotRegularFile),
+        _ => None,
+    };
+
+    let Some(code) = code else {
+        // Fallback for errnos whose kind Rust does not map distinctly.
+        return match error.raw_os_error() {
+            Some(2) | Some(20) => FsError {
+                code: FsErrorCode::NotFound,
+                message: format!("{failure}: not found"),
+                cause,
+            },
+            Some(13) | Some(1) => FsError {
+                code: FsErrorCode::PermissionDenied,
+                message: format!("{failure}: permission denied"),
+                cause,
+            },
+            Some(21) => FsError {
+                code: FsErrorCode::NotRegularFile,
+                message: format!("{failure}: not a regular file"),
+                cause,
+            },
+            _ => FsError {
+                code: FsErrorCode::IoError,
+                message: format!("{failure}: {cause}"),
+                cause,
+            },
+        };
+    };
+
+    let suffix = match code {
+        FsErrorCode::NotFound => "not found",
+        FsErrorCode::PermissionDenied => "permission denied",
+        FsErrorCode::NotRegularFile => "not a regular file",
+        FsErrorCode::IoError => unreachable!(),
+    };
+    FsError {
+        code,
+        message: format!("{failure}: {suffix}"),
+        cause,
     }
 }
