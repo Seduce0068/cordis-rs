@@ -119,7 +119,13 @@ fn edit_handler(service: ScheduleService) -> ToolHandler {
             };
             match service.get(id) {
                 Some(_) => {
-                    let _ = service.set_status_public(id, status);
+                    // Propagate persistence failures instead of silently
+                    // reporting success (swarm review R2-ER). Use Execution,
+                    // not Cancelled: the latter means the tool call itself was
+                    // cancelled and would be picked up by retry/cancel logic.
+                    service
+                        .set_status_public(id, status)
+                        .map_err(|error| ToolError::Execution(error.to_string()))?;
                     Ok(ToolOutput::text(format!("{id} -> {}", status.as_str())))
                 }
                 None => Ok(ToolOutput::text(format!("schedule_not_found: {id}"))),
