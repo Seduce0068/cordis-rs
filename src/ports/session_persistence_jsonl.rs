@@ -279,8 +279,11 @@ impl JsonlPersistence {
         Ok(handle)
     }
 
+    /// List known session ids, merging in-memory handles with `.jsonl` files
+    /// on disk so a restarted process can see persisted sessions without an
+    /// explicit `open()` (swarm review R2-DI).
     pub fn list(&self) -> Vec<String> {
-        let mut ids: Vec<String> = self
+        let mut ids: std::collections::BTreeSet<String> = self
             .state
             .read()
             .expect("persistence state poisoned")
@@ -288,8 +291,30 @@ impl JsonlPersistence {
             .keys()
             .cloned()
             .collect();
-        ids.sort();
-        ids
+        if let Ok(entries) = std::fs::read_dir(&self.root) {
+            for entry in entries.flatten() {
+                let Ok(file_type) = entry.file_type() else {
+                    continue;
+                };
+                if !file_type.is_file() {
+                    continue;
+                }
+                let name = entry.file_name();
+                let Some(name) = name.to_str() else {
+                    continue;
+                };
+                let Some(id) = name.strip_suffix(".jsonl") else {
+                    continue;
+                };
+                // Only accept paths that round-trip through path_for(), which
+                // rejects traversal, hidden names and embedded separators.
+                if validate_session_id(id).is_err() || self.path_for(id) != entry.path() {
+                    continue;
+                }
+                ids.insert(id.to_string());
+            }
+        }
+        ids.into_iter().collect()
     }
 
     /// Replay a persisted session into an in-memory Session.

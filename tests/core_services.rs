@@ -4380,3 +4380,29 @@ fn projection_fold_can_reenter_registry_without_deadlock() {
         .expect("view deadlocked while fold re-entered the registry");
     assert!(result.is_some());
 }
+
+#[test]
+fn jsonl_persistence_lists_sessions_from_disk_after_restart() {
+    use cordis_rs::plugin_ports::JsonlPersistence;
+    use std::fs;
+
+    let root = std::env::temp_dir().join(format!("cordis-list-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+
+    // First instance creates a session and writes its file.
+    let store = JsonlPersistence::new(&root);
+    store.create("alpha").unwrap();
+    assert_eq!(store.list(), vec!["alpha".to_string()]);
+
+    // A fresh instance (empty in-memory handles) still sees the disk session.
+    let restarted = JsonlPersistence::new(&root);
+    assert_eq!(restarted.list(), vec!["alpha".to_string()]);
+
+    // Invalid filenames are filtered out.
+    fs::write(root.join("weird.name.jsonl"), "{}").unwrap();
+    fs::write(root.join(".hidden.jsonl"), "{}").unwrap();
+    fs::write(root.join("stray.tmp"), "{}").unwrap();
+    assert_eq!(restarted.list(), vec!["alpha".to_string()]);
+
+    fs::remove_dir_all(&root).unwrap();
+}
