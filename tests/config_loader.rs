@@ -1070,3 +1070,24 @@ entries:
         );
     }
 }
+
+#[test]
+fn inject_names_are_validated_before_interning() {
+    use cordis_rs::{Composition, VarTable};
+
+    // A name with a control character is rejected before it can be interned.
+    let bad =
+        "entries:\n  - id: bad\n    plugin: demo/x\n    inject: [\"bad\\nname\"]\n    config: {}\n";
+    assert!(Composition::parse_with_vars(bad, &VarTable::new()).is_err());
+
+    // An over-long name is rejected.
+    let long_name = "a".repeat(129);
+    let long = format!(
+        "entries:\n  - id: long\n    plugin: demo/x\n    inject: [\"{long_name}\"]\n    config: {{}}\n"
+    );
+    assert!(Composition::parse_with_vars(&long, &VarTable::new()).is_err());
+
+    // A valid name still works (unknown plugin id is fine at parse time).
+    let good = "entries:\n  - id: good\n    plugin: demo/x\n    inject: [\"valid_name-1\"]\n    config: {}\n";
+    assert!(Composition::parse_with_vars(good, &VarTable::new()).is_ok());
+}

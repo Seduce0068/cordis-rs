@@ -419,7 +419,7 @@ impl Entry {
         };
         let mut inject = factory.inject.clone();
         for name in &self.inject {
-            let name = intern_inject_name(name);
+            let name = intern_inject_name(name)?;
             if !inject.contains(&name) {
                 inject.push(name);
             }
@@ -439,16 +439,42 @@ impl Entry {
 /// `Plugin::inject() -> &[&'static str]`, without `unsafe`. Each distinct name
 /// is leaked at most once per process, so repeated mounts/HMR reloads with the
 /// same names do not grow memory without bound.
-fn intern_inject_name(name: &str) -> &'static str {
+/// Maximum distinct inject names kept in the intern pool.
+const MAX_INTERNED_INJECT_NAMES: usize = 512;
+/// Maximum length of a single inject name.
+const MAX_INJECT_NAME_LEN: usize = 128;
+
+/// Validate an inject name before it becomes a Context service key (R3-IV).
+fn validate_inject_name(name: &str) -> std::result::Result<(), LoaderError> {
+    if name.is_empty()
+        || name.len() > MAX_INJECT_NAME_LEN
+        || !name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+    {
+        return Err(LoaderError::Structure(format!(
+            "invalid inject name: {name:?}"
+        )));
+    }
+    Ok(())
+}
+
+fn intern_inject_name(name: &str) -> std::result::Result<&'static str, LoaderError> {
+    validate_inject_name(name)?;
     static INTERNED: OnceLock<Mutex<BTreeSet<&'static str>>> = OnceLock::new();
     let names = INTERNED.get_or_init(|| Mutex::new(BTreeSet::new()));
     let mut names = names.lock().expect("inject name intern pool poisoned");
     if let Some(interned) = names.get(name) {
-        return interned;
+        return Ok(interned);
+    }
+    if names.len() >= MAX_INTERNED_INJECT_NAMES {
+        return Err(LoaderError::Structure(format!(
+            "inject name intern pool exhausted ({MAX_INTERNED_INJECT_NAMES} names)"
+        )));
     }
     let leaked: &'static str = Box::leak(name.to_string().into_boxed_str());
     names.insert(leaked);
-    leaked
+    Ok(leaked)
 }
 
 /// The plugin body registered for a plugin id.
@@ -1192,6 +1218,9 @@ fn parse_entry(
                             "{path} must be a sequence of strings"
                         )));
                     };
+                    // Reject invalid names at parse time, before they can be
+                    // interned into the process-wide pool (R3-IV).
+                    validate_inject_name(&name)?;
                     inject.push(name);
                 }
             }

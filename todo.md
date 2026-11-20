@@ -48,7 +48,7 @@ status: current
 - [x] **JsonlPersistence::list がメモリマップのみで再起動後にディスク上セッションを列挙できない** — 2026-11-21 修正（ディスクの .jsonl を統合、validate_session_id で逆変換フィルタ、R1 指摘反映）。
 - [x] **restore が永続化 seq を破棄して再採番し seq が再起動をまたいで不安定** — 2026-11-21 修正（append_with_seq で seq 保持、単調性違反は Corrupt、R1 指摘反映）。
 - [x] **VarTable::from_env が全環境変数を無制限に取り込み式から任意の環境変数を参照可能** — 2026-11-21 修正（from_env_allowlisted 導入、VarTable::get で集約、R1 敵対レビュー反映）。
-- [ ] **inject 名の内部化が Box::leak で無上限に蓄積** — 根拠 `src/loader.rs:414-427` / R3-IV / 重大度 medium / confirmed
+- [x] **inject 名の内部化が Box::leak で無上限に蓄積** — 2026-11-21 修正（intern 名の検証・上限 512・長さ 128 を追加、R1 指摘反映）。
 - [ ] **errno 分類が Linux 固有の数値ハードコードで OS によって誤分类** — 根拠 `src/ports/fs_errno.rs:62-92` / R3-IV / 重大度 medium / likely
 - [ ] **永続化された有効/無効オーバーライドが mount 経路で反映されない** — 根拠 `src/loader.rs:176-183,301-318` / R1-CF / 重大度 medium / confirmed
 - [ ] **状態ファイル破損時に警告なく YAML デフォルトへフォールバック** — 根拠 `src/loader.rs:214-232` / R1-CF / 重大度 medium / confirmed
@@ -75,6 +75,8 @@ status: current
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
 
 ## メモ
+
+- **残課題（2026-11-21、R1 指摘）**: inject 名の intern pool には上限 512 を設定したが、`FunctionPlugin` / `PluginFactory` の `Vec<&'static str>` は変更していない。R1 が提案した `inject_owned` 局所解（`Plugin` に default メソッドを追加し Fiber が優先して読む）は今回見送り。動的に異なる名前を大量生成する host では将来対応が必要。
 
 - **残課題（2026-11-19、R1 指摘）**: `JsonlPersistence::create()` は `create_new()` 成功後に `state.handles` へ登録するが、その隙間で同じ id の `open()` が別ハンドルを登録し得る（両者が同じファイルへ append）。完全解消には `create_new()` と `handles.insert()` を単一の `state.write()` クリティカルセクションで覆う必要がある。今回は truncate 防止（R2-DI）に限定したため未対応。
 
