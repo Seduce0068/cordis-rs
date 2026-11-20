@@ -4565,3 +4565,32 @@ fn emit_errors_keeps_message_and_exposes_details_and_source() {
     // source() returns the first failure (Rust's source() is single-valued).
     assert_eq!(errors.source().unwrap().to_string(), "first");
 }
+
+#[test]
+fn skill_catalog_reports_provider_failures_without_losing_other_skills() {
+    use cordis_rs::core_services::{Skill, SkillRegistry};
+    use std::sync::Arc;
+
+    let registry = SkillRegistry::default();
+    let good = Skill {
+        name: "good".to_string(),
+        description: String::new(),
+        path: String::new(),
+        source: "test".to_string(),
+    };
+    registry.register_provider(1, Arc::new(move || Ok(vec![good.clone()])));
+    registry.register_provider(2, Arc::new(|| Err("boom\ninjected".to_string())));
+
+    let catalog = registry.catalog();
+    assert_eq!(catalog.skills.len(), 1);
+    assert_eq!(catalog.skills[0].name, "good");
+    assert_eq!(catalog.failures.len(), 1);
+    assert!(catalog.failures[0].message.contains("boom"));
+    assert!(!catalog.failures[0].message.contains('\n'));
+    assert_eq!(registry.names(), vec!["good".to_string()]);
+
+    // Equality ignores failures (backward compatibility).
+    let mut other = catalog.clone();
+    other.failures.clear();
+    assert_eq!(catalog, other);
+}

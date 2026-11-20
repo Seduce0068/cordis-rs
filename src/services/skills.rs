@@ -19,9 +19,26 @@ pub struct Skill {
     pub source: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+/// A provider that failed while building the catalog (swarm review R2-ER).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SkillProviderFailure {
+    pub id: u64,
+    pub rank: i64,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct SkillCatalog {
     pub skills: Vec<Skill>,
+    /// Providers that failed; their skills are absent, so the catalog may be
+    /// incomplete. Equality ignores failures for backward compatibility.
+    pub failures: Vec<SkillProviderFailure>,
+}
+
+impl PartialEq for SkillCatalog {
+    fn eq(&self, other: &Self) -> bool {
+        self.skills == other.skills
+    }
 }
 
 pub type SkillProvider = Arc<dyn Fn() -> std::result::Result<Vec<Skill>, String> + Send + Sync>;
@@ -65,8 +82,20 @@ impl SkillRegistry {
     pub fn catalog(&self) -> SkillCatalog {
         let providers = self.state.read().expect("skill registry poisoned");
         let mut by_name: BTreeMap<String, (i64, Skill)> = BTreeMap::new();
-        for (_, rank, provider) in providers.providers.iter() {
-            for skill in provider().unwrap_or_default() {
+        let mut failures = Vec::new();
+        for (id, rank, provider) in providers.providers.iter() {
+            let skills = match provider() {
+                Ok(skills) => skills,
+                Err(message) => {
+                    failures.push(SkillProviderFailure {
+                        id: *id,
+                        rank: *rank,
+                        message: message.escape_debug().to_string(),
+                    });
+                    Vec::new()
+                }
+            };
+            for skill in skills {
                 let better = by_name
                     .get(&skill.name)
                     .map(|(current_rank, _)| *rank > *current_rank)
@@ -78,7 +107,7 @@ impl SkillRegistry {
         }
         let mut skills: Vec<Skill> = by_name.into_values().map(|(_, skill)| skill).collect();
         skills.sort_by(|a, b| a.name.cmp(&b.name));
-        SkillCatalog { skills }
+        SkillCatalog { skills, failures }
     }
 
     pub fn names(&self) -> Vec<String> {

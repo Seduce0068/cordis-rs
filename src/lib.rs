@@ -368,7 +368,8 @@ pub mod core_services {
         Shell, ShellError, ShellRequest, ShellResult, ShellSpec, provide as provide_shell,
     };
     pub use crate::services::skills::{
-        Skill, SkillCatalog, SkillProvider, SkillRegistry, provide as provide_skills,
+        Skill, SkillCatalog, SkillProvider, SkillProviderFailure, SkillRegistry,
+        provide as provide_skills,
     };
     pub use crate::services::storage::{
         DomainSpec, MemoryBackend, StorageError, StorageHub, provide as provide_storage,

@@ -68,7 +68,7 @@ status: current
 - [x] **EmitErrors が件数しか表示せず source() も実装しない** — 2026-11-21 修正（details() と source() を追加、Display 文言は維持、R1 指摘反映）。
 - [ ] **YAML マッピングの重複キーが黙って上書きされる** — 根拠 `src/loader.rs:1131-1176,1203-1213` / R3-IV / 重大度 low / confirmed
 - [ ] **コメント除去とインデント正規化がブロックスカラー結合前に適用され式本文が変わる** — 根拠 `src/loader.rs:587-606,928-969` / R3-IV / 重大度 low / confirmed
-- [ ] **SkillRegistry::catalog が provider 失敗を空カタログとして握り潰す** — 根拠 `src/services/skills.rs:68-81` / R2-ER / 重大度 low / confirmed
+- [x] **SkillRegistry::catalog が provider 失敗を空カタログとして握り潰す** — 2026-11-21 修正（SkillCatalog::failures と SkillProviderFailure を追加、PartialEq は skills のみ比較、R1 指摘反映）。
 
 ## 完了
 
