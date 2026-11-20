@@ -51,7 +51,7 @@ status: current
 - [x] **inject 名の内部化が Box::leak で無上限に蓄積** — 2026-11-21 修正（intern 名の検証・上限 512・長さ 128 を追加、R1 指摘反映）。
 - [x] **errno 分類が Linux 固有の数値ハードコードで OS によって誤分类** — 2026-11-21 修正（ErrorKind 主軸＋raw errno フォールバック、R1 指摘反映）。
 - [x] **永続化された有効/無効オーバーライドが mount 経路で反映されない** — 2026-11-21 修正（mount_with / mount_available_with を追加、既存 mount は adapter 化、R1 指摘反映）。
-- [ ] **状態ファイル破損時に警告なく YAML デフォルトへフォールバック** — 根拠 `src/loader.rs:214-232` / R1-CF / 重大度 medium / confirmed
+- [x] **状態ファイル破損時に警告なく YAML デフォルトへフォールバック** — 2026-11-21 修正（try_load で fail-closed、既存 load は後方互換 adapter）。
 - [ ] **未認識の設定キーがサイレントに破棄される** — 根拠 `src/loader.rs:272-275,1131-1175` / R1-CF / 重大度 medium / confirmed
 - [ ] **PreparedExtensions::accept が Mutex ガード保持中に外部コールバックを実行し再入デッドロック** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:139-152` / R2-ER / 重大度 medium / likely
 - [ ] **schedule edit が set_status_public の失敗を握り潰して成功応答を返す** — 根拠 `src/ports/tool_schedule.rs:120-126` / R2-ER / 重大度 medium / confirmed

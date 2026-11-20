@@ -1138,3 +1138,35 @@ entries:
         .unwrap();
     assert_eq!(report.mounted.len(), 1);
 }
+
+#[test]
+fn composition_state_try_load_surfaces_corruption() {
+    use cordis_rs::CompositionState;
+
+    let dir = std::env::temp_dir().join(format!("cordis-state-corrupt-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+
+    // Missing file is a fresh start.
+    let missing = dir.join("missing.json");
+    assert_eq!(
+        CompositionState::try_load(&missing).unwrap(),
+        CompositionState::new()
+    );
+
+    // Valid JSON round-trips.
+    let valid = dir.join("valid.json");
+    let mut state = CompositionState::new();
+    state.set("a", false);
+    state.save(&valid).unwrap();
+    assert_eq!(CompositionState::try_load(&valid).unwrap(), state);
+
+    // Corrupt JSON fails closed.
+    let corrupt = dir.join("corrupt.json");
+    std::fs::write(&corrupt, "not json").unwrap();
+    assert!(CompositionState::try_load(&corrupt).is_err());
+    // Legacy load still falls back for compatibility.
+    assert_eq!(CompositionState::load(&corrupt), CompositionState::new());
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}

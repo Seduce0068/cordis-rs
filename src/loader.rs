@@ -235,24 +235,51 @@ impl CompositionState {
         })
     }
 
-    /// Load a previously saved state. Missing or malformed files yield an
-    /// empty override set so YAML defaults apply.
-    pub fn load(path: impl AsRef<std::path::Path>) -> Self {
-        let Ok(text) = std::fs::read_to_string(path) else {
-            return Self::default();
+    /// Load overrides, surfacing corruption instead of silently falling back
+    /// to YAML defaults (a saved `false` must not become enabled on restart).
+    /// A missing file is a fresh start (`Ok` with empty overrides).
+    pub fn try_load(path: impl AsRef<std::path::Path>) -> std::result::Result<Self, LoaderError> {
+        let path = path.as_ref();
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(Self::default());
+            }
+            Err(error) => {
+                return Err(LoaderError::Structure(format!(
+                    "cannot read composition state {}: {error}",
+                    path.display()
+                )));
+            }
         };
-        let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
-            return Self::default();
+        let value: serde_json::Value = serde_json::from_str(&text).map_err(|error| {
+            LoaderError::Structure(format!(
+                "invalid composition state JSON in {}: {error}",
+                path.display()
+            ))
+        })?;
+        let Some(map) = value.as_object() else {
+            return Err(LoaderError::Structure(format!(
+                "composition state in {} must be an object",
+                path.display()
+            )));
         };
         let mut overrides = BTreeMap::new();
-        if let Some(map) = value.as_object() {
-            for (id, enabled) in map {
-                if let Some(flag) = enabled.as_bool() {
-                    overrides.insert(id.clone(), flag);
-                }
-            }
+        for (id, enabled) in map {
+            let Some(flag) = enabled.as_bool() else {
+                return Err(LoaderError::Structure(format!(
+                    "composition state override for {id} must be a boolean"
+                )));
+            };
+            overrides.insert(id.clone(), flag);
         }
-        Self { overrides }
+        Ok(Self { overrides })
+    }
+
+    /// Backwards-compatible loader that falls back to defaults on corruption.
+    /// Prefer `try_load` when a saved `false` must be preserved.
+    pub fn load(path: impl AsRef<std::path::Path>) -> Self {
+        Self::try_load(path).unwrap_or_default()
     }
 }
 
