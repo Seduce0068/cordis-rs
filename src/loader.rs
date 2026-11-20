@@ -117,6 +117,10 @@ pub struct VarTable {
     values: BTreeMap<String, Value>,
     /// Base directory used to resolve DSH's `dshHomePath('...')` helper.
     home_path: Option<std::path::PathBuf>,
+    /// Environment variable names exposed to `!!js env.X` / `process.env.X`.
+    /// Empty by default (fail-closed): compositions must never read arbitrary
+    /// process secrets (swarm review R3-IV).
+    env_allowlist: std::collections::BTreeSet<String>,
 }
 
 impl VarTable {
@@ -130,6 +134,18 @@ impl VarTable {
     }
 
     pub fn get(&self, name: &str) -> Option<&Value> {
+        // Every `env.*` access funnels through here (`env.X`, `process.env.X`,
+        // `process?.env.X`, and auto-evaluated quoted strings), so this single
+        // check closes all four bypass paths (R3-IV review).
+        // An empty allowlist means "not configured": explicit host injections
+        // via insert()/with_env_value() are honoured. Once from_env_allowlisted
+        // sets a list, only names on it are visible.
+        if !self.env_allowlist.is_empty()
+            && let Some(env_name) = name.strip_prefix("env.")
+            && !self.env_allowlist.contains(env_name)
+        {
+            return None;
+        }
         self.values.get(name)
     }
 
@@ -149,11 +165,19 @@ impl VarTable {
     /// Populate the table with `process.env.*`-style entries from the real
     /// process environment, so `!!js process.env.FOO` resolves in DSH-style
     /// compositions without evaluating JavaScript.
-    pub fn from_env(mut self) -> Self {
+    /// Import only the explicitly allow-listed environment variables.
+    /// Credentials (e.g. `DEEPSEEK_API_KEY`) must never be included: they are
+    /// resolved through the dedicated `BTreeMap` passed to plugin `mount()`.
+    pub fn from_env_allowlisted(mut self, names: &[&str]) -> Self {
+        for name in names {
+            self.env_allowlist.insert((*name).to_string());
+        }
         for (key, value) in std::env::vars() {
-            self.values
-                .entry(format!("env.{key}"))
-                .or_insert_with(|| Value::String(value));
+            if self.env_allowlist.contains(&key) {
+                self.values
+                    .entry(format!("env.{key}"))
+                    .or_insert_with(|| Value::String(value));
+            }
         }
         self
     }

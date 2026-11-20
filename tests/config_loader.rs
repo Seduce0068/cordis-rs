@@ -1029,3 +1029,44 @@ entries:
     let composition = Composition::parse(yaml).unwrap();
     assert_eq!(composition.entries.len(), 1);
 }
+
+#[test]
+fn var_table_env_access_is_allowlisted_and_fails_closed() {
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let yaml = r#"
+entries:
+  - id: a
+    plugin: demo/x
+    config: { v: !!js env.CORDIS_ALLOWED_TEST }
+  - id: b
+    plugin: demo/x
+    config: { v: !!js process.env.CORDIS_SECRET_TEST }
+  - id: c
+    plugin: demo/x
+    config: { v: !!js process?.env.CORDIS_SECRET_TEST }
+  - id: d
+    plugin: demo/x
+    config: { v: !!js env.DEEPSEEK_API_KEY }
+"#;
+
+    // from_env_allowlisted with only one name: all other env.* lookups (three
+    // syntactic forms, including a credential) resolve to Null.
+    let vars = VarTable::new()
+        .from_env_allowlisted(&["CORDIS_ALLOWED_TEST"])
+        .with_env_value("CORDIS_ALLOWED_TEST", "ok")
+        .with_env_value("CORDIS_SECRET_TEST", "s3cret")
+        .with_env_value("DEEPSEEK_API_KEY", "sk-test-should-not-leak");
+    let composition = Composition::parse_with_vars(yaml, &vars).unwrap();
+    assert_eq!(
+        composition.entries[0].config.as_object().unwrap().get("v"),
+        Some(&ConfigValue::String("ok".to_string()))
+    );
+    for (index, entry) in composition.entries.iter().enumerate().skip(1) {
+        assert_eq!(
+            entry.config.as_object().unwrap().get("v"),
+            Some(&ConfigValue::Null),
+            "unlisted env value must not leak (entry {index})"
+        );
+    }
+}
