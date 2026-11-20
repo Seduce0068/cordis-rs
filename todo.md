@@ -57,7 +57,7 @@ status: current
 - [x] **schedule edit が set_status_public の失敗を握り潰して成功応答を返す** — 2026-11-21 修正（ToolError::Execution へ伝播、R1 指摘反映）。
 - [x] **FileSearch が I/O エラーを握り潰し不完全な検索結果を完全なものとして返す** — 2026-11-21 修正（IndexStatus アクセサで I/O エラー・truncated を公開、R1 指摘反映）。
 - [ ] **goal_fold の厳密キー一致がスキーマ進化を硬直化させる** — 根拠 `src/ports/goal_fold.rs:247-282,494-500` / R2-DI / 重大度 medium / likely
-- [ ] **同名 projection の登録が重複許容で disposer が全件削除・view が先頭のみ使用** — 根拠 `src/services/sessions.rs:179-196,207-218` / R2-BV / 重大度 medium / confirmed
+- [x] **同名 projection の登録が重複許容で disposer が全件削除・view が先頭のみ使用** — 2026-11-21 修正（世代 id による置換と fencing、R1 指摘反映）。
 
 ### 優先度: 低
 

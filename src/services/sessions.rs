@@ -201,27 +201,48 @@ impl SessionStore {
 pub type ProjectionFold =
     Arc<dyn Fn(serde_json::Value, &SessionEvent) -> serde_json::Value + Send + Sync>;
 
+#[derive(Default)]
+struct ProjectionState {
+    /// (key, generation id, fold). The id fences disposers so an older
+    /// registration cannot remove a later one with the same key (R2-BV).
+    entries: Vec<(String, u64, ProjectionFold)>,
+    next_id: u64,
+}
+
 /// `ctx.sessionProjections`: registry of named fold units.
 #[derive(Default, Clone)]
 pub struct SessionProjectionRegistry {
-    state: Arc<RwLock<Vec<(String, ProjectionFold)>>>,
+    state: Arc<RwLock<ProjectionState>>,
 }
 
 impl SessionProjectionRegistry {
+    /// Register a fold under `key` (last registration wins). The returned
+    /// disposer removes only this registration, even if the key was later
+    /// re-registered.
     pub fn register(&self, key: impl Into<String>, fold: ProjectionFold) -> Disposer {
         let key = key.into();
         let mut guard = self.state.write().expect("session projections poisoned");
-        guard.push((key.clone(), fold));
+        guard.next_id += 1;
+        let id = guard.next_id;
+        if let Some(existing) = guard
+            .entries
+            .iter_mut()
+            .find(|(current, _, _)| current == &key)
+        {
+            *existing = (key, id, fold);
+        } else {
+            guard.entries.push((key, id, fold));
+        }
         drop(guard);
         let state = self.state.clone();
         Disposer::new(move || {
             let state = state.clone();
-            let key = key.clone();
             async move {
                 state
                     .write()
                     .expect("session projections poisoned")
-                    .retain(|(current, _)| current != &key);
+                    .entries
+                    .retain(|(_, current_id, _)| *current_id != id);
                 Ok(())
             }
         })
@@ -231,8 +252,9 @@ impl SessionProjectionRegistry {
         self.state
             .read()
             .expect("session projections poisoned")
+            .entries
             .iter()
-            .any(|(current, _)| current == key)
+            .any(|(current, _, _)| current == key)
     }
 
     /// Fold all events of a session into the named projection.
@@ -241,11 +263,12 @@ impl SessionProjectionRegistry {
         // a fold that registers/unregisters a projection would otherwise
         // deadlock on this RwLock (swarm review R2-BV).
         let fold = {
-            let folds = self.state.read().expect("session projections poisoned");
-            folds
+            let state = self.state.read().expect("session projections poisoned");
+            state
+                .entries
                 .iter()
-                .find(|(current, _)| current == key)
-                .map(|(_, fold)| fold.clone())?
+                .find(|(current, _, _)| current == key)
+                .map(|(_, _, fold)| fold.clone())?
         };
         let mut value = serde_json::Value::Null;
         for event in session.events() {

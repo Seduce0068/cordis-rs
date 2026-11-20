@@ -4471,3 +4471,42 @@ fn file_search_reports_index_truncation_and_io_errors() {
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[tokio::test]
+async fn projection_registry_same_key_replacement_is_generation_fenced() {
+    use cordis_rs::core_services::SessionProjectionRegistry;
+    use std::sync::Arc;
+
+    let registry = SessionProjectionRegistry::default();
+    let session = cordis_rs::core_services::Session::new("proj-dup", None);
+    session.append("n", serde_json::json!(1));
+
+    let first = registry.register(
+        "count",
+        Arc::new(|mut value, _event| {
+            value["first"] = serde_json::json!(true);
+            value
+        }),
+    );
+    // Last registration wins: view() must use the second fold.
+    let second = registry.register(
+        "count",
+        Arc::new(|mut value, _event| {
+            value["second"] = serde_json::json!(true);
+            value
+        }),
+    );
+    let view = registry.view("count", &session).unwrap();
+    assert_eq!(view["second"], true);
+    assert_eq!(view["first"], serde_json::Value::Null);
+
+    // Disposing the first registration must not remove the second one.
+    first.dispose().await.unwrap();
+    assert!(registry.has("count"));
+    let view = registry.view("count", &session).unwrap();
+    assert_eq!(view["second"], true);
+
+    // Disposing the current registration removes the key.
+    second.dispose().await.unwrap();
+    assert!(!registry.has("count"));
+}
