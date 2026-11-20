@@ -15,7 +15,7 @@ status: current
 
 ## 進行中
 
-（なし）
+- [ ] context/plugin 依存逆転の設計（ADR-009、proposed）— 実装フェーズ (R2) は次イテレーション以降。
 
 ## 未着手
 
