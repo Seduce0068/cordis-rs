@@ -1059,10 +1059,6 @@ fn parse_value_after_key(
         let mut parts: Vec<String> = Vec::new();
         let mut next = *index + 1;
         while next < lines.len() && lines[next].indent > indent {
-            eprintln!(
-                "BLOCK consumer: indent={} line_indent={} text={:?}",
-                indent, lines[next].indent, lines[next].text
-            );
             parts.push(lines[next].text.clone());
             next += 1;
         }

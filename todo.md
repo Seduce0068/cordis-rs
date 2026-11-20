@@ -61,8 +61,8 @@ status: current
 
 ### 優先度: 低
 
-- [ ] **!!js ブロックスカラーの本文が eprintln! で stderr にそのまま出力される** — 根拠 `src/loader.rs:943` / R3-IV / 重大度 low / confirmed
-- [ ] **tokio の exact pin が dependencies と dev-dependencies で二重定義** — 根拠 `Cargo.toml:18,21` / R1-CF / 重大度 low / confirmed
+- [x] **!!js ブロックスカラーの本文が eprintln! で stderr にそのまま出力される** — 2026-11-21 削除（YAML 任意文字列の stderr 生書き／ログ注入リスクも解消）。
+- [x] **tokio の exact pin が dependencies と dev-dependencies で二重定義** — 2026-11-21 対応（feature union と pin 共有が意図的であることをコメント化、R1 指摘反映）。
 - [ ] **smoke 対象 example が手動配列で実体と drift しうる** — 根拠 `scripts/smoke-examples.sh:5-13` / R1-CF / 重大度 low / confirmed
 - [ ] **deprecated re-export に since がなく注記書式も不統一** — 根拠 `src/lib.rs:62-75`, `src/events.rs:522-529` / R1-AP / 重大度 low / confirmed
 - [ ] **EmitErrors が件数しか表示せず source() も実装しない** — 根拠 `src/events.rs:104-114` / R1-AP / 重大度 low / confirmed

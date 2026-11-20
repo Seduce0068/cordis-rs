@@ -18,6 +18,8 @@ thiserror = "2"
 tokio = { version = "=1.48.0", features = ["sync", "rt", "time"] }
 
 [dev-dependencies]
+# Cargo unions features: the library needs only sync/rt/time, while tests need
+# macros and rt-multi-thread. The exact pin is shared to avoid dependency skew.
 tokio = { version = "=1.48.0", features = ["macros", "rt", "rt-multi-thread", "sync", "time"] }
 
 [profile.dev]
