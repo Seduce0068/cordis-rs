@@ -111,6 +111,8 @@ cargo run --example permission_flow_demo
 
 # 全 example の headless smoke test
 bash scripts/smoke-examples.sh
+# examples/ 直下の .rs はすべて実行可能な smoke target として自動検出される。
+# 共有ヘルパは examples/fixtures/ 等に置くこと（smoke 対象外）。
 
 # fmt / check / clippy / test / smoke をまとめて実行
 bash scripts/verify.sh
