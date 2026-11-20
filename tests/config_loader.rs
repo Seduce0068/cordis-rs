@@ -1091,3 +1091,50 @@ fn inject_names_are_validated_before_interning() {
     let good = "entries:\n  - id: good\n    plugin: demo/x\n    inject: [\"valid_name-1\"]\n    config: {}\n";
     assert!(Composition::parse_with_vars(good, &VarTable::new()).is_ok());
 }
+
+#[tokio::test]
+async fn mount_with_applies_persisted_overrides() {
+    use cordis_rs::{Composition, CompositionState, PluginFactory, PluginRegistry};
+
+    let yaml = r#"
+entries:
+  - id: a
+    plugin: demo/x
+    config: {}
+  - id: b
+    plugin: demo/x
+    disabled: true
+    config: {}
+"#;
+    let composition = Composition::parse(yaml).unwrap();
+    let mut registry = PluginRegistry::new();
+    registry.register("demo/x", PluginFactory::new(|_ctx, _cfg| async { Ok(()) }));
+
+    let ctx = Context::root("mount-with");
+    // Default: only a (YAML default).
+    let fibers = composition.mount(&ctx, &registry).await.unwrap();
+    assert_eq!(fibers.len(), 1);
+    for fiber in fibers {
+        let _ = fiber.unload().await;
+    }
+
+    // Override: disable a and re-enable b -> only b mounts.
+    let mut state = CompositionState::new();
+    state.set("a", false);
+    state.set("b", true);
+    let fibers = composition
+        .mount_with(&ctx, &registry, &state)
+        .await
+        .unwrap();
+    assert_eq!(fibers.len(), 1);
+    for fiber in fibers {
+        let _ = fiber.unload().await;
+    }
+
+    // mount_available_with honours the same overrides.
+    let report = composition
+        .mount_available_with(&ctx, &registry, &state)
+        .await
+        .unwrap();
+    assert_eq!(report.mounted.len(), 1);
+}

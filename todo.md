@@ -50,7 +50,7 @@ status: current
 - [x] **VarTable::from_env が全環境変数を無制限に取り込み式から任意の環境変数を参照可能** — 2026-11-21 修正（from_env_allowlisted 導入、VarTable::get で集約、R1 敵対レビュー反映）。
 - [x] **inject 名の内部化が Box::leak で無上限に蓄積** — 2026-11-21 修正（intern 名の検証・上限 512・長さ 128 を追加、R1 指摘反映）。
 - [x] **errno 分類が Linux 固有の数値ハードコードで OS によって誤分类** — 2026-11-21 修正（ErrorKind 主軸＋raw errno フォールバック、R1 指摘反映）。
-- [ ] **永続化された有効/無効オーバーライドが mount 経路で反映されない** — 根拠 `src/loader.rs:176-183,301-318` / R1-CF / 重大度 medium / confirmed
+- [x] **永続化された有効/無効オーバーライドが mount 経路で反映されない** — 2026-11-21 修正（mount_with / mount_available_with を追加、既存 mount は adapter 化、R1 指摘反映）。
 - [ ] **状態ファイル破損時に警告なく YAML デフォルトへフォールバック** — 根拠 `src/loader.rs:214-232` / R1-CF / 重大度 medium / confirmed
 - [ ] **未認識の設定キーがサイレントに破棄される** — 根拠 `src/loader.rs:272-275,1131-1175` / R1-CF / 重大度 medium / confirmed
 - [ ] **PreparedExtensions::accept が Mutex ガード保持中に外部コールバックを実行し再入デッドロック** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:139-152` / R2-ER / 重大度 medium / likely

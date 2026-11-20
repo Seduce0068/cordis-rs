@@ -333,13 +333,27 @@ impl Composition {
     }
 
     /// Validate each enabled entry's config and mount it as a fiber.
+    /// Mount with persisted enable/disable overrides applied.
     pub async fn mount(
         &self,
         ctx: &Context,
         registry: &PluginRegistry,
     ) -> Result<Vec<Fiber>, LoaderError> {
+        self.mount_with(ctx, registry, &CompositionState::new())
+            .await
+    }
+
+    /// Mount entries selected by `state` (YAML defaults overridden by saved
+    /// host choices). Callers must unload any previous fibers before calling
+    /// this again with a different state to avoid duplicate mounts.
+    pub async fn mount_with(
+        &self,
+        ctx: &Context,
+        registry: &PluginRegistry,
+        state: &CompositionState,
+    ) -> Result<Vec<Fiber>, LoaderError> {
         let mut fibers = Vec::new();
-        for entry in self.enabled() {
+        for entry in self.enabled_with(state) {
             let plugin = entry.to_plugin(registry);
             let result = match plugin {
                 Ok(plugin) => Fiber::mount(ctx, Box::new(plugin))
@@ -370,8 +384,19 @@ impl Composition {
         ctx: &Context,
         registry: &PluginRegistry,
     ) -> Result<MountReport, LoaderError> {
+        self.mount_available_with(ctx, registry, &CompositionState::new())
+            .await
+    }
+
+    /// Partial mount with persisted overrides applied.
+    pub async fn mount_available_with(
+        &self,
+        ctx: &Context,
+        registry: &PluginRegistry,
+        state: &CompositionState,
+    ) -> Result<MountReport, LoaderError> {
         let mut report = MountReport::default();
-        for entry in self.enabled() {
+        for entry in self.enabled_with(state) {
             match entry.to_plugin(registry) {
                 Ok(plugin) => match Fiber::mount(ctx, Box::new(plugin)).await {
                     Ok(fiber) => report.mounted.push(fiber),
