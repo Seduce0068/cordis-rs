@@ -284,9 +284,25 @@ impl CompositionState {
 }
 
 /// A parsed `cordis.yml` composition.
-#[derive(Debug, Clone, PartialEq, Default)]
+/// A non-fatal parse warning (e.g. an unrecognised entry key).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompositionWarning {
+    pub entry: String,
+    pub key: String,
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct Composition {
     pub entries: Vec<Entry>,
+    /// Unrecognised keys found while parsing; callers can surface these as
+    /// diagnostics. Equality ignores warnings for backward compatibility.
+    pub warnings: Vec<CompositionWarning>,
+}
+
+impl PartialEq for Composition {
+    fn eq(&self, other: &Self) -> bool {
+        self.entries == other.entries
+    }
 }
 
 impl Composition {
@@ -308,6 +324,7 @@ impl Composition {
         };
 
         let mut entries = Vec::new();
+        let mut warnings = Vec::new();
         match root {
             // A bare top-level sequence is the patch form used by DSH's
             // `cordis.yml` snapshot fixtures.
@@ -317,7 +334,7 @@ impl Composition {
                     flatten_entry_nodes(item, &mut flat)?;
                 }
                 for (index, item) in flat.into_iter().enumerate() {
-                    entries.push(parse_entry(item, index, vars, limits)?);
+                    entries.push(parse_entry(item, index, vars, limits, &mut warnings)?);
                 }
             }
             Node::Map(pairs) => {
@@ -330,7 +347,7 @@ impl Composition {
                         flatten_entry_nodes(item, &mut flat)?;
                     }
                     for (index, item) in flat.into_iter().enumerate() {
-                        entries.push(parse_entry(item, index, vars, limits)?);
+                        entries.push(parse_entry(item, index, vars, limits, &mut warnings)?);
                     }
                 }
             }
@@ -341,7 +358,7 @@ impl Composition {
                 )));
             }
         }
-        Ok(Self { entries })
+        Ok(Self { entries, warnings })
     }
 
     /// Entries that should actually be mounted (`disabled: true` is skipped).
@@ -1222,6 +1239,7 @@ fn parse_entry(
     position: usize,
     vars: &VarTable,
     limits: Limits,
+    warnings: &mut Vec<CompositionWarning>,
 ) -> Result<Entry, LoaderError> {
     let label = format!("entries[{position}]");
     let mut id = None;
@@ -1276,7 +1294,14 @@ fn parse_entry(
                     inject.push(name);
                 }
             }
-            _ => {}
+            other => {
+                // Unknown keys are warnings, not errors: compositions may use
+                // forward-compatible fields from newer DSH versions (R1-CF).
+                warnings.push(CompositionWarning {
+                    entry: label.clone(),
+                    key: other.escape_debug().to_string(),
+                });
+            }
         }
     }
 

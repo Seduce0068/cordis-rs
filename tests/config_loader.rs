@@ -1170,3 +1170,25 @@ fn composition_state_try_load_surfaces_corruption() {
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn composition_reports_unknown_entry_keys_as_warnings() {
+    use cordis_rs::{Composition, CompositionState};
+
+    let yaml = "entries:\n  - id: a\n    plugin: demo/x\n    config: {}\n    future_key: 1\n";
+    let composition = Composition::parse(yaml).unwrap();
+    assert_eq!(composition.entries.len(), 1);
+    assert_eq!(composition.warnings.len(), 1);
+    assert_eq!(composition.warnings[0].entry, "entries[0]");
+    assert_eq!(composition.warnings[0].key, "future_key");
+
+    // Warnings do not change equality of the meaningful content.
+    assert_eq!(composition, Composition::parse(yaml).unwrap());
+    assert_eq!(Composition::default().warnings.len(), 0);
+
+    // No warnings for a well-formed composition.
+    let clean =
+        Composition::parse("entries:\n  - id: a\n    plugin: demo/x\n    config: {}\n").unwrap();
+    assert!(clean.warnings.is_empty());
+    let _ = CompositionState::new();
+}
