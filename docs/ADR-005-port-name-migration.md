@@ -37,6 +37,13 @@ deprecated 属性は re-export 時のみに付け、port モジュール内の�
 2. 次リリース: README / examples を新名へ統一
 3. その後: 旧 alias を削除（旧名参照が0件になったコミット。0.x では minor が破壊変更に相当し v1.0.0 を待たない。ADR-008 参照）
 
+全 deprecated 属性の note は ``use `NEW` instead`` 形式に統一する（2026-11-21）。
+`since` は意図的に省略している: Cargo.toml の version は `0.1.0` のままで
+リリースタグ（v0.204.0 等）と乖離しており、`since` にタグ番号を入れると
+rustdoc が誤った情報を表示するため、バージョン方針が固まるまで付けない。
+`emit_detached`（events.rs）は本 ADR の alias 表には無い rename（→ `emit_spawn`）
+で、削除時期は未定義（参照0件なので安全に削除可能だが注記統一の範囲外）。
+
 ## 検証
 
 `cargo fmt --all --check` / `cargo check --all-targets` / `cargo clippy --all-targets -- -D warnings` /

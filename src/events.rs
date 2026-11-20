@@ -545,7 +545,7 @@ where
     }
 
     /// Deprecated alias for [`Event::emit_spawn`].
-    #[deprecated(note = "renamed to `emit_spawn`")]
+    #[deprecated(note = "use `emit_spawn` instead")]
     pub fn emit_detached(&self, ctx: &Context, args: A)
     where
         A: Clone + 'static,

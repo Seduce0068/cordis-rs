@@ -64,7 +64,7 @@ status: current
 - [x] **!!js ブロックスカラーの本文が eprintln! で stderr にそのまま出力される** — 2026-11-21 削除（YAML 任意文字列の stderr 生書き／ログ注入リスクも解消）。
 - [x] **tokio の exact pin が dependencies と dev-dependencies で二重定義** — 2026-11-21 対応（feature union と pin 共有が意図的であることをコメント化、R1 指摘反映）。
 - [ ] **smoke 対象 example が手動配列で実体と drift しうる** — 根拠 `scripts/smoke-examples.sh:5-13` / R1-CF / 重大度 low / confirmed
-- [ ] **deprecated re-export に since がなく注記書式も不統一** — 根拠 `src/lib.rs:62-75`, `src/events.rs:522-529` / R1-AP / 重大度 low / confirmed
+- [x] **deprecated re-export に since がなく注記書式も不統一** — 2026-11-21 修正（全8箇所の note を use X instead に統一、since 省略の理由を ADR-005 に記録、R1 指摘反映）。
 - [x] **EmitErrors が件数しか表示せず source() も実装しない** — 2026-11-21 修正（details() と source() を追加、Display 文言は維持、R1 指摘反映）。
 - [ ] **YAML マッピングの重複キーが黙って上書きされる** — 根拠 `src/loader.rs:1131-1176,1203-1213` / R3-IV / 重大度 low / confirmed
 - [ ] **コメント除去とインデント正規化がブロックスカラー結合前に適用され式本文が変わる** — 根拠 `src/loader.rs:587-606,928-969` / R3-IV / 重大度 low / confirmed
