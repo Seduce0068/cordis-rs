@@ -84,6 +84,15 @@ pub fn empty_goal_fold_state() -> GoalFoldState {
 
 type FoldResult<T> = std::result::Result<T, String>;
 
+/// All required keys must be present; unknown keys are tolerated for forward
+/// compatibility (swarm review R2-DI).
+fn has_required_keys(
+    object: &serde_json::Map<String, serde_json::Value>,
+    required: &[&str],
+) -> bool {
+    required.iter().all(|key| object.contains_key(*key))
+}
+
 fn sorted_keys(value: &serde_json::Map<String, serde_json::Value>) -> Vec<&str> {
     let mut keys: Vec<&str> = value.keys().map(String::as_str).collect();
     keys.sort_unstable();
@@ -213,9 +222,9 @@ fn decode_snapshot(value: &serde_json::Value) -> FoldResult<GoalSnapshot> {
     } else {
         vec!["id", "maxGoalRounds", "objective", "phase", "revision"]
     };
-    if sorted_keys(object) != expected {
+    if !has_required_keys(object, &expected) {
         return Err(format!(
-            "goal change goal for phase {} must have exactly {} fields",
+            "goal change goal for phase {} is missing required fields (need {})",
             phase.as_str(),
             expected.join(",")
         ));
@@ -257,8 +266,8 @@ pub fn decode_goal_change(value: &serde_json::Value) -> FoldResult<Option<GoalCh
         .ok_or("goal change operation is invalid")?;
     if operation == "clear" {
         let allowed = ["cleared", "clearedAt", "kind", "operation", "version"];
-        if sorted_keys(object) != allowed {
-            return Err("goal clear change must have exactly cleared,clearedAt,kind,operation,version fields".to_string());
+        if !has_required_keys(object, &allowed) {
+            return Err("goal clear change is missing required fields (need cleared,clearedAt,kind,operation,version)".to_string());
         }
         return Ok(Some(GoalChange::Clear {
             cleared: decode_ref(&object["cleared"])?,
@@ -277,8 +286,8 @@ pub fn decode_goal_change(value: &serde_json::Value) -> FoldResult<Option<GoalCh
         "updatedAt",
         "version",
     ];
-    if sorted_keys(object) != allowed {
-        return Err("goal snapshot change must have exactly createdAt,goal,kind,operation,roundsStarted,updatedAt,version fields".to_string());
+    if !has_required_keys(object, &allowed) {
+        return Err("goal snapshot change is missing required fields (need createdAt,goal,kind,operation,roundsStarted,updatedAt,version)".to_string());
     }
     let created_at = non_negative_integer(&object["createdAt"], "createdAt")?;
     let updated_at = non_negative_integer(&object["updatedAt"], "updatedAt")?;

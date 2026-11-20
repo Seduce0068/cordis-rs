@@ -4510,3 +4510,39 @@ async fn projection_registry_same_key_replacement_is_generation_fenced() {
     second.dispose().await.unwrap();
     assert!(!registry.has("count"));
 }
+
+#[test]
+fn goal_change_decoding_tolerates_unknown_fields_but_requires_known_ones() {
+    use cordis_rs::plugin_ports::decode_goal_change;
+
+    let mut change = serde_json::json!({
+        "kind": "goal/change", "version": 1, "operation": "create",
+        "goal": {
+            "id": "g1", "revision": 1, "objective": "Ship it",
+            "phase": "active", "maxGoalRounds": 5,
+            "futureGoalField": "ignored"
+        },
+        "roundsStarted": 0, "createdAt": 100, "updatedAt": 100,
+        "futureChangeField": 42
+    });
+    assert!(decode_goal_change(&change).unwrap().is_some());
+
+    // A missing required field still fails.
+    change.as_object_mut().unwrap().remove("roundsStarted");
+    assert!(decode_goal_change(&change).is_err());
+
+    // Unknown version is still rejected.
+    let mut wrong_version = serde_json::json!({
+        "kind": "goal/change", "version": 2, "operation": "create",
+        "goal": {
+            "id": "g1", "revision": 1, "objective": "Ship it",
+            "phase": "active", "maxGoalRounds": 5
+        },
+        "roundsStarted": 0, "createdAt": 100, "updatedAt": 100
+    });
+    wrong_version
+        .as_object_mut()
+        .unwrap()
+        .insert("future".into(), serde_json::json!(1));
+    assert!(decode_goal_change(&wrong_version).is_err());
+}
