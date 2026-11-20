@@ -307,7 +307,8 @@ pub mod core_services {
     };
     pub use crate::services::file_search::{
         DEFAULT_EXCLUDED_DIRECTORIES, DEFAULT_MAX_ENTRIES, DEFAULT_MAX_RESULTS,
-        FileSearchCandidate, FileSearchConfig, WorkspaceFileSearch, provide as provide_file_search,
+        FileSearchCandidate, FileSearchConfig, IndexStatus, WorkspaceFileSearch,
+        provide as provide_file_search,
     };
     pub use crate::services::fs::{
         FileSystem, FsEditOutcome, FsInfo, FsWriteOutcome, ReadWindow, WriteOperation,

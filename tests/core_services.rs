@@ -4446,3 +4446,28 @@ fn jsonl_restore_preserves_persisted_seq_and_rejects_nonmonotonic() {
 
     std::fs::remove_dir_all(&root).unwrap();
 }
+
+#[test]
+fn file_search_reports_index_truncation_and_io_errors() {
+    use cordis_rs::core_services::{FileSearchConfig, WorkspaceFileSearch};
+
+    let dir = std::env::temp_dir().join(format!("cordis-fs-search-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    for name in ["a", "b", "c", "d"] {
+        std::fs::write(dir.join(name), "").unwrap();
+    }
+
+    let config = FileSearchConfig {
+        max_entries: 2,
+        ..Default::default()
+    };
+    let search = WorkspaceFileSearch::new(&dir, config).unwrap();
+    assert!(
+        search.status().truncated,
+        "small max_entries must mark truncation"
+    );
+    assert!(search.status().io_errors.is_empty());
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}

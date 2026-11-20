@@ -56,12 +56,24 @@ pub struct FileSearchCandidate {
     pub is_directory: bool,
 }
 
+/// Observability for a completed index pass. Lets callers distinguish "no
+/// matches" from an incomplete index caused by I/O failures or the entry cap
+/// (swarm review R2-ER).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct IndexStatus {
+    /// Directories that could not be read (path, reason).
+    pub io_errors: Vec<(String, String)>,
+    /// True when `max_entries` was reached and indexing stopped early.
+    pub truncated: bool,
+}
+
 /// `WorkspaceFileSearch`: indexes a root once and answers prefix queries.
 #[derive(Debug, Clone)]
 pub struct WorkspaceFileSearch {
     root: PathBuf,
     config: FileSearchConfig,
     entries: Vec<FileSearchCandidate>,
+    status: IndexStatus,
 }
 
 impl WorkspaceFileSearch {
@@ -90,16 +102,25 @@ impl WorkspaceFileSearch {
         }
         let root = root.into();
         let mut entries = Vec::new();
+        let mut status = IndexStatus::default();
         let excluded: BTreeSet<&str> = config
             .excluded_directories
             .iter()
             .map(String::as_str)
             .collect();
-        index_dir(&root, &root, &excluded, config.max_entries, &mut entries);
+        index_dir(
+            &root,
+            &root,
+            &excluded,
+            config.max_entries,
+            &mut entries,
+            &mut status,
+        );
         Ok(Self {
             root,
             config,
             entries,
+            status,
         })
     }
 
@@ -128,6 +149,11 @@ impl WorkspaceFileSearch {
     pub fn root(&self) -> &Path {
         &self.root
     }
+
+    /// Observability for the index pass (I/O errors and entry-cap truncation).
+    pub fn status(&self) -> &IndexStatus {
+        &self.status
+    }
 }
 
 fn index_dir(
@@ -136,17 +162,34 @@ fn index_dir(
     excluded: &BTreeSet<&str>,
     max_entries: usize,
     out: &mut Vec<FileSearchCandidate>,
+    status: &mut IndexStatus,
 ) {
     if out.len() >= max_entries {
+        status.truncated = true;
         return;
     }
-    let Ok(read_dir) = std::fs::read_dir(dir) else {
-        return;
+    let read_dir = match std::fs::read_dir(dir) {
+        Ok(read_dir) => read_dir,
+        Err(error) => {
+            status
+                .io_errors
+                .push((dir.to_string_lossy().to_string(), error.to_string()));
+            return;
+        }
     };
-    let mut children: Vec<_> = read_dir.filter_map(|entry| entry.ok()).collect();
+    let mut children = Vec::new();
+    for entry in read_dir {
+        match entry {
+            Ok(entry) => children.push(entry),
+            Err(error) => status
+                .io_errors
+                .push((dir.to_string_lossy().to_string(), error.to_string())),
+        }
+    }
     children.sort_by_key(|entry| entry.file_name());
     for entry in children {
         if out.len() >= max_entries {
+            status.truncated = true;
             return;
         }
         let name = entry.file_name();
@@ -164,7 +207,7 @@ fn index_dir(
             is_directory: is_dir,
         });
         if is_dir {
-            index_dir(root, &path, excluded, max_entries, out);
+            index_dir(root, &path, excluded, max_entries, out, status);
         }
     }
 }
