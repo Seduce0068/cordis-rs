@@ -5179,3 +5179,17 @@ fn with_max_counters_rejects_zero() {
     use cordis_rs::core_services::{EventLogOptions, EventLogReporter};
     let _ = EventLogReporter::new("zero-cap", EventLogOptions::default()).with_max_counters(0);
 }
+
+#[test]
+fn session_title_fallback_does_not_overwrite_existing_title() {
+    use cordis_rs::core_services::SessionTitles;
+
+    let titles = SessionTitles::new();
+    assert!(titles.set_generated("s1", "LLM generated", 40));
+    titles.derive_from_messages("s1", &["fallback first message".to_string()], 40);
+    assert_eq!(titles.get("s1").as_deref(), Some("LLM generated"));
+
+    // No title yet: the deterministic fallback still works.
+    titles.derive_from_messages("s2", &["fallback title".to_string()], 40);
+    assert_eq!(titles.get("s2").as_deref(), Some("fallback title"));
+}
