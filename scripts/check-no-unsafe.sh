@@ -7,7 +7,7 @@ set -euo pipefail
 # and any future Rust source cannot bypass the gate (swarm review R4-CI03).
 # The pattern also covers `unsafe extern` forms.
 rust_files=$(find . -path './target' -prune -o -name '*.rs' -print)
-hits=$(printf '%s\n' "$rust_files" | xargs -r grep -HnE '(^|[[:space:]])(pub[[:space:]]+)?(async[[:space:]]+)?unsafe[[:space:]]+(extern[[:space:]]+("[^"]*"[[:space:]])?(fn|block)|fn|impl|trait|block)|[[:space:]]unsafe[[:space:]]*\{' || true)
+hits=$(printf '%s\n' "$rust_files" | xargs -r grep -HnE '(^|[[:space:]])(pub[[:space:]]+)?(async[[:space:]]+)?unsafe[[:space:]]+(extern[[:space:]]+("[^"]*"[[:space:]])?(fn|block)|fn|impl|trait|block)|(^|[[:space:]])unsafe[[:space:]]*\{' || true)
 if [ -n "$hits" ]; then
   echo "unsafe Rust usage is forbidden (AGENTS.md §15):" >&2
   echo "$hits" >&2
@@ -26,6 +26,16 @@ if [ -n "$ghost" ]; then
   echo "$ghost" >&2
   exit 1
 fi
+
+# Self-test: ensure the unsafe pattern detects all forbidden forms, including
+# a line-start `unsafe {` (swarm review R5-CI04).
+for forbidden in 'unsafe { let x = 1; }' '    unsafe { let x = 1; }' 'pub unsafe extern "C" fn f() {}'; do
+  if ! printf '%s\n' "$forbidden" | grep -qE '(^|[[:space:]])(pub[[:space:]]+)?(async[[:space:]]+)?unsafe[[:space:]]+(extern[[:space:]]+("[^"]*"[[:space:]])?(fn|block)|fn|impl|trait|block)|(^|[[:space:]])unsafe[[:space:]]*\{'; then
+    echo "unsafe gate self-test failed for: $forbidden" >&2
+    exit 1
+  fi
+done
+echo "unsafe gate self-test passed"
 
 # Self-test: ensure the pattern actually detects a discarded mount so this
 # gate cannot silently become a dead check (swarm review R4-DP01).

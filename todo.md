@@ -184,7 +184,7 @@ status: current
 - [ ] **ValidationReason::OutOfRange が i64 境界を f64 に丸め 2^53 超で診断値が誤る** — 根拠 `src/config.rs:224-228,382-396` / R5-DI03 / 重大度 medium / confirmed
 - [ ] **PluginRegistry::register が同一 id を黙って上書きし MountReport に現れない** — 根拠 `src/loader.rs:612-628` / R5-AP04 / 重大度 medium / confirmed
 - [ ] **FsError の Display に安定コードがなくログから種別を判別できない** — 根拠 `src/ports/fs_errno.rs:9-27,50-54` / R5-OB05 / 重大度 low / confirmed
-- [ ] **unsafe 禁止ゲートの行頭 unsafe { 取りこぼしとセルフテスト欠如** — 根拠 `scripts/check-no-unsafe.sh:10,30-38` / R5-CI04 / 重大度 medium / confirmed
+- [x] **unsafe 禁止ゲートの行頭 unsafe { 取りこぼしとセルフテスト欠如** — 2026-11-22 修正（regex を (^|空白)unsafe{ に修正、行頭・インデント・extern fn の3形セルフテスト追加、検出を実証、R5 指摘反映）。
 - [ ] **ADR-001 だけ OKF frontmatter がなくメタデータ形式が他と不一致** — 根拠 `docs/ADR-001-cordis-runtime-reimplementation.md:1-5` / R5-DC13 / 重大度 low / confirmed
 - [ ] **CommandDefinition::new がコマンド名を検証せず parse_command と規約が切れる** — 根拠 `src/services/commands.rs:65-76`, `src/ports/command_parse.rs:21-25` / R5-IV05 / 重大度 medium / confirmed
 - [ ] **PROGRESS.md の残タスク件数が todo.md の実未着手数と乖離** — 根拠 `docs/PROGRESS.md:63`, `todo.md` / R6-DC14 / 重大度 low / confirmed
