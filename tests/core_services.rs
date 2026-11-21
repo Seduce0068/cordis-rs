@@ -5172,3 +5172,10 @@ async fn tool_bash_background_job_owner_is_session_scoped() {
     );
     assert!(jobs.view(id, Some("session-s2")).is_err());
 }
+
+#[test]
+#[should_panic(expected = "max_counters must be positive")]
+fn with_max_counters_rejects_zero() {
+    use cordis_rs::core_services::{EventLogOptions, EventLogReporter};
+    let _ = EventLogReporter::new("zero-cap", EventLogOptions::default()).with_max_counters(0);
+}

@@ -96,7 +96,10 @@ impl EventLogReporter {
     /// Override the distinct-counter cap (builder, keeps EventLogOptions
     /// struct literals unchanged).
     pub fn with_max_counters(mut self, max_counters: usize) -> Self {
-        self.max_counters = max_counters.max(1);
+        // Fail fast on a zero cap, consistent with EventLogOptions::validate
+        // (swarm review R2-CF03).
+        assert!(max_counters > 0, "max_counters must be positive");
+        self.max_counters = max_counters;
         self
     }
 
