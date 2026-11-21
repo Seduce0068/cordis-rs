@@ -3,6 +3,9 @@
 # Update together with .github/workflows/ci.yml and rust-gates.yml@v1.
 set -euo pipefail
 
+# Work from the repository root so the script is callable from any cwd.
+cd "$(dirname "$0")/.."
+
 echo "=== fmt ==="
 cargo fmt --all --check
 
@@ -32,13 +35,13 @@ fi
 
 # Same order as `extra_gates` in .github/workflows/ci.yml.
 echo "=== examples smoke ==="
-bash "$(dirname "$0")/smoke-examples.sh"
+bash scripts/smoke-examples.sh
 
 echo "=== no unsafe ==="
-bash "$(dirname "$0")/check-no-unsafe.sh"
+bash scripts/check-no-unsafe.sh
 
 echo "=== doc counts ==="
-bash "$(dirname "$0")/check-doc-counts.sh"
+bash scripts/check-doc-counts.sh
 
 echo "=== markdownlint (all Markdown deliverables) ==="
 bash scripts/check-markdown.sh
