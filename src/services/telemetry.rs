@@ -140,7 +140,9 @@ impl EventLogReporter {
         };
         let count = guard.counters.entry(key).or_insert(0);
         *count += 1;
-        Ok((*count).is_multiple_of(self.options.batch_size))
+        // `%` instead of `u64::is_multiple_of` (stable only since 1.87) to
+        // honour the declared MSRV of 1.85.
+        Ok(*count % self.options.batch_size == 0)
     }
 
     pub fn events(&self) -> Vec<EventRecord> {
