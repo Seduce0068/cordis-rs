@@ -9,6 +9,40 @@ use cordis_rs::core_services::{
     ToolDefinition, ToolError, ToolExecContext, ToolOutput, ToolRegistry, provide_tools,
 };
 
+/// Auto-cleaning temp directory for tests (swarm review R5-TS03). Uses a
+/// PID + nanosecond suffix so repeated runs never collide; cleanup errors are
+/// ignored in Drop so a test failure is not masked by a cleanup panic.
+struct TempDirGuard(std::path::PathBuf);
+
+impl TempDirGuard {
+    fn new(prefix: &str) -> Self {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let path = std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()));
+        let _ = std::fs::create_dir_all(&path);
+        Self(path)
+    }
+
+    fn path(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
+impl Drop for TempDirGuard {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+impl std::ops::Deref for TempDirGuard {
+    type Target = std::path::Path;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 fn echo_tool() -> ToolDefinition {
     ToolDefinition::new(
         "echo",
@@ -3416,8 +3450,8 @@ async fn user_questions_phase1_validates_and_routes_answers() {
 fn jsonl_persistence_rejects_path_traversal_session_ids() {
     use cordis_rs::plugin_ports::{JsonlPersistence, PersistenceError};
 
-    let root = std::env::temp_dir().join(format!("cordis-traversal-{}", std::process::id()));
-    let store = JsonlPersistence::new(&root);
+    let root = TempDirGuard::new("cordis-traversal");
+    let store = JsonlPersistence::new(root.path());
 
     // Existing-style ids still work.
     store.create("session-1").unwrap();
@@ -3925,8 +3959,8 @@ fn jsonl_recovery_stops_at_torn_write_and_reports_line() {
     use cordis_rs::plugin_ports::{JsonlPersistence, PersistenceError};
     use std::io::Write;
 
-    let root = std::env::temp_dir().join(format!("cordis-recovery-{}", std::process::id()));
-    let store = JsonlPersistence::new(&root);
+    let root = TempDirGuard::new("cordis-recovery");
+    let store = JsonlPersistence::new(root.path());
     let handle = store.create("recover").unwrap();
 
     // Complete log: no truncation reported, existing read() still works.
@@ -4170,8 +4204,8 @@ fn jsonl_rejects_invalid_seq_and_type_instead_of_sentinels() {
     use cordis_rs::plugin_ports::{JsonlPersistence, PersistenceError};
     use std::io::Write;
 
-    let root = std::env::temp_dir().join(format!("cordis-schema-{}", std::process::id()));
-    let store = JsonlPersistence::new(&root);
+    let root = TempDirGuard::new("cordis-schema");
+    let store = JsonlPersistence::new(root.path());
     let session = cordis_rs::core_services::Session::new("schema", None);
     let good = session.append("user/message", serde_json::json!({"text": "ok"}));
 
