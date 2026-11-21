@@ -2770,6 +2770,25 @@ async fn tool_goal_registers_three_tools_with_cas() {
     assert_eq!(created.content["goal"]["objective"], "ship the port");
     let revision = created.content["goal"]["revision"].as_u64().unwrap();
 
+    // Out-of-range max_goal_rounds must be rejected, not truncated via `as`
+    // (swarm review R6-IV06).
+    let too_large = tools
+        .invoke(
+            "create_goal",
+            serde_json::json!({
+                "objective": "bad",
+                "max_goal_rounds": 4_294_967_296_u64
+            }),
+            human.clone(),
+        )
+        .await
+        .unwrap_err();
+    assert!(
+        too_large
+            .to_string()
+            .contains("max_goal_rounds out of range")
+    );
+
     // Stale revision is rejected via CAS.
     let stale = tools
         .invoke(

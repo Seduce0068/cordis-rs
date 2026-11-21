@@ -112,10 +112,12 @@ fn create_handler(store: GoalStore) -> ToolHandler {
                 ));
             }
             let objective = arg_string(&args, "objective")?;
-            let rounds = args
-                .get("max_goal_rounds")
-                .and_then(|value| value.as_u64())
-                .unwrap_or(1000) as u32;
+            let rounds = u32::try_from(
+                args.get("max_goal_rounds")
+                    .and_then(|value| value.as_u64())
+                    .unwrap_or(1000),
+            )
+            .map_err(|_| ToolError::InvalidArgs("max_goal_rounds out of range".to_string()))?;
             match store.set(objective, rounds) {
                 Ok(goal) => Ok(render(Some(goal), None)),
                 Err(error) => Err(ToolError::Execution(error.to_string())),
