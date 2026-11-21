@@ -116,7 +116,7 @@ status: current
 - [x] **mount_real_composition が部分失敗を assert で落とし診断レポートとして機能しない** — 2026-11-21 修正（assert を外し skipped/failed を id と理由付きで一覧出力、R5-VU08 反映）。
 - [x] **README が mount_real_composition の動作を 2 箇所で矛盾説明** — 2026-11-21 修正（診断レポート化した実装に合わせ「6 エントリすべてを起動」を「port 存在分のみ起動＋failed/skipped 一覧」に修正、R2-FG04 反映）。
 - [ ] **テスト用一時ディレクトリが PID 依存かつ手動削除で失敗時にゴミが残る** — 根拠 `tests/core_services.rs:594,3928`, `tests/config_loader.rs:705` / R4-TQ09 / 重大度 low / confirmed
-- [ ] **GUI README が実装と矛盾する旧パス・旧バージョン記述** — 根拠 `dsh-gpui-client-poc/README.md:35,171`, `Cargo.toml:10` / R5-VU03 / 重大度 low / confirmed
+- [x] **GUI README が実装と矛盾する旧パス・旧バージョン記述** — 2026-11-21 修正（状態パスを XDG state home 構成に、同期 tag を v0.255.0 に修正、R5-VU03 反映）。
 
 - [x] **!!js ブロックスカラーの本文が eprintln! で stderr にそのまま出力される** — 2026-11-21 削除（YAML 任意文字列の stderr 生書き／ログ注入リスクも解消）。
 - [x] **tokio の exact pin が dependencies と dev-dependencies で二重定義** — 2026-11-21 対応（feature union と pin 共有が意図的であることをコメント化、R1 指摘反映）。
