@@ -66,11 +66,19 @@ entries:
     println!("tools: {names:?}");
     assert_eq!(names, ["read", "write"], "edit must be disabled by config");
 
-    let path = "/tmp/cordis-composition-tool-fs.txt";
+    let path = std::env::temp_dir().join(format!(
+        "cordis-composition-tool-fs-{}-{}.txt",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0)
+    ));
+    let path_str = path.to_string_lossy().to_string();
     let written: ToolOutput = tools
         .invoke(
             "write",
-            serde_json::json!({ "file_path": path, "content": "from composition\n" }),
+            serde_json::json!({ "file_path": path_str, "content": "from composition\n" }),
             ToolExecContext::agent("demo"),
         )
         .await?;
@@ -79,7 +87,7 @@ entries:
     let read: ToolOutput = tools
         .invoke(
             "read",
-            serde_json::json!({ "file_path": path }),
+            serde_json::json!({ "file_path": path_str }),
             ToolExecContext::agent("demo"),
         )
         .await?;

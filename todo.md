@@ -174,7 +174,7 @@ status: current
 - [x] **PROGRESS.md と README の検証ゲート記述が verify.sh の実順と不一致** — 2026-11-22 修正（PROGRESS / README / runbook の3記述を verify.sh 実順に統一、R4 指摘反映）。
 - [x] **runbook が mount_real_composition / require の旧挙動を案内** — 2026-11-22 修正（diagnostic レポートと require_untyped_with_timeout を反映、R4-DC11 反映）。
 - [x] **公開ドキュメントにホスト固有絶対パスと非公開レポート参照が残存** — 2026-11-22 修正（runbook の cd を汎用記述に、README の非公開レポート参照を削除、R4-DC12 反映）。
-- [ ] **examples が固定 /tmp パスを使用し smoke 並列実行で衝突しうる** — 根拠 `examples/mount_real_composition.rs:23`, `examples/agent_demo.rs:44` / R4-OB04 / 重大度 low / confirmed
+- [x] **examples が固定 /tmp パスを使用し smoke 並列実行で衝突しうる** — 2026-11-22 修正（3 example の固定 /tmp パスを PID+nanos 一意パスに変更、7 examples smoke 通過、R4 指摘反映）。
 - [ ] **Shell の stdout/stderr 読み取りエラーが握り潰され不完全出力が成功として返る** — 根拠 `src/services/shell.rs:215-232` / R4-ER07 / 重大度 low / likely
 
 ## 完了

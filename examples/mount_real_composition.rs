@@ -18,9 +18,19 @@ use cordis_rs::{Context, Lifecycle};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Unique per-run path so parallel smoke runs never collide.
+    let home = std::env::temp_dir().join(format!(
+        "cordis-real-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0)
+    ));
+    let home_str = home.to_string_lossy().to_string();
     let yaml = include_str!("fixtures/text-turn.cordis.yml");
     let vars = VarTable::new()
-        .with_home_path("/tmp/cordis-real")
+        .with_home_path(&home_str)
         .with_env_value("DSH_SNAPSHOT_FEEDBACK", "1");
     let composition = Composition::parse_with_vars(yaml, &vars)?;
     println!("parsed {} entries", composition.entries.len());
@@ -40,9 +50,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let root = match config {
                 Value::Object(map) => match map.get("root") {
                     Some(Value::String(path)) => path.clone(),
-                    _ => "/tmp/cordis-real/sessions".to_string(),
+                    _ => format!("{home_str}/sessions"),
                 },
-                _ => "/tmp/cordis-real/sessions".to_string(),
+                _ => format!("{home_str}/sessions"),
             };
             async move {
                 let _ = mount_session_persistence_jsonl(&ctx, root).await?;
@@ -158,7 +168,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  - {id}: {reason}");
     }
 
-    let _ = std::fs::remove_dir_all("/tmp/cordis-real");
+    let _ = std::fs::remove_dir_all(&home);
     println!("partial real composition mounted successfully");
     Ok(())
 }

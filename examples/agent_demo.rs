@@ -36,18 +36,18 @@ fn scripted_provider() -> LlmProvider {
     )
 }
 
-fn parse_calls(text: &str) -> Vec<ToolCall> {
+fn parse_calls(text: &str, path: &str) -> Vec<ToolCall> {
     match text {
         "WRITE" => vec![ToolCall::new(
             "write",
             serde_json::json!({
-                "file_path": "/tmp/cordis-agent-demo.txt",
+                "file_path": path,
                 "content": "agent wrote this\n",
             }),
         )],
         "READ" => vec![ToolCall::new(
             "read",
-            serde_json::json!({ "file_path": "/tmp/cordis-agent-demo.txt" }),
+            serde_json::json!({ "file_path": path }),
         )],
         _ => Vec::new(),
     }
@@ -55,6 +55,15 @@ fn parse_calls(text: &str) -> Vec<ToolCall> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let path = std::env::temp_dir().join(format!(
+        "cordis-agent-demo-{}-{}.txt",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0)
+    ));
+    let path_str = path.to_string_lossy().to_string();
     let ctx = Context::root("agent-demo");
     let (tools, _) = provide_tools(&ctx).await?;
     let fs = provide_fs(&ctx).await?;
@@ -72,7 +81,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let loop_ = AgentLoop::new(llm, tools)
         .with_max_steps(4)
-        .with_call_parser(Arc::new(parse_calls));
+        .with_call_parser(Arc::new(move |text: &str| parse_calls(text, &path_str)));
     let run = loop_.run("create and verify a file").await?;
 
     println!("steps: {}", run.steps.len());
@@ -94,7 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let content = std::fs::read_to_string("/tmp/cordis-agent-demo.txt")?;
+    let content = std::fs::read_to_string(&path)?;
     assert_eq!(content, "agent wrote this\n");
     println!("final text: {}", run.final_text);
     println!("file verified: {content:?}");
