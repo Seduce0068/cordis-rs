@@ -58,6 +58,20 @@ pub fn decode_canonical_base64(
     empty_reject: bool,
     code: AttachmentErrorCode,
 ) -> std::result::Result<Vec<u8>, AttachmentError> {
+    decode_canonical_base64_limited(data, empty_reject, code, usize::MAX)
+}
+
+/// Like [`decode_canonical_base64`] but rejects inputs whose decoded size would
+/// exceed `max_bytes` **before** allocating. base64 has a 4/3 overhead, so an
+/// encoded input longer than `max_bytes / 3 * 4 + 4` cannot fit the budget
+/// (swarm review R3-IV08). The error reuses the existing code; the message
+/// distinguishes a size overflow so callers can surface it.
+pub fn decode_canonical_base64_limited(
+    data: &str,
+    empty_reject: bool,
+    code: AttachmentErrorCode,
+    max_bytes: usize,
+) -> std::result::Result<Vec<u8>, AttachmentError> {
     let invalid = || AttachmentError {
         code,
         message: match code {
@@ -71,6 +85,20 @@ pub fn decode_canonical_base64(
     };
     if empty_reject && data.is_empty() {
         return Err(invalid());
+    }
+    // Check the encoded length first: no decode allocation for huge inputs.
+    let max_encoded = (max_bytes / 3).saturating_mul(4).saturating_add(4);
+    if data.len() > max_encoded {
+        let mut error = invalid();
+        error.message = match code {
+            AttachmentErrorCode::InvalidImageBase64 => {
+                "Image upload exceeds maximum size.".to_string()
+            }
+            AttachmentErrorCode::InvalidFileBase64 => {
+                "File upload exceeds maximum size.".to_string()
+            }
+        };
+        return Err(error);
     }
     let bytes = STANDARD.decode(data).map_err(|_| invalid())?;
     if STANDARD.encode(&bytes) != data {

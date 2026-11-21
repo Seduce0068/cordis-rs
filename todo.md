@@ -50,7 +50,7 @@ status: current
 - [x] **シェル出力 stdout/stderr が無上限でメモリ保持（DoS）** — 2026-11-21 修正（with_max_output_bytes builder、UTF-8 境界安全な切り詰め＋マーカー、run / run_with_timeout 両経路、R1 指摘反映）。
 - [x] **read_window が bounded reads を謳いながらファイル全体を読み込む** — 2026-11-21 修正（BufReader::lines 1パスで全行保持せずカウント、total_lines 契约維持、R1 指摘反映）。
 - [x] **Hook マッチャが設定由来 regex を毎回コンパイルし失敗時に fail-open** — 2026-11-21 修正（CompiledMatcher を追加し compile 1回で保持、不正は fail-closed non-match、既存 matches は adapter 化、R1 指摘反映）。
-- [ ] **base64 添付デコードにサイズ上限がなく正規性チェックが全量再確保** — 根拠 `src/ports/attachment_admission.rs:56-80` / R3-IV08 / 重大度 medium / confirmed
+- [x] **base64 添付デコードにサイズ上限がなく正規性チェックが全量再確保** — 2026-11-21 修正（decode_canonical_base64_limited で decode 前に入力長拒否、saturating で overflow 防止、既存 API は adapter 化、R1 指摘反映。再エンコード除去は別段階）。
 - [ ] **otel_exporter の redaction が exporter 境界のみで events()/otlp_payload は生データ** — 根拠 `src/ports/otel_exporter.rs:22-65,96-113`, `src/services/telemetry.rs:104-110` / R4-OB01, R3-DE09 / 重大度 medium / confirmed
 - [ ] **属性キー値に制御文字除去・長さ制限がなく OTLP/ログ注入と肥大化** — 根拠 `src/ports/otel_exporter.rs:13-38,101-108` / R4-OB02 / 重大度 medium / confirmed
 - [ ] **セッションログの外部 API アップロード経路にマスキング機構がない** — 根拠 `src/ports/session_log_deepseek.rs:80-84,152-161` / R4-OB03 / 重大度 medium / confirmed

@@ -3348,3 +3348,36 @@ async fn tool_todo_invoke_blocking_rejects_tokio_runtime() {
         matches!(result, Err(ToolFailure::ContextUnavailable(message)) if message.contains("must not be called"))
     );
 }
+
+#[test]
+fn base64_decode_limited_rejects_before_allocating() {
+    use cordis_rs::plugin_ports::{
+        AttachmentErrorCode, decode_canonical_base64, decode_canonical_base64_limited,
+    };
+
+    let code = AttachmentErrorCode::InvalidImageBase64;
+    let payload = "aGVsbG8="; // "hello" -> 5 bytes
+
+    // Existing adapter accepts canonical base64.
+    assert_eq!(
+        decode_canonical_base64(payload, true, code).unwrap(),
+        b"hello"
+    );
+
+    // A generous limit still succeeds.
+    assert_eq!(
+        decode_canonical_base64_limited(payload, true, code, 5).unwrap(),
+        b"hello"
+    );
+
+    // A tiny limit is rejected before decode; message distinguishes size.
+    let error = decode_canonical_base64_limited(payload, true, code, 2).unwrap_err();
+    assert_eq!(error.code, code);
+    assert!(error.message.contains("exceeds maximum size"));
+
+    // A huge invalid base64 string is rejected immediately by length, not by
+    // attempting decode (which would allocate a large buffer, R3-IV08).
+    let huge = "!".repeat(1_000_000);
+    let error = decode_canonical_base64_limited(&huge, true, code, 1024).unwrap_err();
+    assert!(error.message.contains("exceeds maximum size"));
+}

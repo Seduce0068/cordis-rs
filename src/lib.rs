@@ -34,7 +34,7 @@ pub mod plugin_ports {
     pub use crate::ports::agent_instructions::register_baseline;
     pub use crate::ports::attachment_admission::{
         AttachmentError, AttachmentErrorCode, DecodedImage, EncodedFile, EncodedImage,
-        decode_canonical_base64, decode_file, decode_images,
+        decode_canonical_base64, decode_canonical_base64_limited, decode_file, decode_images,
     };
     pub use crate::ports::code_language::{
         extension_for_path, language_for_path, read_lang_hint_for_path,
