@@ -177,6 +177,21 @@ status: current
 - [x] **examples が固定 /tmp パスを使用し smoke 並列実行で衝突しうる** — 2026-11-22 修正（3 example の固定 /tmp パスを PID+nanos 一意パスに変更、7 examples smoke 通過、R4 指摘反映）。
 - [ ] **Shell の stdout/stderr 読み取りエラーが握り潰され不完全出力が成功として返る** — 根拠 `src/services/shell.rs:215-232` / R4-ER07 / 重大度 low / likely
 
+- [ ] **LlmService の既定 provider を dispose 後も default 名が残り resolve(None) が失敗** — 根拠 `src/services/llm.rs:110-163` / R5-LL01 / 重大度 medium / confirmed
+- [ ] **TimeoutPolicyPlugin の inject("tools") と apply の require("toolPipeline") が不一致** — 根拠 `src/ports/timeout_policy.rs:66-73` / R5-ST03 / 重大度 medium / confirmed
+- [ ] **CommandRegistry が同名コマンドを先着優先で保持し ToolRegistry と世代ルールが異なる** — 根拠 `src/services/commands.rs:87-149` / R5-AP03 / 重大度 medium / confirmed
+- [ ] **FieldSpec の単発 min/max ビルダーに順序・NaN 検証がなく range() と方針が割れる** — 根拠 `src/config.rs:169-203` / R5-IV04 / 重大度 medium / confirmed
+- [ ] **ValidationReason::OutOfRange が i64 境界を f64 に丸め 2^53 超で診断値が誤る** — 根拠 `src/config.rs:224-228,382-396` / R5-DI03 / 重大度 medium / confirmed
+- [ ] **PluginRegistry::register が同一 id を黙って上書きし MountReport に現れない** — 根拠 `src/loader.rs:612-628` / R5-AP04 / 重大度 medium / confirmed
+- [ ] **FsError の Display に安定コードがなくログから種別を判別できない** — 根拠 `src/ports/fs_errno.rs:9-27,50-54` / R5-OB05 / 重大度 low / confirmed
+- [ ] **unsafe 禁止ゲートの行頭 unsafe { 取りこぼしとセルフテスト欠如** — 根拠 `scripts/check-no-unsafe.sh:10,30-38` / R5-CI04 / 重大度 medium / confirmed
+- [ ] **ADR-001 だけ OKF frontmatter がなくメタデータ形式が他と不一致** — 根拠 `docs/ADR-001-cordis-runtime-reimplementation.md:1-5` / R5-DC13 / 重大度 low / confirmed
+- [ ] **CommandDefinition::new がコマンド名を検証せず parse_command と規約が切れる** — 根拠 `src/services/commands.rs:65-76`, `src/ports/command_parse.rs:21-25` / R5-IV05 / 重大度 medium / confirmed
+- [ ] **PROGRESS.md の残タスク件数が todo.md の実未着手数と乖離** — 根拠 `docs/PROGRESS.md:63`, `todo.md` / R6-DC14 / 重大度 low / confirmed
+- [ ] **tool_goal の max_goal_rounds が u64→u32 無検証キャストで丸められる** — 根拠 `src/ports/tool_goal.rs:114-119` / R6-IV06 / 重大度 medium / confirmed
+- [ ] **hooks_claude_code の parse_config が数値設定を無検証で受け入れる** — 根拠 `src/ports/hooks_claude_code.rs:50-75` / R6-IV07 / 重大度 low / likely
+- [ ] **session_turn_outline の turn 比較が u64→i64 キャストで順序を誤る** — 根拠 `src/ports/session_turn_outline.rs:82-94` / R6-IV08 / 重大度 low / likely
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -207,3 +222,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-21、round 89）**: `swarm-project-review` R1（AR/CF/DR）と `swarm-todo-discovery` R1（ST/FG）の2エージェントから17件を取得。重複0件、却下0件、17件すべてを根拠 confirmed で `## 未着手` へ追記（子の重大度を reference として親が再判定: high2 / medium12 / low3）。並列2・深度1の制限プロファイル。R2〜R5 は同一情報の重複取得を避けるため省略し、R1 で打ち切る。
 - **swarm コンボ R6 集約（2026-11-22、round 102）**: `swarm-project-review` R1（AR/CF/DR）と `swarm-todo-discovery` R1（ST/FG/TQ/DC）の2エージェントから16件を取得。既知の hooks-claude-code 重複は Codex 側の未接続として整理して追記。root が path:line を Runtime Proof で確認し16件を `## 未着手` へ追記（high1 / medium10 / low5、すべて small/medium の実装容易性）。R2〜R5 は同一情報の重複取得を避け省略。
 - **swarm コンボ R6 集約（2026-11-22、round 119）**: `swarm-project-review` R1（AR/CF/AP/DC）と `swarm-todo-discovery` R1（ST/TQ/DC）の2エージェントから14件を取得。root が path:line を Runtime Proof で確認し14件を `## 未着手` へ追記（high1 / medium2 / low11）。R2〜R5 は同一情報の重複取得を避け省略。
+- **swarm コンボ R6 集約（2026-11-22、round 132）**: `swarm-project-review` R1（AR/CF/AP/DC）と `swarm-todo-discovery` R1（ST/TQ/DC）の2エージェントから14件を取得。root が path:line を Runtime Proof で確認し14件を `## 未着手` へ追記（medium9 / low5）。R2〜R5 は同一情報の重複取得を避け省略。
