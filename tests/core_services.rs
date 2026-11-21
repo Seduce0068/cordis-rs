@@ -4951,3 +4951,26 @@ fn redacting_exporter_counts_failures_without_failing_host() {
     assert_eq!(exporter.failures(), 3);
     assert_eq!(clone.failures(), 3);
 }
+
+#[test]
+fn otlp_payload_carries_export_timestamp() {
+    use cordis_rs::plugin_ports::otlp_payload;
+    use cordis_rs::services::telemetry::EventRecord;
+    use std::collections::HashMap;
+
+    let record = EventRecord {
+        name: "evt".to_string(),
+        attributes: HashMap::new(),
+        seq: 1,
+    };
+
+    let payload = otlp_payload(std::slice::from_ref(&record));
+    let nano = payload["resourceLogs"][0]["scopeLogs"][0]["logRecords"][0]["timeUnixNano"]
+        .as_str()
+        .unwrap();
+    assert_ne!(nano, "0", "timestamp must not be the fixed placeholder");
+    assert!(
+        nano.chars().all(|ch| ch.is_ascii_digit()) && nano.len() >= 18,
+        "timestamp must be unix nanoseconds as a numeric string: {nano}"
+    );
+}

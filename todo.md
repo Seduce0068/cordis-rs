@@ -55,7 +55,7 @@ status: current
 - [x] **属性キー値に制御文字除去・長さ制限がなく OTLP/ログ注入と肥大化** — 2026-11-21 修正（文字数ベース上限＋冪等マーカー、session_id は別上限 256、UTF-8 安全、R1 指摘反映）。
 - [x] **セッションログの外部 API アップロード経路にマスキング機構がない** — 2026-11-21 修正（mask_event_data で deny-by-default allowlist、candidate 生成時に適用してバイト計算も正確、冪等、R1 敵対レビュー反映）。
 - [x] **Exporter 失敗が完全に握り潰されテレメトリ障害自体が観測不能** — 2026-11-21 修正（RedactingExporter が AtomicU64 失敗カウンタを保持し failures() で観測、export は Ok 維持、clone 間共有、R1 指摘反映）。
-- [ ] **OTLP タイムスタンプが固定 0 でイベント時刻が記録されない** — 根拠 `src/ports/otel_exporter.rs:101-105`, `src/services/telemetry.rs:14-19` / R4-OB05 / 重大度 medium / confirmed
+- [x] **OTLP タイムスタンプが固定 0 でイベント時刻が記録されない** — 2026-11-21 修正（otlp_payload が export 時 UTC nanos を timeUnixNano に設定、EventRecord は不変で後方互換維持。per-event 時刻は別 ADR、R1 指摘反映）。
 - [ ] **counters が名前の高カーディナリティで無制限成長** — 根拠 `src/services/telemetry.rs:49-54,95-101` / R4-OB06 / 重大度 medium / confirmed
 - [ ] **シークレットスキャンゲートが CI にも pre-commit にも存在しない** — 根拠 `.github/workflows/ci.yml:25-28`, `scripts/verify.sh:19-40` / R4-CI01 / 重大度 medium / confirmed
 - [ ] **markdownlint がローカル専用で CI ゲートに含まれていない** — 根拠 `scripts/verify.sh:36-40`, `.github/workflows/ci.yml:25-28` / R4-CI02, R4-DP05 / 重大度 medium / confirmed

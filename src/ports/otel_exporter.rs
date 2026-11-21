@@ -160,11 +160,18 @@ pub fn otlp_payload(records: &[EventRecord]) -> serde_json::Value {
     // raw secrets by passing `EventLogReporter::events()` directly (R4-OB01).
     // redact_record is idempotent, so pre-redacted records stay unchanged.
     let safe: Vec<EventRecord> = records.iter().map(redact_record).collect();
+    // Export-time UTC nanoseconds. EventRecord stays unchanged for backward
+    // compatibility (6 struct literals in tests), so this is the export
+    // timestamp; per-event timestamps need a separate ADR (R4-OB05).
+    let now_ns = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos().to_string())
+        .unwrap_or_else(|_| "0".to_string());
     serde_json::json!({
         "resourceLogs": [{
             "scopeLogs": [{
                 "logRecords": safe.iter().map(|record| serde_json::json!({
-                    "timeUnixNano": "0",
+                    "timeUnixNano": now_ns.clone(),
                     "severityNumber": 9,
                     "name": record.name,
                     "body": { "stringValue": record.name },
