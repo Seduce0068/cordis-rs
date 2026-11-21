@@ -12,6 +12,31 @@ use crate::services::telemetry::{EventRecord, TelemetryError};
 /// is replaced with `[redacted]` before leaving this module.
 pub const ALLOWED_ATTRIBUTE_KEYS: [&str; 4] = ["session_id", "tool", "status", "duration_ms"];
 
+/// Maximum characters retained for event names / attribute values in an OTLP
+/// payload (swarm review R4-OB02). Values beyond this are truncated with a
+/// marker so external input cannot inflate the payload.
+pub const MAX_NAME_LEN: usize = 256;
+pub const MAX_VALUE_LEN: usize = 1024;
+pub const MAX_SESSION_ID_LEN: usize = 256;
+const TRUNCATION_MARKER: &str = "…[truncated]";
+
+/// Character-based truncation (UTF-8 safe) with an idempotent marker: re-running
+/// redact_record on an already-truncated value must not stack markers.
+fn truncate_chars(value: &str, max_chars: usize) -> String {
+    let mut chars: Vec<char> = value.chars().collect();
+    if chars.len() <= max_chars {
+        return value.to_string();
+    }
+    if value.ends_with(TRUNCATION_MARKER) {
+        return value.to_string(); // already truncated
+    }
+    let budget = max_chars.saturating_sub(TRUNCATION_MARKER.chars().count());
+    chars.truncate(budget);
+    let mut result: String = chars.into_iter().collect();
+    result.push_str(TRUNCATION_MARKER);
+    result
+}
+
 /// Export one batch of (already redacted) records.
 pub trait OTelExporter: Send + Sync + 'static {
     fn export(&self, records: &[EventRecord]) -> Result<(), TelemetryError>;
@@ -20,7 +45,8 @@ pub trait OTelExporter: Send + Sync + 'static {
 /// Replace untrusted attribute values with `[redacted]` unless the key is on
 /// the allowlist. Event names are sanitized (control characters removed).
 pub fn redact_record(record: &EventRecord) -> EventRecord {
-    let name: String = record.name.chars().filter(|ch| !ch.is_control()).collect();
+    let sanitized_name: String = record.name.chars().filter(|ch| !ch.is_control()).collect();
+    let name = truncate_chars(&sanitized_name, MAX_NAME_LEN);
     let attributes = record
         .attributes
         .iter()
@@ -32,7 +58,13 @@ pub fn redact_record(record: &EventRecord) -> EventRecord {
                     // Allowlisted keys still carry untrusted values (e.g. a
                     // model-supplied tool name): strip control chars so they
                     // cannot forge log lines (R4-OB02).
-                    value.chars().filter(|ch| !ch.is_control()).collect()
+                    let sanitized: String = value.chars().filter(|ch| !ch.is_control()).collect();
+                    let cap = if key == "session_id" {
+                        MAX_SESSION_ID_LEN
+                    } else {
+                        MAX_VALUE_LEN
+                    };
+                    truncate_chars(&sanitized, cap)
                 } else {
                     "[redacted]".to_string()
                 },

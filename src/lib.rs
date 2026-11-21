@@ -158,8 +158,8 @@ pub mod plugin_ports {
         ToolSchema, mount as mount_native_tool_executor,
     };
     pub use crate::ports::otel_exporter::{
-        ALLOWED_ATTRIBUTE_KEYS, FakeCollector, OTelExporter, RedactingExporter, otlp_payload,
-        redact_record,
+        ALLOWED_ATTRIBUTE_KEYS, FakeCollector, MAX_NAME_LEN, MAX_SESSION_ID_LEN, MAX_VALUE_LEN,
+        OTelExporter, RedactingExporter, otlp_payload, redact_record,
     };
     pub use crate::ports::sandbox_policy::{
         PROJECTION_KEY as SANDBOX_PROJECTION_KEY, ResolvedPolicy, SANDBOX_INVALID_ROOT,

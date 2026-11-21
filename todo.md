@@ -52,7 +52,7 @@ status: current
 - [x] **Hook マッチャが設定由来 regex を毎回コンパイルし失敗時に fail-open** — 2026-11-21 修正（CompiledMatcher を追加し compile 1回で保持、不正は fail-closed non-match、既存 matches は adapter 化、R1 指摘反映）。
 - [x] **base64 添付デコードにサイズ上限がなく正規性チェックが全量再確保** — 2026-11-21 修正（decode_canonical_base64_limited で decode 前に入力長拒否、saturating で overflow 防止、既存 API は adapter 化、R1 指摘反映。再エンコード除去は別段階）。
 - [x] **otel_exporter の redaction が exporter 境界のみで events()/otlp_payload は生データ** — 2026-11-21 修正（otlp_payload が内部で redact、冪等、allowlist 値の制御文字も除去、R1 敵対レビュー反映）。
-- [ ] **属性キー値に制御文字除去・長さ制限がなく OTLP/ログ注入と肥大化** — 根拠 `src/ports/otel_exporter.rs:13-38,101-108` / R4-OB02 / 重大度 medium / confirmed
+- [x] **属性キー値に制御文字除去・長さ制限がなく OTLP/ログ注入と肥大化** — 2026-11-21 修正（文字数ベース上限＋冪等マーカー、session_id は別上限 256、UTF-8 安全、R1 指摘反映）。
 - [ ] **セッションログの外部 API アップロード経路にマスキング機構がない** — 根拠 `src/ports/session_log_deepseek.rs:80-84,152-161` / R4-OB03 / 重大度 medium / confirmed
 - [ ] **Exporter 失敗が完全に握り潰されテレメトリ障害自体が観測不能** — 根拠 `src/ports/otel_exporter.rs:58-64`, `src/services/telemetry.rs:49-54` / R4-OB04 / 重大度 medium / confirmed
 - [ ] **OTLP タイムスタンプが固定 0 でイベント時刻が記録されない** — 根拠 `src/ports/otel_exporter.rs:101-105`, `src/services/telemetry.rs:14-19` / R4-OB05 / 重大度 medium / confirmed

@@ -4872,3 +4872,47 @@ fn otlp_payload_always_redacts_raw_records() {
     let twice = redact_record(&safe);
     assert_eq!(safe, twice);
 }
+
+#[test]
+fn otlp_redaction_caps_length_idempotently() {
+    use cordis_rs::plugin_ports::{MAX_NAME_LEN, MAX_SESSION_ID_LEN, MAX_VALUE_LEN, redact_record};
+    use cordis_rs::services::telemetry::EventRecord;
+    use std::collections::HashMap;
+
+    let mut attrs = HashMap::new();
+    attrs.insert("tool".to_string(), "x".repeat(MAX_VALUE_LEN + 500));
+    attrs.insert(
+        "session_id".to_string(),
+        "s".repeat(MAX_SESSION_ID_LEN + 500),
+    );
+    attrs.insert("secret".to_string(), "y".repeat(MAX_VALUE_LEN + 500));
+    let raw = EventRecord {
+        name: "n".repeat(MAX_NAME_LEN + 500),
+        attributes: attrs,
+        seq: 1,
+    };
+
+    let once = redact_record(&raw);
+    // Long values truncated with marker; secret always redacted.
+    assert!(once.name.chars().count() <= MAX_NAME_LEN);
+    assert!(once.name.ends_with("…[truncated]"));
+    assert!(once.attributes["tool"].chars().count() <= MAX_VALUE_LEN);
+    assert!(once.attributes["session_id"].chars().count() <= MAX_SESSION_ID_LEN);
+    assert_eq!(once.attributes["secret"], "[redacted]");
+
+    // Idempotence: a second redaction does not stack markers.
+    let twice = redact_record(&once);
+    assert_eq!(once, twice);
+
+    // UTF-8 safe: multibyte chars cut at a valid boundary.
+    let mut utf8_attrs = HashMap::new();
+    utf8_attrs.insert("tool".to_string(), "あ".repeat(MAX_VALUE_LEN + 100));
+    let utf8 = redact_record(&EventRecord {
+        name: "evt".to_string(),
+        attributes: utf8_attrs,
+        seq: 2,
+    });
+    let value = &utf8.attributes["tool"];
+    assert!(std::str::from_utf8(value.as_bytes()).is_ok());
+    assert!(value.chars().count() <= MAX_VALUE_LEN);
+}
