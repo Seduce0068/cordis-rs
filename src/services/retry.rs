@@ -88,8 +88,19 @@ impl RetryPolicy {
             .saturating_mul(1u64 << exponent.min(20))
             .min(self.max_delay_ms);
         let clamped = random.clamp(0.0, 1.0);
-        let jitter = 1.0 - self.jitter_ratio + 2.0 * self.jitter_ratio * clamped;
-        ((exponential as f64) * jitter).min(self.max_delay_ms as f64) as u64
+        // Guard against NaN / out-of-range jitter_ratio: a negative jitter
+        // would cast to 0 and produce a busy retry loop (swarm review R3-CF06).
+        let ratio = if self.jitter_ratio.is_finite() {
+            self.jitter_ratio.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        // Keep a floor so a misconfigured ratio can never collapse the delay
+        // to zero (busy retry). With a valid ratio the floor never binds.
+        let jitter = (1.0 - ratio + 2.0 * ratio * clamped).max(0.1);
+        ((exponential as f64) * jitter)
+            .min(self.max_delay_ms as f64)
+            .max(0.0) as u64
     }
 }
 

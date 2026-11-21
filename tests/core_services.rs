@@ -5294,3 +5294,20 @@ fn registered_custom_preset_can_be_switched() {
     assert!(canonical.preset.is_some());
     assert!(registry.switch("unknown").is_err());
 }
+
+#[test]
+fn retry_backoff_stays_positive_with_invalid_jitter_ratio() {
+    use cordis_rs::core_services::RetryPolicy;
+
+    for ratio in [-1.0, 2.0, f64::NAN] {
+        let policy = RetryPolicy {
+            jitter_ratio: ratio,
+            ..RetryPolicy::default()
+        };
+        let delay = policy.backoff_ms(1, 0.0);
+        assert!(
+            delay > 0,
+            "invalid jitter_ratio {ratio} produced zero delay"
+        );
+    }
+}
