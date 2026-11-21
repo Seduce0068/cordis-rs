@@ -5136,3 +5136,39 @@ async fn provide_if_absent_guard_detects_type_mismatch() {
     assert!(ctx.get_untyped("shell").is_some());
     assert!(ctx.get::<String>("shell").is_none());
 }
+
+#[tokio::test]
+async fn tool_bash_background_job_owner_is_session_scoped() {
+    use cordis_rs::core_services::{
+        JobStatus, ToolExecContext, ToolOutput, provide_jobs, provide_shell, provide_tools,
+    };
+    use cordis_rs::plugin_ports::{ToolBashConfig, mount_tool_bash};
+
+    let ctx = Context::root("tool-bash-session-fence");
+    let (registry, _) = provide_tools(&ctx).await.unwrap();
+    let shell = provide_shell(&ctx).await.unwrap();
+    let jobs = provide_jobs(&ctx).await.unwrap();
+    let _tools = mount_tool_bash(&ctx, shell.clone(), ToolBashConfig::default())
+        .await
+        .unwrap();
+
+    let mut exec = ToolExecContext::agent("agent-1");
+    exec.session = Some("session-s1".to_string());
+    let output: ToolOutput = registry
+        .invoke(
+            "bash",
+            serde_json::json!({"command": "printf scoped", "run_in_background": true}),
+            exec,
+        )
+        .await
+        .unwrap();
+    let id = output.content["job_id"].as_u64().unwrap();
+
+    // The owning session can view the job; another session cannot
+    // (swarm review R2-FG06).
+    assert_eq!(
+        jobs.view(id, Some("session-s1")).unwrap().status,
+        JobStatus::Succeeded
+    );
+    assert!(jobs.view(id, Some("session-s2")).is_err());
+}

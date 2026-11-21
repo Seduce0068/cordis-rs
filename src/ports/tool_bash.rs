@@ -120,13 +120,16 @@ fn foreground_handler(shell: Shell) -> ToolHandler {
 }
 
 fn background_handler(shell: Shell, jobs: JobRegistry) -> ToolHandler {
-    Arc::new(move |args, _exec| {
+    Arc::new(move |args, exec| {
         let shell = shell.clone();
         let jobs = jobs.clone();
+        // Bind the job owner to the caller's session so tool_jobs' session_id
+        // fence matches (ADR-002 improvement, swarm review R2-FG06).
+        let session = exec.session.clone();
         Box::pin(async move {
             let input = parse_bash_args(&args, &ToolBashConfig::default())?;
             let handle = jobs
-                .start(Some("bash".to_string()))
+                .start(session.clone())
                 .map_err(|error| ToolError::Execution(error.to_string()))?;
             let mut request = ShellRequest::new(&input.command);
             if let Some(dir) = &input.workdir {

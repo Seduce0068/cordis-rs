@@ -31,9 +31,12 @@ status: accepted
   実プロセスを停止しないため、描画文言も "requested cancellation" に留める。
 - **待機の実装**: upstream の非同期 wait に対し、ローカル `wait` は
   `Condvar::wait_timeout_while` なので `spawn_blocking` で async worker を塞がないようにした。
-- **caller 規約**: 既存 `tool_bash` は owner を固定ラベル `"bash"` で登録するため、
-  ツールは `session_id` 引数を caller として渡す。upstream の sessionId fence に比べると
-  分離は弱く、producer 側の owner を `exec.session` に変更するのが今後の改善点である。
+- **caller 規約**: `tool_bash` の background job は owner を `exec.session` に登録する
+  （2026-11-21 実装、swarm review R2-FG06）。`tool_jobs` は従来どおり `session_id`
+  引数を caller として渡し、一致する session だけが view / wait / kill できる。
+  `exec.session` が無い直接 invoke では owner は `None` となり、既存の owner 無し
+  挙動（caller 比較なし）を維持する。併せて `max_concurrent` の枠がグローバルな
+  `"bash"` 単位から session 単位に変わった点に注意。
 
 ## 補遺: compaction-tool-result-pruner の注入 seam
 

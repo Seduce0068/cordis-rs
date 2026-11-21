@@ -138,7 +138,7 @@ status: current
 - [ ] **ApprovalService に agent/callId/audit pair/allowed-once が無い** — 根拠 `docs/ADR-012-shell-command-approval.md:67-68,104-107`, `src/services/approval.rs:14-19` / R2-FG02 / 重大度 medium / confirmed
 - [ ] **sandbox escalation の共通 helper が無く実行ポイントへ接続されていない** — 根拠 `docs/ADR-012-shell-command-approval.md:108-109`, `src/ports/sandbox_policy.rs:1-6` / R2-FG03 / 重大度 medium / confirmed
 - [ ] **completion notice 配信とモデル cursor 追跡が未実装** — 根拠 `docs/ADR-002-tool-jobs-port-scope.md:16,21-24,28-29` / R2-FG05 / 重大度 medium / confirmed
-- [ ] **job owner が固定ラベル "bash" で sessionId fence が弱い** — 根拠 `docs/ADR-002-tool-jobs-port-scope.md:34-36`, `src/ports/tool_bash.rs:127-129` / R2-FG06 / 重大度 medium / confirmed
+- [x] **job owner が固定ラベル "bash" で sessionId fence が弱い** — 2026-11-21 修正（background job の owner を exec.session に変更、session 単位の fence テスト追加、ADR-002 更新、R1 指摘反映）。
 - [ ] **JSONL 永続化が通常 turn へ自動配線されていない** — 根拠 `README.md:85`, `src/ports/session_persistence_jsonl.rs:348-351` / R2-FG07 / 重大度 medium / confirmed
 - [ ] **FileSystem::scoped の symlink TOCTOU 残存** — 根拠 `README.md:82`, `src/services/fs.rs:83-125` / R2-FG08 / 重大度 medium / confirmed
 - [ ] **session-query port が SQLite/FTS5 ではなく決定的インメモリ検索の差分が README に無い** — 根拠 `src/services/session_query.rs:1-7`, `README.md:32` / R2-FG09 / 重大度 low / confirmed
