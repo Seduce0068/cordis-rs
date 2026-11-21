@@ -17,6 +17,8 @@ pub struct ShellRequest {
     pub command: String,
     pub cwd: Option<PathBuf>,
     pub timeout_ms: Option<u64>,
+    /// Optional per-stream output cap (R3-IV05). None keeps legacy behaviour.
+    pub max_output_bytes: Option<usize>,
 }
 
 impl ShellRequest {
@@ -25,6 +27,7 @@ impl ShellRequest {
             command: command.into(),
             cwd: None,
             timeout_ms: None,
+            max_output_bytes: None,
         }
     }
 
@@ -37,6 +40,30 @@ impl ShellRequest {
         self.timeout_ms = Some(timeout_ms);
         self
     }
+
+    pub fn with_max_output_bytes(mut self, limit: usize) -> Self {
+        self.max_output_bytes = Some(limit);
+        self
+    }
+}
+
+/// Truncate a stream to `limit` bytes without breaking UTF-8, appending a
+/// marker (included in the budget) so callers can see the output was cut.
+fn truncate_output(text: &mut String, limit: Option<usize>) {
+    let Some(limit) = limit else {
+        return;
+    };
+    const MARKER: &str = "…[truncated]";
+    if text.len() <= limit {
+        return;
+    }
+    let budget = limit.saturating_sub(MARKER.len());
+    let mut cut = budget.min(text.len());
+    while cut > 0 && !text.is_char_boundary(cut) {
+        cut -= 1;
+    }
+    text.truncate(cut);
+    text.push_str(MARKER);
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -148,7 +175,10 @@ impl Shell {
     /// Convenience: resolve and execute in one call.
     pub fn run(&self, request: &ShellRequest) -> std::result::Result<ShellResult, ShellError> {
         let spec = self.resolve(request)?;
-        self.execute(&spec)
+        let mut result = self.execute(&spec)?;
+        truncate_output(&mut result.stdout, request.max_output_bytes);
+        truncate_output(&mut result.stderr, request.max_output_bytes);
+        Ok(result)
     }
 
     /// Resolve and execute with the request's timeout applied. The child is
@@ -190,9 +220,13 @@ impl Shell {
                     use tokio::io::AsyncReadExt;
                     let _ = pipe.read_to_end(&mut err).await;
                 }
+                let mut stdout_text = String::from_utf8_lossy(&out).to_string();
+                let mut stderr_text = String::from_utf8_lossy(&err).to_string();
+                truncate_output(&mut stdout_text, request.max_output_bytes);
+                truncate_output(&mut stderr_text, request.max_output_bytes);
                 Ok(ShellResult {
-                    stdout: String::from_utf8_lossy(&out).to_string(),
-                    stderr: String::from_utf8_lossy(&err).to_string(),
+                    stdout: stdout_text,
+                    stderr: stderr_text,
                     exit_code: status.code().unwrap_or(-1),
                     success: status.success(),
                 })

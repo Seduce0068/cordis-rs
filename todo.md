@@ -47,7 +47,7 @@ status: current
 - [x] **CompositionState::save が固定 .tmp 名で並行保存競合（sessions.rs は修正済み）** — 2026-11-21 修正（pid + nanos 一意 tmp 名、状態フィールド追加なしで Clone/PartialEq 維持、R1 指摘反映）。
 - [x] **Context::once が push と replace を別ロックで行い TOCTOU 二重発火の窓** — 2026-11-21 修正（EventRegistry::push_once で id 確保＋ラッパ登録を1ロック内でatomic化、R1 指摘反映）。
 - [x] **tool_todo の invoke_blocking に Tokio runtime 内呼び出しガードがない** — 2026-11-21 修正（Handle::try_current で fail-closed、既存 ContextUnavailable バリアント流用、R1 指摘反映）。
-- [ ] **シェル出力 stdout/stderr が無上限でメモリ保持（DoS）** — 根拠 `src/services/shell.rs:136-142`, `src/ports/tool_bash.rs:82-94` / R3-IV05 / 重大度 medium / confirmed
+- [x] **シェル出力 stdout/stderr が無上限でメモリ保持（DoS）** — 2026-11-21 修正（with_max_output_bytes builder、UTF-8 境界安全な切り詰め＋マーカー、run / run_with_timeout 両経路、R1 指摘反映）。
 - [ ] **read_window が bounded reads を謳いながらファイル全体を読み込む** — 根拠 `src/services/fs.rs:147-166` / R3-IV06 / 重大度 medium / confirmed
 - [ ] **Hook マッチャが設定由来 regex を毎回コンパイルし失敗時に fail-open** — 根拠 `src/services/hook_protocol.rs:98-128` / R3-IV07 / 重大度 medium / confirmed
 - [ ] **base64 添付デコードにサイズ上限がなく正規性チェックが全量再確保** — 根拠 `src/ports/attachment_admission.rs:56-80` / R3-IV08 / 重大度 medium / confirmed

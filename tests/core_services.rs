@@ -4748,3 +4748,31 @@ fn approval_request_details_reach_answerer() {
     let dangerous = ApprovalRequest::new("tool:bash", "s").with_details("rm -rf /");
     assert_eq!(answerer(&dangerous), Some(ApprovalDecision::Deny));
 }
+
+#[tokio::test]
+async fn shell_output_cap_truncates_without_breaking_utf8() {
+    use cordis_rs::core_services::{Shell, ShellRequest};
+
+    let shell = Shell::new();
+
+    // Small output unchanged.
+    let ok = shell
+        .run_with_timeout(&ShellRequest::new("printf small"))
+        .await
+        .unwrap();
+    assert_eq!(ok.stdout, "small");
+
+    // Large output truncated with marker on both run() and run_with_timeout().
+    let request = ShellRequest::new("printf 'abcdefghijklmnopqrstu'").with_max_output_bytes(20);
+    let result = shell.run(&request).unwrap();
+    assert_eq!(result.stdout, "abcdef…[truncated]");
+    let result_async = shell.run_with_timeout(&request).await.unwrap();
+    assert_eq!(result_async.stdout, "abcdef…[truncated]");
+
+    // Multi-byte characters never cut mid-codepoint; result stays valid UTF-8.
+    let unicode_request =
+        ShellRequest::new("printf 'あいうえおかきくけこ'").with_max_output_bytes(20);
+    let unicode = shell.run_with_timeout(&unicode_request).await.unwrap();
+    assert!(unicode.stdout.ends_with("…[truncated]"));
+    assert!(std::str::from_utf8(unicode.stdout.as_bytes()).is_ok());
+}
