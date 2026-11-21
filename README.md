@@ -192,4 +192,3 @@ Copyright (c) 2026 DeepSeek）の API 契約を Rust に移植しているため
 ## 関連
 
 - 旧 PoC（ACP 経由の GPUI クライアント）: `../dsh-gpui-client-poc/`
-- 調査レポート: ローカル `passkey-gateway/docs/dsh-client-gpui-migration-2026-11-16.md`（非公開）

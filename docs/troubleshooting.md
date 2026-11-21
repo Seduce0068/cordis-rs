@@ -33,7 +33,7 @@ status: "Self-reviewed"
 ### 完全検証の実行
 
 ```bash
-cd /home/koppe/document/deepseek-harness/default-workspace/work/cordis-rs
+# cordis-rs リポジトリルートで実行
 bash scripts/verify.sh
 ```
 
