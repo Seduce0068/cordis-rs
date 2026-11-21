@@ -33,6 +33,17 @@ impl Default for EventLogOptions {
     }
 }
 
+impl EventLogOptions {
+    /// Reject options that would make batching meaningless or drop every
+    /// recorded event (swarm review R4-OB07).
+    pub fn validate(&self) -> std::result::Result<(), TelemetryError> {
+        if self.max_events == 0 || self.batch_size == 0 {
+            return Err(TelemetryError::InvalidOptions);
+        }
+        Ok(())
+    }
+}
+
 /// Default cap on distinct counter keys per reporter (swarm review R4-OB06).
 pub const DEFAULT_MAX_COUNTERS: usize = 1000;
 /// Bucket for event names beyond the cap so cardinality stays bounded.
@@ -41,12 +52,15 @@ pub const OTHER_COUNTER_KEY: &str = "__other__";
 #[derive(Debug, Clone, PartialEq)]
 pub enum TelemetryError {
     InvalidName,
+    /// EventLogOptions has zero max_events or batch_size.
+    InvalidOptions,
 }
 
 impl std::fmt::Display for TelemetryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::InvalidName => write!(f, "event name must not be empty"),
+            Self::InvalidOptions => write!(f, "event log options must be positive"),
         }
     }
 }
@@ -96,6 +110,7 @@ impl EventLogReporter {
         name: impl Into<String>,
         attributes: HashMap<String, String>,
     ) -> std::result::Result<bool, TelemetryError> {
+        self.options.validate()?;
         let name = name.into();
         if name.trim().is_empty() {
             return Err(TelemetryError::InvalidName);

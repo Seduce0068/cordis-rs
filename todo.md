@@ -106,7 +106,7 @@ status: current
 - [ ] **plugin_ports が71のフラット re-export を持ち公開 API が肥大** — 根拠 `src/lib.rs:43,113` / R1-AP04 / 重大度 low / likely
 - [ ] **読み取り path が省略表記で src/ports 配下を辿れない（README 安定性マトリクス）** — 根拠 `README.md:88-90` / R5-DC07 / 重大度 low / confirmed
 - [ ] **port 件数の定義が README と PROGRESS で食い違う** — 根拠 `README.md:31-32`, `docs/PROGRESS.md:22` / R5-DC08 / 重大度 low / confirmed
-- [ ] **EventLogOptions に validation がなく batch_size=0 で除数判定が不成立** — 根拠 `src/services/telemetry.rs:21-34,99-101` / R4-OB07 / 重大度 low / confirmed
+- [x] **EventLogOptions に validation がなく batch_size=0 で除数判定が不成立** — 2026-11-21 修正（validate() と InvalidOptions、record() が不正設定を fail-closed で拒否、R4-OB07 反映）。
 - [ ] **unsafe 禁止ゲートの走査範囲が狭く lint 設定と迂回可能** — 根拠 `scripts/check-no-unsafe.sh:6,15`, `.github/workflows/ci.yml:23` / R4-CI03 / 重大度 low / confirmed
 - [ ] **smoke-examples.sh が example 0 件をそのまま成功と報告** — 根拠 `scripts/smoke-examples.sh:6-14` / R4-DP09 / 重大度 low / confirmed
 - [ ] **MSRV (rust-version) が未宣言で edition 2024 要求が伝わらない** — 根拠 `Cargo.toml:1-8` / R4-DP07 / 重大度 low / confirmed

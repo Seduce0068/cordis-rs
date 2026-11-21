@@ -5046,3 +5046,28 @@ fn telemetry_counters_are_bounded_and_collapse_into_other() {
         .unwrap();
     assert_eq!(reporter.count(OTHER_COUNTER_KEY), 3);
 }
+
+#[test]
+fn event_log_options_reject_zero_values() {
+    use cordis_rs::core_services::{EventLogOptions, EventLogReporter, TelemetryError};
+
+    for options in [
+        EventLogOptions {
+            max_events: 0,
+            batch_size: 100,
+        },
+        EventLogOptions {
+            max_events: 100,
+            batch_size: 0,
+        },
+    ] {
+        assert!(options.validate().is_err());
+        let reporter = EventLogReporter::new("invalid", options);
+        assert!(matches!(
+            reporter.record("evt", std::collections::HashMap::new()),
+            Err(TelemetryError::InvalidOptions)
+        ));
+    }
+
+    assert!(EventLogOptions::default().validate().is_ok());
+}
