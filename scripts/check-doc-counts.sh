@@ -9,6 +9,9 @@ integration=$(grep -rhoE '#\[(tokio::)?test\]' tests/*.rs | wc -l | tr -d ' ')
 unit=$(grep -rhoE '#\[(tokio::)?test\]' src/ --include='*.rs' | wc -l | tr -d ' ')
 tests=$((integration + unit))
 ports=$(find src/ports -maxdepth 1 -name '*.rs' ! -name 'mod.rs' | wc -l | tr -d ' ')
+services=$(find src/services -maxdepth 1 -name '*.rs' ! -name 'mod.rs' | wc -l | tr -d ' ')
+# messageFeedback is provided via a port rather than a services/ module.
+core_services=$((services + 1))
 
 fail=0
 check_file() {
@@ -24,6 +27,9 @@ check_file docs/PROGRESS.md "テスト ${tests} 件（統合 ${integration} ＋ 
 check_file docs/ADR-001-cordis-runtime-reimplementation.md "全 ${tests} テスト通過（統合 ${integration} ＋ unit ${unit}）" "tests"
 check_file README.md "再利用 port（${ports}）" "ports"
 check_file docs/PROGRESS.md "現状 ${ports} port" "ports"
+check_file README.md "コアサービス（${core_services}）" "core services"
+check_file docs/PROGRESS.md "コアサービス ${core_services} 個" "core services"
+check_file docs/ADR-001-cordis-runtime-reimplementation.md "コアサービス ${core_services} 個" "core services"
 
 # Also fail on a stale test count in any other sentence (R1-CF01). Lines
 # spelling out the breakdown (integration/unit) are allowed.
@@ -53,4 +59,4 @@ if [ "$fail" -ne 0 ]; then
   echo "Actual counts: tests=$tests (integration=$integration unit=$unit) ports=$ports" >&2
   exit 1
 fi
-echo "doc counts verified: tests=$tests (integration=$integration unit=$unit) ports=$ports"
+echo "doc counts verified: tests=$tests (integration=$integration unit=$unit) ports=$ports core_services=$core_services (modules=$services + messageFeedback)"
