@@ -22,8 +22,12 @@ bash scripts/check-secrets.sh
 echo "=== cargo audit ==="
 if command -v cargo-audit >/dev/null 2>&1; then
 	cargo audit
+elif [ "${AUDIT_SKIP:-}" = "1" ]; then
+	echo "cargo-audit not installed; skipped by explicit AUDIT_SKIP=1" >&2
 else
-	echo "cargo-audit not installed; skipping (CI installs it). Install: cargo install cargo-audit" >&2
+	echo "FAIL: cargo-audit is required (CI runs it). Install with 'cargo install cargo-audit'," >&2
+	echo "      or set AUDIT_SKIP=1 to explicitly opt out of this local gate." >&2
+	exit 1
 fi
 
 # Same order as `extra_gates` in .github/workflows/ci.yml.

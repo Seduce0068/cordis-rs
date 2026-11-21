@@ -122,6 +122,9 @@ bash scripts/smoke-examples.sh
 
 # fmt / check / clippy / test / smoke / シークレットスキャンをまとめて実行
 bash scripts/verify.sh
+# cargo-audit が未インストールの場合は明示的な opt-out が必要:
+#   AUDIT_SKIP=1 bash scripts/verify.sh
+# （CI は audit: true で必ず実行するため、ローカルも既定では失敗する）
 
 # 全 Markdown の lint（CI ゲートにも含まれる）
 bash scripts/check-markdown.sh

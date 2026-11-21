@@ -133,7 +133,7 @@ status: current
 - [x] **provide-if-absent ガードが `get::<T>()` の型不一致を未登録と誤判定（6箇所）** — 2026-11-21 修正（6箇所を get_untyped() に置換、型衝突を正しく検出、回帰テスト追加、R1 指摘反映）。
 - [x] **FieldSpec の min/max が f64 のみで Integer(i64) の範囲検証が精度落ち** — 2026-11-21 修正（min_int/max_int + range_int を追加、i64 同士で比較、既存 range(f64) は維持、2^53 超回帰テスト追加、R1 指摘反映）。
 - [ ] **check-doc-counts.sh が src 内 unit test を件数から除外** — 根拠 `scripts/check-doc-counts.sh:2,7`, `src/context.rs:675` / R1-CF01 / 重大度 medium / confirmed
-- [ ] **verify.sh が cargo-audit 未インストール時に警告だけでスキップし全ゲート合格と表示** — 根拠 `scripts/verify.sh:22-27,42` / R1-CF02 / 重大度 medium / confirmed
+- [x] **verify.sh が cargo-audit 未インストール時に警告だけでスキップし全ゲート合格と表示** — 2026-11-21 修正（未インストール時は AUDIT_SKIP=1 の明示 opt-out を要求、なければ fail、README に記載、R1 指摘反映）。
 - [ ] **ADR-010 の status と進捗記述が index / 本文で矛盾（段4 未着手なのに完了表記）** — 根拠 `docs/index.md:26`, `docs/ADR-010-context-events-boundary.md:81-84` / R1-DR01 / 重大度 medium / confirmed
 - [ ] **ApprovalService に agent/callId/audit pair/allowed-once が無い** — 根拠 `docs/ADR-012-shell-command-approval.md:67-68,104-107`, `src/services/approval.rs:14-19` / R2-FG02 / 重大度 medium / confirmed
 - [ ] **sandbox escalation の共通 helper が無く実行ポイントへ接続されていない** — 根拠 `docs/ADR-012-shell-command-approval.md:108-109`, `src/ports/sandbox_policy.rs:1-6` / R2-FG03 / 重大度 medium / confirmed
