@@ -212,13 +212,20 @@ impl Shell {
                 // (the child is gone, so readers cannot block forever).
                 let mut out = Vec::new();
                 let mut err = Vec::new();
+                // Propagate a pipe read failure instead of returning a
+                // partially captured output as if it were complete (swarm
+                // review R4-ER07).
                 if let Some(mut pipe) = stdout {
                     use tokio::io::AsyncReadExt;
-                    let _ = pipe.read_to_end(&mut out).await;
+                    pipe.read_to_end(&mut out).await.map_err(|error| {
+                        ShellError::Spawn(format!("stdout read failed: {error}"))
+                    })?;
                 }
                 if let Some(mut pipe) = stderr {
                     use tokio::io::AsyncReadExt;
-                    let _ = pipe.read_to_end(&mut err).await;
+                    pipe.read_to_end(&mut err).await.map_err(|error| {
+                        ShellError::Spawn(format!("stderr read failed: {error}"))
+                    })?;
                 }
                 let mut stdout_text = String::from_utf8_lossy(&out).to_string();
                 let mut stderr_text = String::from_utf8_lossy(&err).to_string();

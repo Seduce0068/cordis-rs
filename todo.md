@@ -175,7 +175,7 @@ status: current
 - [x] **runbook が mount_real_composition / require の旧挙動を案内** — 2026-11-22 修正（diagnostic レポートと require_untyped_with_timeout を反映、R4-DC11 反映）。
 - [x] **公開ドキュメントにホスト固有絶対パスと非公開レポート参照が残存** — 2026-11-22 修正（runbook の cd を汎用記述に、README の非公開レポート参照を削除、R4-DC12 反映）。
 - [x] **examples が固定 /tmp パスを使用し smoke 並列実行で衝突しうる** — 2026-11-22 修正（3 example の固定 /tmp パスを PID+nanos 一意パスに変更、7 examples smoke 通過、R4 指摘反映）。
-- [ ] **Shell の stdout/stderr 読み取りエラーが握り潰され不完全出力が成功として返る** — 根拠 `src/services/shell.rs:215-232` / R4-ER07 / 重大度 low / likely
+- [x] **Shell の stdout/stderr 読み取りエラーが握り潰され不完全出力が成功として返る** — 2026-11-22 修正（read_to_end の Err を ShellError::Spawn として伝播。public enum 変更を避け既存バリアントを流用。エラー再現は OS パイプ破壊が必要で回帰テストは見送り、正常系テストで不変確認）。
 
 - [x] **LlmService の既定 provider を dispose 後も default 名が残り resolve(None) が失敗** — 2026-11-22 修正（disposer が既定 provider 削除時に default 名をクリア、回帰テスト追加、R5 指摘反映）。
 - [x] **TimeoutPolicyPlugin の inject("tools") と apply の require("toolPipeline") が不一致** — 2026-11-22 修正（inject を "toolPipeline" に変更、R2-ST02 と同種、回帰テスト追加、R5 指摘反映）。
