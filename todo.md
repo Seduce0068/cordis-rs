@@ -111,7 +111,7 @@ status: current
 - [x] **smoke-examples.sh が example 0 件をそのまま成功と報告** — 2026-11-21 修正（検出0件で明示エラー終了、R4-DP09 反映）。
 - [x] **MSRV (rust-version) が未宣言で edition 2024 要求が伝わらない** — 2026-11-21 修正（rust-version = "1.85" を宣言、cargo metadata で確認、R4-DP07 反映）。
 - [x] **session reference のデコード上限欠如と markdown 引用の不完全エスケープ** — 2026-11-21 修正（ペイロード長上限とエラーの URI 非露出、ラベルは [ ] ) 改行をエスケープ、R3-IV10 反映）。
-- [ ] **compaction-automation の LLM 要約が pruning stub のまま（README に制約記載なし）** — 根拠 `src/ports/compaction_automation.rs:5-6`, `README.md:32,55` / R2-FG02 / 重大度 low / confirmed
+- [x] **compaction-automation の LLM 要約が pruning stub のまま（README に制約記載なし）** — 2026-11-21 修正（安定性マトリクスに phase-1 行と解消条件を追加、R2-FG02 反映）。
 - [ ] **hooks-claude-code の updatedInput/systemMessage/Ask/SessionStart が未接続** — 根拠 `src/ports/hooks_claude_code.rs:137-142` / R2-FG03 / 重大度 low / confirmed
 - [x] **mount_real_composition が部分失敗を assert で落とし診断レポートとして機能しない** — 2026-11-21 修正（assert を外し skipped/failed を id と理由付きで一覧出力、R5-VU08 反映）。
 - [x] **README が mount_real_composition の動作を 2 箇所で矛盾説明** — 2026-11-21 修正（診断レポート化した実装に合わせ「6 エントリすべてを起動」を「port 存在分のみ起動＋failed/skipped 一覧」に修正、R2-FG04 反映）。
