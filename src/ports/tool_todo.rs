@@ -5,6 +5,10 @@
 //! shared `tools` seam. Source: `packages/todo/tool-todo/src/index.ts` in
 //! deepseek-ai/deepseek-harness (MIT), read as untrusted reference data.
 
+/// Service name for this port's Tools seam, distinct from the core
+/// ToolRegistry registered under `"tools"` (swarm review R1-AR01).
+pub const TODO_TOOLS_SERVICE_NAME: &str = "todoTools";
+
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 
@@ -395,11 +399,11 @@ impl Plugin for ToolTodo {
     }
 
     fn inject(&self) -> &[&str] {
-        &["tools", "sessionProjections"]
+        &[TODO_TOOLS_SERVICE_NAME, "sessionProjections"]
     }
 
     async fn apply(&self, ctx: &Context) -> Result<()> {
-        let tools = ctx.require::<Tools>("tools").await?;
+        let tools = ctx.require::<Tools>(TODO_TOOLS_SERVICE_NAME).await?;
         let projections = ctx
             .require::<SessionProjections>("sessionProjections")
             .await?;
@@ -446,7 +450,7 @@ pub struct MountedTodo {
 pub async fn mount(ctx: &Context, allow_parallel: bool) -> Result<MountedTodo> {
     let tools = Tools::default();
     let projections = SessionProjections::default();
-    ctx.provide("tools", tools.clone()).await?;
+    ctx.provide(TODO_TOOLS_SERVICE_NAME, tools.clone()).await?;
     ctx.provide("sessionProjections", projections.clone())
         .await?;
     let fiber = crate::Fiber::mount_retained(ctx, Box::new(ToolTodo { allow_parallel })).await?;

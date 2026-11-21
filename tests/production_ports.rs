@@ -42,13 +42,45 @@ async fn production_command_compact_mount_registers_command() {
 
 #[tokio::test]
 async fn production_tool_todo_mount_registers_tools() {
-    use cordis_rs::plugin_ports::mount_tool_todo;
+    use cordis_rs::plugin_ports::{TODO_TOOLS_SERVICE_NAME, mount_tool_todo};
 
     let ctx = Context::root("prod-tool-todo");
     let mounted = mount_tool_todo(&ctx, true).await.unwrap();
     let _ = mounted;
     assert!(
-        ctx.get::<cordis_rs::plugin_ports::TodoTools>("tools")
+        ctx.get::<cordis_rs::plugin_ports::TodoTools>(TODO_TOOLS_SERVICE_NAME)
+            .is_some()
+    );
+}
+
+#[tokio::test]
+async fn tool_registry_and_todo_tools_coexist_on_one_context() {
+    use cordis_rs::plugin_ports::{TODO_TOOLS_SERVICE_NAME, mount_tool_todo};
+    use cordis_rs::services::tools::provide as provide_tools;
+
+    let ctx = Context::root("coexist-tools");
+
+    // Both orders must work: the two services use distinct names (R1-AR01).
+    provide_tools(&ctx).await.unwrap();
+    mount_tool_todo(&ctx, false).await.unwrap();
+    assert!(
+        ctx.get::<cordis_rs::services::tools::ToolRegistry>("tools")
+            .is_some()
+    );
+    assert!(
+        ctx.get::<cordis_rs::plugin_ports::TodoTools>(TODO_TOOLS_SERVICE_NAME)
+            .is_some()
+    );
+
+    let ctx2 = Context::root("coexist-tools-reverse");
+    mount_tool_todo(&ctx2, false).await.unwrap();
+    provide_tools(&ctx2).await.unwrap();
+    assert!(
+        ctx2.get::<cordis_rs::services::tools::ToolRegistry>("tools")
+            .is_some()
+    );
+    assert!(
+        ctx2.get::<cordis_rs::plugin_ports::TodoTools>(TODO_TOOLS_SERVICE_NAME)
             .is_some()
     );
 }

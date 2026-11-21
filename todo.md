@@ -127,7 +127,7 @@ status: current
 - [x] **コメント除去とインデント正規化がブロックスカラー結合前に適用され式本文が変わる** — 2026-11-21 修正（Line.raw を追加し block scalar 本文は元行を参照、R1 指摘反映）。
 - [x] **SkillRegistry::catalog が provider 失敗を空カタログとして握り潰す** — 2026-11-21 修正（SkillCatalog::failures と SkillProviderFailure を追加、PartialEq は skills のみ比較、R1 指摘反映）。
 
-- [ ] **サービス名 "tools" が ToolRegistry と TodoTools で衝突し文字列キー127箇所に散在** — 根拠 `src/services/tools.rs:551`, `src/ports/tool_todo.rs:449` / R1-AR01 / R1 review / 重大度 high / confirmed
+- [x] **サービス名 "tools" が ToolRegistry と TodoTools で衝突し文字列キー127箇所に散在** — 2026-11-21 修正（tool_todo 側を `TODO_TOOLS_SERVICE_NAME` = "todoTools" に改名、provide/inject/apply 3箇所同時、25箇所の require は不変、両順序共存テスト追加、R1 指摘反映）。
 - [ ] **ToolRegistry::invoke 直呼びが approval ゲートを素通り** — 根拠 `docs/ADR-012-shell-command-approval.md:98-102`, `src/services/tools.rs:226` / R2-FG01 / 重大度 high / confirmed（ADR-012 で既知制約として明記済み、完全 fail-closed は未実装）
 - [ ] **job kill が状態反転のみで実プロセスを停止しない** — 根拠 `docs/ADR-002-tool-jobs-port-scope.md:30-31`, `src/services/jobs.rs:275-282` / R2-FG04 / 重大度 medium / confirmed（意図的差分だが停止経路なし）
 - [ ] **provide-if-absent ガードが `get::<T>()` の型不一致を未登録と誤判定（6箇所）** — 根拠 `src/ports/tool_bash.rs:210`, `src/ports/tool_fs.rs:315`, `src/ports/command_goal.rs:117` / R1-AR02 / 重大度 medium / confirmed

@@ -260,9 +260,9 @@ pub mod plugin_ports {
     pub use crate::ports::tool_todo::Tools;
     pub use crate::ports::tool_todo::{
         Counts as TodoWriteCounts, MountedTodo, RawTodo, SessionEvent as TodoSessionEvent,
-        SessionProjections, TodoItem, TodoStatus, TodoWriteArgs, TodoWriteResult, ToolExecution,
-        ToolFailure, ToolTodo, Tools as TodoTools, describe, mount as mount_tool_todo,
-        to_todo_list, tool_failure_error,
+        SessionProjections, TODO_TOOLS_SERVICE_NAME, TodoItem, TodoStatus, TodoWriteArgs,
+        TodoWriteResult, ToolExecution, ToolFailure, ToolTodo, Tools as TodoTools, describe,
+        mount as mount_tool_todo, to_todo_list, tool_failure_error,
     };
     pub use crate::ports::tool_working_directory::{
         DESCRIPTION as WORKING_DIRECTORY_DESCRIPTION, ToolWorkingDirectory,
