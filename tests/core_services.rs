@@ -1732,6 +1732,7 @@ async fn otel_event_channels_batch_and_bound_records() {
     assert!(!reporter.record("tick", attrs.clone()).unwrap());
     reporter.record("tick", attrs.clone()).unwrap();
     assert_eq!(reporter.events().len(), 3); // bounded by max_events
+    assert_eq!(reporter.dropped(), 1); // one event evicted by the cap (R5-VU04)
     assert_eq!(reporter.count("tick"), 4);
     assert!(reporter.record("", attrs).is_err());
     assert!(matches!(

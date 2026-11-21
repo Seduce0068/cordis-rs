@@ -56,6 +56,8 @@ struct ReporterState {
     events: Vec<EventRecord>,
     next_seq: u64,
     counters: HashMap<String, u64>,
+    /// Total number of events silently dropped by the max_events cap.
+    dropped_events: u64,
 }
 
 /// A bounded, batched event log channel.
@@ -110,6 +112,7 @@ impl EventLogReporter {
         if guard.events.len() > self.options.max_events {
             let drop_count = guard.events.len() - self.options.max_events;
             guard.events.drain(..drop_count);
+            guard.dropped_events += drop_count as u64;
         }
         // Bound counter cardinality: unknown names beyond the cap collapse
         // into a shared bucket. Reserve OTHER_COUNTER_KEY for internal use.
@@ -141,6 +144,15 @@ impl EventLogReporter {
             .get(name)
             .copied()
             .unwrap_or(0)
+    }
+
+    /// Number of events discarded by the `max_events` cap. Lets operators
+    /// detect that early diagnostics were lost (swarm review R5-VU04).
+    pub fn dropped(&self) -> u64 {
+        self.state
+            .read()
+            .expect("telemetry state poisoned")
+            .dropped_events
     }
 }
 
