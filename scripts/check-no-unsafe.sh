@@ -11,11 +11,25 @@ if [ -n "$hits" ]; then
 fi
 echo "no unsafe Rust usage found"
 
-# CI gate: port mount helpers must retain their fiber (no ghost fibers).
-ghost=$(grep -RIn --include='*.rs' 'let _fiber' src/ports 2>/dev/null || true)
+# CI gate: a raw Fiber::mount result must be retained in src/ports.
+# Fiber::mount_retained keeps the fiber in an effect itself, so discarding its
+# return value (the common `let _ = ...mount_retained(...)` form) is safe and
+# must not be flagged. `Fiber::mount\(` exact match excludes mount_retained
+# naturally. loader.rs is out of scope: it returns Vec<Fiber> by design.
+ghost=$(grep -RIn --include='*.rs' -E 'Fiber::mount\(' src/ports 2>/dev/null || true)
 if [ -n "$ghost" ]; then
-  echo "port mount helpers must use Fiber::mount_retained (AGENTS.md §15 style):" >&2
+  echo "raw Fiber::mount result must be retained in ports (use mount_retained):" >&2
   echo "$ghost" >&2
   exit 1
 fi
-echo "no ghost fiber mount helpers found"
+
+# Self-test: ensure the pattern actually detects a discarded mount so this
+# gate cannot silently become a dead check (swarm review R4-DP01).
+self_test_dir=$(mktemp -d)
+trap 'rm -rf "$self_test_dir"' EXIT
+printf '%s\n' 'let _ = crate::Fiber::mount(ctx, plugin).await?;' > "$self_test_dir/ghost.rs"
+if ! grep -q -E 'Fiber::mount\(' "$self_test_dir/ghost.rs"; then
+  echo "ghost-fiber gate self-test failed" >&2
+  exit 1
+fi
+echo "no raw Fiber::mount results discarded in ports"

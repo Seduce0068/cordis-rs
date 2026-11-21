@@ -28,7 +28,7 @@ status: current
 - [ ] **既定 fs サービスがルート無制限の FileSystem::local()（パス閉じ込め opt-in）** — 根拠 `src/services/fs.rs:61-78,281-284` / R3-DE03 / 重大度 high / confirmed
 - [x] **DeepSeekConfig.base_url が任意ホストへ API キー付きリクエストを送信** — 2026-11-21 修正（validated_endpoint で https＋api.deepseek.com allowlist、userinfo/path trick 拒否、送信前に検証、R1 敵対レビュー反映）。
 - [ ] **inject 宣言_port 4個が apply() 空で依存喪失時に service/tool が残存** — 根拠 `src/ports/goal_round_driver.rs:174-180`, `src/ports/compaction_automation.rs:150-156`, `src/ports/user_questions.rs:190-196`, `src/ports/sandbox_policy.rs:209-215` / R1-ST01 / 重大度 high / confirmed
-- [ ] **ゴーストファイバー検出ゲートが実コードパターンと一致せず CI を通過させる** — 根拠 `scripts/check-no-unsafe.sh:14-20`, `src/ports/tool_bash.rs:205` / R4-DP01 / 重大度 high / confirmed
+- [x] **ゴーストファイバー検出ゲートが実コードパターンと一致せず CI を通過させる** — 2026-11-21 修正（生の Fiber::mount 戻り値破棄を検出、mount_retained は exact match で除外、self_test 追加、R1 指摘反映）。
 
 - [x] **with_llm_timeout の timeout 後に Error チャンクを無限生成する** — 2026-11-19 修正（TimeoutState::Terminated、R4 レビュー反映）。
 - [x] **Session::append の seq 採番と Vec push が別ロックで並行順序が反転する** — 2026-11-19 修正（単一 Mutex の LogState に統合）。
