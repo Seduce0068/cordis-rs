@@ -3464,3 +3464,19 @@ fn mcp_resource_registry_register_bool_and_empty_scope_cleanup() {
     // After the scope became empty and was removed, re-registering is "new".
     assert!(registry.register_scoped(scope, "srv", provider, Vec::new()));
 }
+
+#[test]
+fn hooks_config_rejects_invalid_numeric_settings() {
+    use cordis_rs::plugin_ports::parse_config;
+
+    for (key, value) in [
+        ("defaultTimeoutMs", 0_u64),
+        ("stderrSummaryMaxChars", 0_u64),
+    ] {
+        let raw = serde_json::json!({ key: value, "hooks": {} });
+        assert!(
+            parse_config(&raw).is_err(),
+            "{key}={value} must be rejected (swarm review R6-IV07)"
+        );
+    }
+}

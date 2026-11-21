@@ -68,9 +68,17 @@ impl Default for HooksConfig {
 pub fn parse_config(value: &serde_json::Value) -> std::result::Result<HooksConfig, String> {
     let mut config = HooksConfig::default();
     if let Some(timeout) = value.get("defaultTimeoutMs").and_then(|v| v.as_u64()) {
+        // Reject zero (immediate timeout) and values that cannot fit usize
+        // on this target (swarm review R6-IV07).
+        if timeout == 0 || timeout > usize::MAX as u64 {
+            return Err(format!("defaultTimeoutMs out of range: {timeout}"));
+        }
         config.default_timeout_ms = timeout;
     }
     if let Some(chars) = value.get("stderrSummaryMaxChars").and_then(|v| v.as_u64()) {
+        if chars == 0 || chars > usize::MAX as u64 {
+            return Err(format!("stderrSummaryMaxChars out of range: {chars}"));
+        }
         config.stderr_summary_max_chars = chars as usize;
     }
     let Some(hooks) = value.get("hooks").and_then(|v| v.as_object()) else {
