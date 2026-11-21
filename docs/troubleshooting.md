@@ -47,8 +47,9 @@ smoke / no-unsafe / doc-counts / secrets / markdown が接続されている。
 
 `composition.mount()` / `mount_with()` は `MountReport` を返す。
 `failed`（plugin エラー）と `skipped_unknown`（未登録 plugin id）を確認する。
-`examples/mount_real_composition.rs` は全件マップ済み fixture を前提に assert するため、
-fixture 更新後は未 port エントリが無いか先に確認する。
+`examples/mount_real_composition.rs` はdiagnostic レポートとして `MountReport` の
+`failed` / `skipped_unknown` を一覧出力する（assert で落とさない）。fixture 更新後は
+この一覧を読んで未 port エントリを確認する。
 
 ### 状態ファイルの破損確認
 
@@ -64,7 +65,7 @@ fixture 更新後は未 port エントリが無いか先に確認する。
 | --- | --- | --- |
 | plugin が起動しない | `MountReport.failed` / `skipped_unknown` | plugin id の登録漏れを解消。fiber の inject 依存を提供 |
 | 再起動で無効化設定が戻る | `try_load` の `Err` | 破損 state をバックアップから復元。`load()` の空フォールバックで起動していないか確認 |
-| `require` が応答しない | 依存 service 名の登録漏れ、provider の `mount` 成否 | 依存を先に provide。mount 失敗ログを確認。無期限待ちは既知の制約 |
+| `require` が応答しない | 依存 service 名の登録漏れ、provider の `mount` 成否 | 依存を先に provide。診断には `require_untyped_with_timeout()` で上限付き待ちを使う（無期限 `require` は従来どおり） |
 | service reload が走らない | fiber の `retiring` / 依存 drain | 一時 unload 後 Pending に戻っていれば drain 対象。明示 unload は終端 |
 | イベントが消えた | `EventLogReporter::dropped()` | `max_events` 超過で古いイベントが eviction されている。上限を上げるか記録間隔を見直す |
 | テレメトリが止まっている | `RedactingExporter::failures()` | inner exporter の失敗回数。host 操作自体は成功し続けるためカウンタで検知する |
