@@ -23,7 +23,7 @@ status: current
 ### 優先度: 高
 
 - [x] **FiberInner.retiring が true のまま戻らず依存 drain から永久除外される** — 2026-11-21 修正（Pending 復帰時に retiring を false へ、明示 unload は true 維持、R1 指摘反映）。
-- [ ] **Shell が model 由来 command を無検証で sh -c に渡す（承認・allowlist なし）** — 根拠 `src/services/shell.rs:99-126`, `src/ports/tool_bash.rs:47-55,102-108` / R3-IV01 / 重大度 high / confirmed
+- [ ] **Shell が model 由来 command を無検証で sh -c に渡す（承認・allowlist なし）** — 2026-11-21 design 完了（ADR-012 proposed: tool boundary の approval gate に command 本文を渡す、文字列 allowlist 禁止、上流 escalation/audit pair は第2段。R4 で panic 手順を修正）。R2 実装は次イテレーション以降。
 - [x] **ShellRequest::with_timeout が実行経路で未使用でハングコマンドが無期限ブロック** — 2026-11-21 修正（run_with_timeout を追加し tokio::process + timeout で kill/reap、R1 指摘反映）。
 - [x] **既定 fs サービスがルート無制限の FileSystem::local()（パス閉じ込め opt-in）** — 2026-11-21 対応（provide_fs_scoped を追加し host が明示選択、scoped root を構築時に canonicalize 固定、既存 provide_fs は互換維持、R1 敵対レビュー反映）。
 - [x] **DeepSeekConfig.base_url が任意ホストへ API キー付きリクエストを送信** — 2026-11-21 修正（validated_endpoint で https＋api.deepseek.com allowlist、userinfo/path trick 拒否、送信前に検証、R1 敵対レビュー反映）。
