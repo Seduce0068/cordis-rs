@@ -1249,3 +1249,43 @@ fn js_literal_block_preserves_bare_hash() {
         Some(&Value::String("sibling".to_string()))
     );
 }
+
+#[test]
+fn composition_state_save_leaves_no_temp_residue() {
+    use cordis_rs::loader::CompositionState;
+
+    let dir = std::env::temp_dir().join(format!("cordis-state-tmp-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("state.json");
+
+    let mut state = CompositionState::new();
+    state.set("a", false);
+    state.save(&path).unwrap();
+
+    // No sibling .tmp residue from the atomic rename (R2-BV03).
+    let residue: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.file_name().to_string_lossy().to_string())
+        .filter(|name| name.ends_with(".tmp"))
+        .collect();
+    assert!(residue.is_empty(), "temp residue: {residue:?}");
+
+    // Repeated saves still round-trip and leave no residue.
+    state.set("b", true);
+    state.save(&path).unwrap();
+    assert_eq!(CompositionState::try_load(&path).unwrap(), state);
+    let residue: Vec<_> = std::fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.file_name().to_string_lossy().to_string())
+        .filter(|name| name.ends_with(".tmp"))
+        .collect();
+    assert!(
+        residue.is_empty(),
+        "temp residue after second save: {residue:?}"
+    );
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}

@@ -226,7 +226,21 @@ impl CompositionState {
         for (id, enabled) in &self.overrides {
             map.insert(id.clone(), serde_json::Value::Bool(*enabled));
         }
-        let temp = path.with_extension("tmp");
+        // Unique sibling temp name: a fixed `.tmp` suffix collides when two
+        // processes save the same state concurrently, and one rename could
+        // persist the other's data (swarm review R2-BV03). No counter field is
+        // added so CompositionState keeps its derived Clone/PartialEq.
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let unique = format!(
+            "{}.{}.{}.tmp",
+            path.file_name().unwrap_or_default().to_string_lossy(),
+            std::process::id(),
+            nanos
+        );
+        let temp = path.with_file_name(unique);
         std::fs::write(&temp, serde_json::Value::Object(map).to_string())
             .map_err(|error| LoaderError::Structure(error.to_string()))?;
         std::fs::rename(&temp, path).map_err(|error| {
