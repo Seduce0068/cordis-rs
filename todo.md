@@ -154,7 +154,7 @@ status: current
 - [x] **EventLogReporter::with_max_counters(0) が黙って 1 に丸め validate と方針不一致** — 2026-11-22 修正（assert!(max_counters > 0) で fail-fast、should_panic テスト追加、R2 指摘反映）。
 - [ ] **DeepSeek 拡張の warn-once 集合が永続し初回以降の provider 失敗が不可視** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:30,86-105` / R2-OB03 / 重大度 medium / confirmed
 - [x] **McpResourceRegistry::register_scoped の bool が他レジストリと逆意味、unregister が空スロープを残す** — 2026-11-22 修正（新規登録で true、空スコープを remove、回帰テスト追加、R2 指摘反映）。
-- [ ] **SessionQueryEngine::index がスナップショット保持で更新が反映されず unindex 手段も無い** — 根拠 `src/services/session_query.rs:38-44` / R2-DI02 / 重大度 medium / likely
+- [x] **SessionQueryEngine::index がスナップショット保持で更新が反映されず unindex 手段も無い** — 2026-11-22 検証の結果修正（Session は内部 Arc 共有で実質ライブ参照。remove/refresh を追加し doc コメントを実態に修正、回帰テスト追加、R2 指摘反映）。
 - [x] **production_ports.rs の本番 port カバレッジが3件に留まる（tool_fs/tool_bash/session_persistence_jsonl を追加）** — 2026-11-22 修正（3 port の mount スモークを追加、計6件の本番 port を検証、R3 指摘反映）。
 - [ ] **未生成の error enum バリアントが API サーフェスに残る（UserQuestionError 等）** — 根拠 `src/ports/user_questions.rs:25-35`, `src/ports/tool_exit_plan_mode.rs:17-20` / R2-ER06 / 重大度 low / confirmed
 - [x] **README のテストファイル一覧に tests/production_ports.rs が載っていない** — 2026-11-22 修正（テストファイル一覧に本番 port mount 検証を追加、R3 指摘反映）。

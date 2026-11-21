@@ -5220,3 +5220,26 @@ fn plan_mode_log_is_bounded_per_session() {
     assert_eq!(log.last().map(|event| event.seq), Some(5));
     assert!(mode.is_active("s1"));
 }
+
+#[test]
+fn session_query_index_is_a_snapshot_with_refresh_and_remove() {
+    use cordis_rs::core_services::{Session, SessionQueryEngine};
+
+    let engine = SessionQueryEngine::new();
+    let session = Session::new("sq1", None);
+    session.append("user/message", serde_json::json!({"text": "first"}));
+    engine.index(session.clone());
+    assert_eq!(engine.trace("sq1").len(), 1);
+
+    // Session clones share their inner state, so an append on the original
+    // is visible through the index (live reference, not a deep copy).
+    session.append("user/message", serde_json::json!({"text": "second"}));
+    assert_eq!(engine.trace("sq1").len(), 2);
+
+    // refresh re-indexes explicitly; remove drops the entry entirely.
+    engine.refresh(session.clone());
+    assert_eq!(engine.trace("sq1").len(), 2);
+    assert!(engine.remove("sq1"));
+    assert!(engine.trace("sq1").is_empty());
+    assert!(!engine.remove("sq1"));
+}

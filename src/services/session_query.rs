@@ -35,12 +35,30 @@ impl SessionQueryEngine {
         Self::default()
     }
 
+    /// Index `session`. `Session` clones share their inner event state, so
+    /// later `append`s on the original are visible here. `refresh` re-indexes
+    /// explicitly and `remove` drops the entry (swarm review R2-DI02).
     pub fn index(&self, session: Session) {
         self.state
             .write()
             .expect("session query state poisoned")
             .sessions
             .insert(session.id().to_string(), session);
+    }
+
+    /// Replace the indexed snapshot of a session (equivalent to re-indexing).
+    pub fn refresh(&self, session: Session) {
+        self.index(session);
+    }
+
+    /// Remove a session from the index. Returns true if one was present.
+    pub fn remove(&self, session_id: &str) -> bool {
+        self.state
+            .write()
+            .expect("session query state poisoned")
+            .sessions
+            .remove(session_id)
+            .is_some()
     }
 
     pub fn get(&self, session_id: &str) -> Option<Session> {
