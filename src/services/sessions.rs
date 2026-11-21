@@ -9,7 +9,7 @@
 use std::sync::{Arc, Mutex, RwLock};
 
 use crate::Result;
-use crate::context::Disposer;
+use crate::primitives::Disposer;
 
 /// One committed session event (branded seq per session).
 #[derive(Debug, Clone, PartialEq)]

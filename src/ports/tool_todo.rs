@@ -10,8 +10,8 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 
-use crate::context::Disposer;
 use crate::events::BoxFuture;
+use crate::primitives::Disposer;
 use crate::{Context, Error, Plugin, Result};
 
 const DESCRIPTION_HEAD: &str = "Record and update a task list to plan multi-step work and show progress; skip it for trivial single-step tasks. Add one todo per concrete step before you start. ";

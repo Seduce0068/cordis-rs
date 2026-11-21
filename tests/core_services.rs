@@ -2682,7 +2682,7 @@ fn registry_register<F>(
     registry: &cordis_rs::core_services::ToolRegistry,
     name: &str,
     factory: F,
-) -> cordis_rs::context::Disposer
+) -> cordis_rs::Disposer
 where
     F: Fn() -> cordis_rs::events::BoxFuture<
             'static,

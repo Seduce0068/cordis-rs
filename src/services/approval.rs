@@ -7,7 +7,7 @@
 
 use std::sync::{Arc, RwLock};
 
-use crate::context::Disposer;
+use crate::primitives::Disposer;
 use crate::{Error, Result};
 
 #[derive(Debug, Clone, PartialEq)]

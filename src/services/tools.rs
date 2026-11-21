@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use crate::Result;
-use crate::context::Disposer;
 use crate::events::BoxFuture;
+use crate::primitives::Disposer;
 
 pub type ToolHandler = Arc<
     dyn Fn(

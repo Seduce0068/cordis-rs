@@ -26,7 +26,7 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
-use crate::context::{Context, Disposer};
+use crate::primitives::Disposer;
 
 /// A decode failure observed by a `typed_event!` listener.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -343,7 +343,7 @@ where
     }
 
     /// Register an around-middleware listener. Returns a one-shot disposer.
-    pub fn on_waterfall<F>(&self, ctx: &Context, listener: F) -> Disposer
+    pub fn on_waterfall<F>(&self, ctx: &crate::Context, listener: F) -> Disposer
     where
         F: Fn(Shared<A>, Next<A, R>) -> BoxFuture<'static, Result<R>> + Send + Sync + 'static,
     {
@@ -371,7 +371,7 @@ where
     /// calling `next`. Not calling `next` vetoes the rest of the chain.
     /// Calling `next` twice returns `Err`, as upstream throws
     /// `next() called multiple times` (catchable rather than a panic).
-    pub async fn waterfall<F>(&self, ctx: &Context, args: A, terminal: F) -> Result<R>
+    pub async fn waterfall<F>(&self, ctx: &crate::Context, args: A, terminal: F) -> Result<R>
     where
         F: Fn(&A) -> R + Send + Sync + 'static,
     {
@@ -439,7 +439,7 @@ where
     }
 
     /// Register a serial listener. Returning `Some` bails the chain.
-    pub fn on_serial<F>(&self, ctx: &Context, listener: F) -> Disposer
+    pub fn on_serial<F>(&self, ctx: &crate::Context, listener: F) -> Disposer
     where
         F: Fn(A) -> BoxFuture<'static, Option<R>> + Send + Sync + 'static,
     {
@@ -464,7 +464,7 @@ where
     }
 
     /// Await serial listeners in registration order, stopping at the first bail.
-    pub async fn serial(&self, ctx: &Context, args: A) -> Option<R> {
+    pub async fn serial(&self, ctx: &crate::Context, args: A) -> Option<R> {
         self.serial_with_registry(ctx.event_registry(), args).await
     }
 
@@ -483,7 +483,7 @@ where
     }
 
     /// Register a synchronous bail listener. Returning `Some` bails the chain.
-    pub fn on_bail<F>(&self, ctx: &Context, listener: F) -> Disposer
+    pub fn on_bail<F>(&self, ctx: &crate::Context, listener: F) -> Disposer
     where
         F: Fn(A) -> Option<R> + Send + Sync + 'static,
     {
@@ -502,7 +502,7 @@ where
     }
 
     /// Run synchronous bail listeners in registration order.
-    pub fn bail(&self, ctx: &Context, args: A) -> Option<R> {
+    pub fn bail(&self, ctx: &crate::Context, args: A) -> Option<R> {
         self.bail_with_registry(ctx.event_registry(), args)
     }
 
@@ -525,7 +525,7 @@ impl<A> Event<A, ()>
 where
     A: Clone + Send + Sync + 'static,
 {
-    pub fn on_emit<F>(&self, ctx: &Context, listener: F) -> Disposer
+    pub fn on_emit<F>(&self, ctx: &crate::Context, listener: F) -> Disposer
     where
         F: Fn(A) -> BoxFuture<'static, ()> + Send + Sync + 'static,
     {
@@ -545,7 +545,7 @@ where
 
     /// Await observers in registration order (deterministic test helper).
     /// A panicking observer stops dispatch and propagates, matching upstream.
-    pub async fn emit(&self, ctx: &Context, args: A)
+    pub async fn emit(&self, ctx: &crate::Context, args: A)
     where
         A: Clone,
     {
@@ -566,7 +566,7 @@ where
 
     /// Fire-and-forget dispatch on the current Tokio runtime.
     /// Spawn each listener on the current Tokio runtime (fire-and-forget).
-    pub fn emit_spawn(&self, ctx: &Context, args: A)
+    pub fn emit_spawn(&self, ctx: &crate::Context, args: A)
     where
         A: Clone + 'static,
     {
@@ -589,7 +589,7 @@ where
 
     /// Deprecated alias for [`Event::emit_spawn`].
     #[deprecated(note = "use `emit_spawn` instead")]
-    pub fn emit_detached(&self, ctx: &Context, args: A)
+    pub fn emit_detached(&self, ctx: &crate::Context, args: A)
     where
         A: Clone + 'static,
     {
@@ -602,7 +602,7 @@ where
     A: Clone + Send + Sync + 'static,
 {
     /// Run all observers concurrently on the current executor.
-    pub async fn parallel(&self, ctx: &Context, args: A) {
+    pub async fn parallel(&self, ctx: &crate::Context, args: A) {
         self.parallel_with_registry(ctx.event_registry(), args)
             .await
     }
@@ -620,7 +620,7 @@ where
 
     /// Register a fallible observer. These live in a separate slot, so they
     /// are dispatched only by `parallel_errors`, never by `emit`/`parallel`.
-    pub fn on_emit_fallible<F>(&self, ctx: &Context, listener: F) -> Disposer
+    pub fn on_emit_fallible<F>(&self, ctx: &crate::Context, listener: F) -> Disposer
     where
         F: Fn(A) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static,
     {
@@ -647,7 +647,7 @@ where
     /// propagate; only returned errors are collected.
     pub async fn parallel_errors(
         &self,
-        ctx: &Context,
+        ctx: &crate::Context,
         args: A,
     ) -> std::result::Result<(), EmitErrors> {
         self.parallel_errors_with_registry(ctx.event_registry(), args)

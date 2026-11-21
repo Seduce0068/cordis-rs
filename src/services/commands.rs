@@ -6,7 +6,7 @@
 use std::sync::{Arc, RwLock};
 
 use crate::Result;
-use crate::context::Disposer;
+use crate::primitives::Disposer;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CommandInvocation {

@@ -83,8 +83,11 @@ status: proposed
    `&EventRegistry` 受け取り版へ追加し、`&Context` 版を adapter 化。
    waterfall 系（`on_waterfall` / `waterfall`）は既に `*_with_registry` で完了済み。
    `emit_detached` は deprecated のため、新 API を足すなら `emit_spawn` に統合する。
-5. ⬜ 残る `Disposer` 依存を共通 primitives へ移動。このとき初めて
-   `events.rs` の `use crate::context::...` が消え、真の循环解消となる。
+5. ✅ 残る `Disposer` を共通 `primitives` モジュールへ移動し、events.rs の
+   `use crate::context::...` を削除（adapter は `crate::Context` 完全修飾）。
+   **注記（R1 指摘）**: direct module import は消えたが、`crate::Context` は
+   `context::Context` の re-export なので**意味的な型依存は残存**する。
+   "真の cycle 解消" ではなく "direct import の除去" と表現するのが正確。
 6. ✅ 既存の全イベントテスト（`emit` / `parallel` / `serial` / `bail` / `waterfall` と
    scope filter 系）が通ることを確認（215 tests）。
 
