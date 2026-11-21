@@ -72,7 +72,7 @@ status: current
 - [x] **smoke-gui.sh が外部 dsh / DeepSeek 認証を要するバイナリを含み失敗する** — 2026-11-21 修正（認証必須 / 外部 dsh 必須の2 bin を除外し手動起動を README に明記、R5-VU02 反映）。
 - [x] **EventLogReporter が max_events 超過を無音破棄し消失検知手段がない** — 2026-11-21 修正（dropped_events カウンタと dropped() アクセサを追加、R5-VU04 反映）。
 - [ ] **破損 composition state が GUI で警告されず無効化設定が失われる** — 根拠 `src/loader.rs:238-283`, `dsh-gpui-client-poc/src/bin/cordis_entries_toggle_ui.rs:617-638` / R5-VU05 / 重大度 medium / confirmed
-- [ ] **障害時トラブルシューティング / 復旧 runbook が存在しない** — 根拠 `docs/index.md:1-23`, `README.md:63-119` / R5-VU06 / 重大度 medium / likely
+- [x] **障害時トラブルシューティング / 復旧 runbook が存在しない** — 2026-11-21 修正（doc-create スキルの runbook テンプレートで docs/troubleshooting.md を作成、index / README からリンク、R5-VU06 反映）。
 
 - [x] **check-doc-counts.sh が ports 数を算出するだけでドキュメント検証していない** — 2026-11-19 修正（ports 検証と矛盾行ゼロ条件を追加、陳腐な 20/13 を更新）。
 - [x] **ローカル verify.sh と CI ゲートの clippy 引数・extra_gates が乖離** — 2026-11-19 修正（--locked、ゲート順、audit、check-no-unsafe、check-doc-counts を同期、R4 指摘反映）。

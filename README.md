@@ -89,7 +89,8 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 `session_persistence_jsonl.rs:238` / `sandbox_policy.rs:1,6` /
 `approval.rs:157` / `hooks_claude_code.rs:139`。
 
-**既知の fail-open / stub は「未対応」ではなく現状の制約**。fail-open 行は
+障害時の切り分け手順は
+[troubleshooting runbook](docs/troubleshooting.md) を参照。**既知の fail-open / stub は「未対応」ではなく現状の制約**。fail-open 行は
 解消条件を満たした時点で stable へ移動する暫定ラベルであり、永久分類ではない。
 本番では `require_approval()` と answerer 登録、実行ポイントへの policy 接続を
 明示的に行うこと。
