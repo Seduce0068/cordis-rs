@@ -190,7 +190,7 @@ status: current
 - [x] **PROGRESS.md の残タスク件数が todo.md の実未着手数と乖離** — 2026-11-22 修正（固定数をやめ todo.md を正とする記述に変更、スナップショット値 20 件を明記、R6 指摘反映）。
 - [x] **tool_goal の max_goal_rounds が u64→u32 無検証キャストで丸められる** — 2026-11-22 修正（u32::try_from で範囲外を InvalidArgs 拒否、回帰テスト追加、R6 指摘反映）。
 - [x] **hooks_claude_code の parse_config が数値設定を無検証で受け入れる** — 2026-11-22 修正（0 と usize 超过値を Err として拒否、回帰テスト追加、R6 指摘反映）。
-- [x] **session_turn_outline の turn 比較が u64→i64 キャストで順序を誤る** — 2026-11-22 修正（last_turn を Option<u64> にして u64 同士で比較、i64::MAX 超回帰テスト追加、R6 指摘反映）。
+- [x] **session_turn_outline の turn 比較が u64→i64 キャストで順序を誤る** — 2026-11-22 修正（last_turn を `Option<u64>` にして u64 同士で比較、i64::MAX 超回帰テスト追加、R6 指摘反映）。
 
 ## 完了
 
