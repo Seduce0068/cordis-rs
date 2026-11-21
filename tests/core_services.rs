@@ -4628,3 +4628,59 @@ async fn shell_request_timeout_applies_and_kills_child() {
     // Display must not embed the 3-digit ms value (retry misdetection).
     assert_eq!(ShellError::TimedOut(80).to_string(), "command timed out");
 }
+
+#[test]
+fn deepseek_base_url_validation_blocks_credential_exfiltration() {
+    use cordis_rs::core_services::StreamChunk;
+    use cordis_rs::plugin_ports::{
+        DeepSeekConfig, FakeTransport, HttpResponse, handler_with_transport,
+    };
+    use futures::StreamExt;
+
+    let request = cordis_rs::core_services::LlmRequest {
+        model: "deepseek-chat".to_string(),
+        messages: vec![cordis_rs::core_services::ChatMessage::user("hello")],
+    };
+
+    // Default official URL still works.
+    let transport = FakeTransport::new();
+    transport.push_response(HttpResponse::ok("ok"));
+    let config = DeepSeekConfig::default();
+    assert!(
+        config
+            .validated_endpoint()
+            .unwrap()
+            .starts_with("https://api.deepseek.com/")
+    );
+    let handler = handler_with_transport(&config, "secret", std::sync::Arc::new(transport.clone()));
+    let chunks: Vec<_> =
+        futures::executor::block_on(async { handler(request.clone()).collect().await });
+    assert!(
+        chunks
+            .iter()
+            .any(|c| matches!(c, StreamChunk::Text(t) if t == "ok"))
+    );
+    assert_eq!(transport.requests().len(), 1);
+
+    // Hostile URLs are rejected before the key is attached: no transport call.
+    for base in [
+        "http://api.deepseek.com",
+        "https://evil.com",
+        "https://api.deepseek.com@evil.com",
+        "https://api.deepseek.com.evil.com",
+    ] {
+        let config = DeepSeekConfig {
+            base_url: base.to_string(),
+            ..Default::default()
+        };
+        assert!(config.validated_endpoint().is_err(), "must reject {base}");
+        let transport = FakeTransport::new();
+        transport.push_response(HttpResponse::ok("should not be used"));
+        let handler =
+            handler_with_transport(&config, "secret", std::sync::Arc::new(transport.clone()));
+        let chunks: Vec<_> =
+            futures::executor::block_on(async { handler(request.clone()).collect().await });
+        assert!(chunks.iter().any(|c| matches!(c, StreamChunk::Error(_))));
+        assert!(transport.requests().is_empty(), "no request to {base}");
+    }
+}

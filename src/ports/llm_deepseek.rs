@@ -8,6 +8,8 @@
 //! Source: `packages/llm/llm-deepseek-api-key/src/{index,config}.ts` in
 //! deepseek-ai/deepseek-harness (MIT), read as untrusted reference data.
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 
 use crate::Result;
@@ -39,6 +41,34 @@ impl Default for DeepSeekConfig {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CredentialError {
     Missing(String),
+}
+
+impl DeepSeekConfig {
+    /// Validate `base_url` before attaching an API key. Only HTTPS to the
+    /// official DeepSeek host (or its subdomains) is allowed; userinfo and
+    /// path tricks are rejected by parsing rather than string matching
+    /// (R3-DE04). The default keeps existing hosts working.
+    pub fn validated_endpoint(&self) -> std::result::Result<String, String> {
+        let parsed =
+            url::Url::parse(&self.base_url).map_err(|_| "invalid DeepSeek base_url".to_string())?;
+        if parsed.scheme() != "https" {
+            return Err("DeepSeek base_url must use https".to_string());
+        }
+        if !parsed.username().is_empty() || parsed.password().is_some() {
+            return Err("DeepSeek base_url must not contain userinfo".to_string());
+        }
+        let host = parsed
+            .host_str()
+            .ok_or_else(|| "DeepSeek base_url must contain a host".to_string())?;
+        if host != "api.deepseek.com" && !host.ends_with(".api.deepseek.com") {
+            return Err("DeepSeek base_url host is not allowed".to_string());
+        }
+        let mut endpoint = parsed;
+        endpoint.set_path("/chat/completions");
+        endpoint.set_query(None);
+        endpoint.set_fragment(None);
+        Ok(endpoint.to_string())
+    }
 }
 
 impl std::fmt::Display for CredentialError {
@@ -75,8 +105,21 @@ pub fn handler_with_transport(
 ) -> crate::services::llm::StreamHandler {
     let identity = crate::plugin_ports::AppIdentity::default();
     let mut headers = crate::plugin_ports::attribution_headers(&identity);
+    // Validate before attaching the key so a hostile base_url cannot receive
+    // it (R3-DE04). On failure, emit an error chunk without touching transport.
+    let endpoint = match config.validated_endpoint() {
+        Ok(endpoint) => endpoint,
+        Err(error) => {
+            let error = Arc::new(error);
+            return Arc::new(move |_request| {
+                let error = error.clone();
+                Box::pin(futures::stream::once(async move {
+                    crate::services::llm::StreamChunk::Error((*error).clone())
+                }))
+            });
+        }
+    };
     headers.push(("authorization".to_string(), format!("Bearer {api_key}")));
-    let endpoint = format!("{}/chat/completions", config.base_url.trim_end_matches('/'));
     crate::plugin_ports::handler_from_transport(transport, endpoint, headers)
 }
 
