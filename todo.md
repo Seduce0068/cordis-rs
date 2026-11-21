@@ -145,6 +145,23 @@ status: current
 - [x] **v1.0.0 での旧名 alias 削除が未トラック（deprecated 7個）** — 2026-11-21 修正（ADR-005 に v1.0.0 削除チェックリストと検証手順を追加、R2-FG10 反映）。
 - [x] **クレート版数とリリースタグの記述が Cargo.toml / PROGRESS / ADR-001 で食い違う** — 2026-11-21 修正（PROGRESS/ADR-001 のタグ範囲を v0.261.0 に最新化、README に crate version 0.1.0 固定・タグは時系列マーカー方針を明記、R1-CF03 反映）。
 
+- [ ] **tool_todo::mount が "sessionProjections" を core と同名で提供し二重登録で衝突** — 根拠 `src/ports/tool_todo.rs:454`, `src/services/sessions.rs:388` / R2-AR04 / 重大度 high / confirmed
+- [ ] **inject() が空なのに apply() で require() する port（tool_schedule / tool_exit_plan_mode）** — 根拠 `src/ports/tool_schedule.rs:146-153`, `src/ports/tool_exit_plan_mode.rs:88-94` / R2-ST02 / 重大度 medium / confirmed
+- [ ] **SessionTitles::derive_from_messages が get→set 別ロックで LLM 生成タイトルを上書き** — 根拠 `src/services/session_titles.rs:66-75` / R2-DI01 / 重大度 medium / confirmed
+- [ ] **CredentialProvider::set が参照名規則を検証せず解決不能な値を受理** — 根拠 `src/services/credentials.rs:19-32,78-89` / R2-IV01 / 重大度 medium / confirmed
+- [ ] **PlanMode セッション別ログが無上限で蓄積し削除 API も無い** — 根拠 `src/services/plan_mode.rs:20-23,36-49` / R2-OB02 / 重大度 medium / confirmed
+- [ ] **FieldSpec::range に min>max スキーマ不正チェックが無い** — 根拠 `src/config.rs:169-186,292-338` / R2-IV02 / 重大度 medium / confirmed
+- [ ] **EventLogReporter::with_max_counters(0) が黙って 1 に丸め validate と方針不一致** — 根拠 `src/services/telemetry.rs:36-44,98-101` / R2-CF03 / 重大度 medium / confirmed
+- [ ] **DeepSeek 拡張の warn-once 集合が永続し初回以降の provider 失敗が不可視** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:30,86-105` / R2-OB03 / 重大度 medium / confirmed
+- [ ] **McpResourceRegistry::register_scoped の bool が他レジストリと逆意味、unregister が空スロープを残す** — 根拠 `src/ports/mcp_resources.rs:86-120` / R2-AP05 / 重大度 medium / confirmed
+- [ ] **SessionQueryEngine::index がスナップショット保持で更新が反映されず unindex 手段も無い** — 根拠 `src/services/session_query.rs:38-44` / R2-DI02 / 重大度 medium / likely
+- [ ] **production_ports.rs の本番 port カバレッジが3件に留まる（tool_fs/tool_bash/session_persistence_jsonl を追加）** — 根拠 `tests/production_ports.rs:10-54` / R3-TS02 / 重大度 medium / confirmed
+- [ ] **未生成の error enum バリアントが API サーフェスに残る（UserQuestionError 等）** — 根拠 `src/ports/user_questions.rs:25-35`, `src/ports/tool_exit_plan_mode.rs:17-20` / R2-ER06 / 重大度 low / confirmed
+- [ ] **README のテストファイル一覧に tests/production_ports.rs が載っていない** — 根拠 `README.md:168-171` / R3-DC06 / 重大度 low / confirmed
+- [ ] **verify.sh がリポジトリ直下を cwd 前提でスクリプト参照表記も混在** — 根拠 `scripts/verify.sh:4-44` / R3-CF04 / 重大度 low / confirmed
+- [ ] **CodexToolPayload が未使用で hook rewrite 相当が未接続（Claude と同じ ADR で扱う）** — 根拠 `src/ports/hooks_codex.rs:19-25,119-145` / R3-FG04 / 重大度 low / likely
+- [ ] **check-doc-counts.sh が core service 数（38）を検証しない** — 根拠 `scripts/check-doc-counts.sh:8-26`, `README.md:30` / R3-CF05 / 重大度 low / likely
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -173,3 +190,4 @@ status: current
 
 - **swarm コンボ R6 集約（2026-11-21、round 38）**: `swarm-project-review`（R1-R5: architecture/API/error-handling/boundary/input-validation/deps-exposure/observability/CI/testing/docs/UX）と `swarm-todo-discovery`（R1静的シグナル/R3テスト・依存/R5価値運用）の8エージェントから約60件を取得。重複統合（固定sleep、markdownlint、otlp redaction）、却下2件: (1) 「tokio exact pin を外す」— 前回 R1 で xattr 0.2.3 衝突判断済みのため既存判断維持、(2) 「16箇所の `let _ = mount_retained` がゴーストファイバー」— `src/plugin.rs:174-188` を確認し mount_retained 自体が effect で fiber を保持しておりアンロードは動作（既存却下維持）。ただし `tool_fs.rs:318-321` のコメント（Weak 保持のためハンドル必須）とは内部矛盾するため要判断として記録。**CI ゲートの `let _fiber` パターン不一致は事実**なので gate 改善を high で採用。speculative 1件（services→ports 非対称依存）はメモ留め。
 - **swarm コンボ R6 集約（2026-11-21、round 89）**: `swarm-project-review` R1（AR/CF/DR）と `swarm-todo-discovery` R1（ST/FG）の2エージェントから17件を取得。重複0件、却下0件、17件すべてを根拠 confirmed で `## 未着手` へ追記（子の重大度を reference として親が再判定: high2 / medium12 / low3）。並列2・深度1の制限プロファイル。R2〜R5 は同一情報の重複取得を避けるため省略し、R1 で打ち切る。
+- **swarm コンボ R6 集約（2026-11-22、round 102）**: `swarm-project-review` R1（AR/CF/DR）と `swarm-todo-discovery` R1（ST/FG/TQ/DC）の2エージェントから16件を取得。既知の hooks-claude-code 重複は Codex 側の未接続として整理して追記。root が path:line を Runtime Proof で確認し16件を `## 未着手` へ追記（high1 / medium10 / low5、すべて small/medium の実装容易性）。R2〜R5 は同一情報の重複取得を避け省略。
