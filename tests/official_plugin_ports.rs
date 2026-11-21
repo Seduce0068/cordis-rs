@@ -2266,11 +2266,14 @@ async fn deepseek_llm_api_extensions_prepares_and_accepts_idempotently() {
     let prepared = registry.prepare(&request, false);
     assert_eq!(prepared.fields["clone"]["n"], 99); // snapshot taken at prepare time
 
-    // A failing provider is omitted and reported once.
+    // A failing provider is omitted and reported once per prepare call. A
+    // persistent failure stays visible on every call (swarm review R2-OB03).
     registry.register("broken", Arc::new(|_| Err("boom".to_string())));
     let prepared = registry.prepare(&request, false);
     assert!(prepared.fields.get("broken").is_none());
     assert_eq!(prepared.failures[0].0, "broken");
+    let prepared_again = registry.prepare(&request, false);
+    assert_eq!(prepared_again.failures[0].0, "broken");
 }
 
 #[tokio::test]

@@ -27,7 +27,6 @@ pub struct PreparedField {
 #[derive(Clone)]
 pub struct DeepSeekLlmApiExtensionRegistry {
     providers: Arc<Mutex<HashMap<String, ExtensionProvider>>>,
-    warned_fields: Arc<Mutex<std::collections::HashSet<String>>>,
 }
 
 impl Default for DeepSeekLlmApiExtensionRegistry {
@@ -40,7 +39,6 @@ impl DeepSeekLlmApiExtensionRegistry {
     pub fn new() -> Self {
         Self {
             providers: Arc::new(Mutex::new(HashMap::new())),
-            warned_fields: Arc::new(Mutex::new(std::collections::HashSet::new())),
         }
     }
 
@@ -67,7 +65,8 @@ impl DeepSeekLlmApiExtensionRegistry {
     }
 
     /// Prepare all fields. A provider whose preparation fails is omitted and
-    /// warned once per field; only the result set is returned. Values are
+    /// reported once per field *per call*: a persistent failure is visible in
+    /// every `PreparedExtensions.failures` (swarm review R2-OB03). Values are
     /// deep-cloned (serde_json ownership) so providers retain no alias.
     pub fn prepare(&self, request: &serde_json::Value, cancelled: bool) -> PreparedExtensions {
         if cancelled {
@@ -83,6 +82,7 @@ impl DeepSeekLlmApiExtensionRegistry {
         let mut fields = serde_json::Map::new();
         let mut callbacks: Vec<AcceptCallback> = Vec::new();
         let mut failures: Vec<(String, String)> = Vec::new();
+        let mut warned: std::collections::HashSet<String> = std::collections::HashSet::new();
         for (field, provider) in entries {
             match provider(request) {
                 Ok(Some(prepared)) => {
@@ -93,10 +93,6 @@ impl DeepSeekLlmApiExtensionRegistry {
                 }
                 Ok(None) => {}
                 Err(error) => {
-                    let mut warned = self
-                        .warned_fields
-                        .lock()
-                        .expect("extension registry poisoned");
                     if warned.insert(field.clone()) {
                         failures.push((field, error));
                     }
