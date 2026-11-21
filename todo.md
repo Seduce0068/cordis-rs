@@ -128,7 +128,7 @@ status: current
 - [x] **SkillRegistry::catalog が provider 失敗を空カタログとして握り潰す** — 2026-11-21 修正（SkillCatalog::failures と SkillProviderFailure を追加、PartialEq は skills のみ比較、R1 指摘反映）。
 
 - [x] **サービス名 "tools" が ToolRegistry と TodoTools で衝突し文字列キー127箇所に散在** — 2026-11-21 修正（tool_todo 側を `TODO_TOOLS_SERVICE_NAME` = "todoTools" に改名、provide/inject/apply 3箇所同時、25箇所の require は不変、両順序共存テスト追加、R1 指摘反映）。
-- [ ] **ToolRegistry::invoke 直呼びが approval ゲートを素通り** — 根拠 `docs/ADR-012-shell-command-approval.md:98-102`, `src/services/tools.rs:226` / R2-FG01 / 重大度 high / confirmed（ADR-012 で既知制約として明記済み、完全 fail-closed は未実装）
+- [x] **ToolRegistry::invoke 直呼びが approval ゲートを素通り** — 2026-11-22 判断（ゲート化せず現状維持。71件の invoke 直呼び互換を守り、pipeline.run() のみがゲートを通る旨を README に明記、R1 指摘反映）。
 - [ ] **job kill が状態反転のみで実プロセスを停止しない** — 根拠 `docs/ADR-002-tool-jobs-port-scope.md:30-31`, `src/services/jobs.rs:275-282` / R2-FG04 / 重大度 medium / confirmed（意図的差分だが停止経路なし）
 - [x] **provide-if-absent ガードが `get::<T>()` の型不一致を未登録と誤判定（6箇所）** — 2026-11-21 修正（6箇所を get_untyped() に置換、型衝突を正しく検出、回帰テスト追加、R1 指摘反映）。
 - [x] **FieldSpec の min/max が f64 のみで Integer(i64) の範囲検証が精度落ち** — 2026-11-21 修正（min_int/max_int + range_int を追加、i64 同士で比較、既存 range(f64) は維持、2^53 超回帰テスト追加、R1 指摘反映）。

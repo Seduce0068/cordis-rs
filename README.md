@@ -101,6 +101,11 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 本番では `require_approval()` と answerer 登録、実行ポイントへの policy 接続を
 明示的に行うこと。
 
+**approval ゲートの範囲**: `ToolPipeline::run()` 経由の呼び出しのみが approval
+ゲートを通る。`ToolRegistry::invoke()` の直接呼び出しは低レベル API として
+middleware を通さず、**完全な fail-closed は未達**（ADR-012 の既知制約）。
+host は policy を適用する経路で `pipeline.run()` を使うこと。
+
 ## 検証
 
 ```bash
