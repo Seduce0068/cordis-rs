@@ -35,7 +35,8 @@ if ! command -v gitleaks >/dev/null 2>&1; then
     install_gitleaks_ci
   else
     echo "gitleaks is required for the secret scan gate; install via" >&2
-    echo "  cargo install gitleaks                 (local)" >&2
+    echo "  pre-commit install                     (local, see .pre-commit-config.yaml)" >&2
+    echo "  GitHub Releases binary                 (https://github.com/gitleaks/gitleaks/releases)" >&2
     echo "  taiki-e/install-action@tool=gitleaks   (CI)" >&2
     exit 1
   fi
