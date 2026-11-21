@@ -103,7 +103,7 @@ status: current
 
 - [x] **EventRegistry::slot が読み取りのたび空スロットを生成し動的イベント名で無限成長** — 2026-11-21 修正（try_slot 追加で snapshot 系は空スロットを生成しない、R2-BV09 反映）。
 - [x] **Error::Plugin が原因を文字列化し source チェーンと型情報が失われる** — 2026-11-21 修正（`Plugin(String, #[source] Box<Error>)` で根本原因を保持、R2-ER05 反映）。
-- [ ] **plugin_ports が71のフラット re-export を持ち公開 API が肥大** — 根拠 `src/lib.rs:43,113` / R1-AP04 / 重大度 low / likely
+- [x] **plugin_ports が71のフラット re-export を持ち公開 API が肥大** — 2026-11-21 判断（削除せず現状維持を README に明記。glob import 0 件・名前衝突 0・cargo check 成功の Runtime Proof、旧名 alias は v1.0.0 方針維持）。R1-AP04 反映。
 - [x] **読み取り path が省略表記で src/ports 配下を辿れない（README 安定性マトリクス）** — 2026-11-21 修正（6つの根拠パスを root 相対完全修飾に変更、R5-DC07 反映）。
 - [x] **port 件数の定義が README と PROGRESS で食い違う** — 2026-11-21 検証の結果却下（両者とも「再利用 port 63、library port は hook-protocol 別枠」で整合済み。doc-count gate も tests=240 ports=63 で通過）。R5-DC08 の指摘は古いスナップショット Based。
 - [x] **EventLogOptions に validation がなく batch_size=0 で除数判定が不成立** — 2026-11-21 修正（validate() と InvalidOptions、record() が不正設定を fail-closed で拒否、R4-OB07 反映）。

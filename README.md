@@ -46,6 +46,10 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 
 `plugin_ports` は多数の helper を Flat に re-export する。用途に応じて次の
 エントリポイントから始めること（旧名 alias は v1.0.0 で削除予定）。
+現状維持の根拠: 呼び出し側は `plugin_ports::` / `core_services::` と名前空間を
+明示し glob import は使用しない規約のため、平坦 re-export による名前衝突は
+発生しない（実測: glob import 0 件、cargo check 成功）。旧名 alias は
+公表済みの v1.0.0 方針に従い維持し、単なる件数削減は行わない。
 
 | ドメイン | まず手に取る API |
 | --- | --- |
