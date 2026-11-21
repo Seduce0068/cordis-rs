@@ -69,7 +69,7 @@ status: current
 - [ ] **port 初期化 API が mount と provide の二系統（lifecycle も不同）** — 根拠 `src/ports/tool_fs.rs:mount`, `src/ports/fs_patch.rs:provide` / R1-AP03 / 重大度 medium / confirmed
 - [ ] **require_untyped が未登録サービスを無期限・無ログで待つ** — 根拠 `src/context.rs:555-571` / R5-VU09 / 重大度 medium / confirmed
 - [x] **GUI のエラー表示が次の成功後も消えない** — 2026-11-21 修正（take_prompt で前回の error バナーをクリア、R5-VU01 反映）。
-- [ ] **smoke-gui.sh が外部 dsh / DeepSeek 認証を要するバイナリを含み失敗する** — 根拠 `dsh-gpui-client-poc/scripts/smoke-gui.sh:16-29,71-81` / R5-VU02 / 重大度 medium / likely
+- [x] **smoke-gui.sh が外部 dsh / DeepSeek 認証を要するバイナリを含み失敗する** — 2026-11-21 修正（認証必須 / 外部 dsh 必須の2 bin を除外し手動起動を README に明記、R5-VU02 反映）。
 - [x] **EventLogReporter が max_events 超過を無音破棄し消失検知手段がない** — 2026-11-21 修正（dropped_events カウンタと dropped() アクセサを追加、R5-VU04 反映）。
 - [ ] **破損 composition state が GUI で警告されず無効化設定が失われる** — 根拠 `src/loader.rs:238-283`, `dsh-gpui-client-poc/src/bin/cordis_entries_toggle_ui.rs:617-638` / R5-VU05 / 重大度 medium / confirmed
 - [ ] **障害時トラブルシューティング / 復旧 runbook が存在しない** — 根拠 `docs/index.md:1-23`, `README.md:63-119` / R5-VU06 / 重大度 medium / likely
