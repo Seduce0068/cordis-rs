@@ -142,7 +142,7 @@ status: current
 - [ ] **JSONL 永続化が通常 turn へ自動配線されていない** — 根拠 `README.md:85`, `src/ports/session_persistence_jsonl.rs:348-351` / R2-FG07 / 重大度 medium / confirmed
 - [ ] **FileSystem::scoped の symlink TOCTOU 残存** — 根拠 `README.md:82`, `src/services/fs.rs:83-125` / R2-FG08 / 重大度 medium / confirmed
 - [x] **session-query port が SQLite/FTS5 ではなく決定的インメモリ検索の差分が README に無い** — 2026-11-21 修正（安定性マトリクスに phase-1 行と FTS5 未実装を明記、R2-FG09 反映）。
-- [ ] **v1.0.0 での旧名 alias 削除が未トラック（deprecated 7個）** — 根拠 `README.md:48`, `src/lib.rs:64-66` / R2-FG10 / 重大度 low / confirmed
+- [x] **v1.0.0 での旧名 alias 削除が未トラック（deprecated 7個）** — 2026-11-21 修正（ADR-005 に v1.0.0 削除チェックリストと検証手順を追加、R2-FG10 反映）。
 - [ ] **クレート版数とリリースタグの記述が Cargo.toml / PROGRESS / ADR-001 で食い違う** — 根拠 `Cargo.toml:3`, `docs/PROGRESS.md:24`, `docs/ADR-001-cordis-runtime-reimplementation.md:44` / R1-CF03 / 重大度 low / confirmed
 
 ## 完了

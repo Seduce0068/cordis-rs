@@ -44,6 +44,18 @@ rustdoc が誤った情報を表示するため、バージョン方針が固ま
 `emit_detached`（events.rs）は本 ADR の alias 表には無い rename（→ `emit_spawn`）
 で、削除時期は未定義（参照0件なので安全に削除可能だが注記統一の範囲外）。
 
+### v1.0.0 削除チェックリスト（2026-11-21 追加）
+
+README が予告する v1.0.0 では、上記の「旧名 → 新名」7件すべての deprecated
+re-export を `src/lib.rs` から削除する。削除前に次を確認する。
+
+- [ ] 上記7 alias の旧名参照が `src/` / `tests/` / `examples/` のどこにも無いこと。
+- [ ] `src/lib.rs` に `#[deprecated]` が残っていないこと（`grep -c '#\[deprecated\]' src/lib.rs` が 0）。
+- [ ] README / ADR の「旧名 alias は v1.0.0 で削除予定」を「削除済み」へ更新すること。
+
+削除は 0.x の minor 相当の破壊変更に該当するため、タグは v1.0.0 を待つ（ADR-008 準拠）。
+`emit_detached` は本チェックリストの対象外（別途判断）。
+
 ## 検証
 
 `cargo fmt --all --check` / `cargo check --all-targets` / `cargo clippy --all-targets -- -D warnings` /
