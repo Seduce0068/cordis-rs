@@ -1,12 +1,12 @@
 ---
 type: Reference
 title: "cordis-rs 実装進捗"
-description: "Cordis 互換ランタイム再実装の到達点（100 ラウンド時点）"
+description: "Cordis 互換ランタイム再実装の到達点（67 自律ラウンド時点）"
 tags:
   - cordis-rs
   - progress
 generated:
-  at: "2026-11-17T21:56:29+09:00"
+  at: "2026-11-21T19:10:18+09:00"
 status: current
 ---
 
@@ -14,14 +14,14 @@ status: current
 
 DSH の GPUI 再実装における最大の障壁だった Cordis プラグインを、Rust の
 互換ランタイム `cordis-rs` と公式プラグインの port で置き換える取り組み。
-100 ラウンド時点の到達点を記録する。
+67 自律ラウンド時点の到達点を記録する。
 
 ## 成果
 
 - コアサービス 38 個（service 37 module + port 経由の `messageFeedback`）
-- port 63 個（再利用・library 含む、library port は `hook-protocol` 他）
-- テスト 237 件（5 テストファイル）、example 7 個
-- GitHub タグ `v0.1.0` 〜 `v0.181.0`、commits 263
+- port 63 個（再利用 port。library port は hook-protocol を別枠で管理）
+- テスト 237 件（8 テストファイル）、example 7 個
+- GitHub タグ `v0.1.0` 〜 `v0.245.0`、commits 331
 - ライセンス: AGPL-3.0-or-later（上流 MIT 通知は THIRD_PARTY_NOTICES.md に保持）
 - 上流 `snapshots/sdk/text-turn/cordis.yml` の 6 エントリすべてを mount
 
@@ -33,23 +33,28 @@ DSH の GPUI 再実装における最大の障壁だった Cordis プラグイ�
   文字列メソッド・配列／オブジェクト／テンプレートリテラル）
 - agent loop（systemPrompt / goals / compaction / approval / retry /
   timeout を接続）
+- ADR-009〜012: FiberObserver 依存逆転、EventScopeView、Shell 承認境界を
+  順に設計・実装（ADR-010 のみ proposed、他は accepted）
 
 ## GPUI クライアント
 
 - 別リポジトリ `dsh-gpui-client-poc` に 18 bin
 - todo / fs / agent / prompt / 実 composition / plugin トグル /
   権限フロー / ACP ストリーム / retry / session title を描画
-- `scripts/smoke-gui.sh` で 12 GPUI デモの起動を検証
+- `scripts/smoke-gui.sh` で GPUI デモの起動を検証
 
 ## 検証
 
-- `scripts/verify.sh`: fmt → check → clippy → test → example smoke
+- `scripts/verify.sh`: fmt → check → clippy → test → smoke → シークレットスキャン → markdownlint
 - CI は共通ワークフロー `Seduce0068/workflows` の `rust-gates.yml@v1` に委譲
-- smoke script を `extra_gates` に接続
+- `extra_gates`: smoke-examples / check-no-unsafe / check-doc-counts /
+  check-secrets（gitleaks） / check-markdown（全 17 Markdown）
+- pre-commit は gitleaks を主軸、CI スキャンを最終ゲートとして併設
 
 ## 未対応
 
 - 公式プラグイン 332 個の全移植（現状 63 port）
 - Schemastery DSL の完全互換とファイル監視 HMR
-- OTLP 実送信（`ctx.otel` は in-memory レコードのみ）
+- OTLP 実送信（`ctx.otel` は in-memory レコードのみ。redaction / 上限 /
+  失敗カウンタ / export 時刻は整備済み）
 - モデル側残高不足により ACP ストリーミング本文の実描画は未検証
