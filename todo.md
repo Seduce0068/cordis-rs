@@ -113,7 +113,7 @@ status: current
 - [x] **session reference のデコード上限欠如と markdown 引用の不完全エスケープ** — 2026-11-21 修正（ペイロード長上限とエラーの URI 非露出、ラベルは [ ] ) 改行をエスケープ、R3-IV10 反映）。
 - [ ] **compaction-automation の LLM 要約が pruning stub のまま（README に制約記載なし）** — 根拠 `src/ports/compaction_automation.rs:5-6`, `README.md:32,55` / R2-FG02 / 重大度 low / confirmed
 - [ ] **hooks-claude-code の updatedInput/systemMessage/Ask/SessionStart が未接続** — 根拠 `src/ports/hooks_claude_code.rs:137-142` / R2-FG03 / 重大度 low / confirmed
-- [ ] **mount_real_composition が部分失敗を assert で落とし診断レポートとして機能しない** — 根拠 `examples/mount_real_composition.rs:141-162` / R5-VU08 / 重大度 low / confirmed
+- [x] **mount_real_composition が部分失敗を assert で落とし診断レポートとして機能しない** — 2026-11-21 修正（assert を外し skipped/failed を id と理由付きで一覧出力、R5-VU08 反映）。
 - [ ] **README が mount_real_composition の動作を 2 箇所で矛盾説明** — 根拠 `README.md:137-138,149-150` / R2-FG04 / 重大度 low / confirmed
 - [ ] **テスト用一時ディレクトリが PID 依存かつ手動削除で失敗時にゴミが残る** — 根拠 `tests/core_services.rs:594,3928`, `tests/config_loader.rs:705` / R4-TQ09 / 重大度 low / confirmed
 - [ ] **GUI README が実装と矛盾する旧パス・旧バージョン記述** — 根拠 `dsh-gpui-client-poc/README.md:35,171`, `Cargo.toml:10` / R5-VU03 / 重大度 low / confirmed
