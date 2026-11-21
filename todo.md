@@ -162,6 +162,21 @@ status: current
 - [x] **CodexToolPayload が未使用で hook rewrite 相当が未接続（Claude と同じ ADR で扱う）** — 2026-11-22 一部修正（CodexToolPayload に Serialize を付与し tool_payload() が struct を構築、未使用シンボル解消。 rewritten input 相当の未接続は Claude/Codex 共通の phase-2 として残る）。
 - [x] **check-doc-counts.sh が core service 数（38）を検証しない** — 2026-11-22 修正（services モジュール数+messageFeedback を計算し3ドキュメントで照合、gate 通過、R3 指摘反映）。
 
+- [ ] **PermissionPresets::register で追加したカスタム preset を switch できない** — 根拠 `src/services/permission_presets.rs:161-195` / R3-AP01 / 重大度 high / confirmed
+- [ ] **RetryPolicy::error_code が任意テキストの3桁数字を HTTP ステータスとして誤抽出** — 根拠 `src/services/retry.rs:54-66,76-80` / R3-IV03 / 重大度 medium / confirmed
+- [ ] **RetryPolicy::jitter_ratio に検証がなく不正値で busy retry になる** — 根拠 `src/services/retry.rs:15,84-93` / R3-CF06 / 重大度 medium / confirmed
+- [ ] **EventLogReporter::new が EventLogOptions を検証せず不正設定を保持** — 根拠 `src/services/telemetry.rs:36-45,87-94` / R3-CF07 / 重大度 low / confirmed
+- [ ] **check-secrets.sh がローカル導入法として存在しない cargo install gitleaks を案内** — 根拠 `scripts/check-secrets.sh:38` / R3-DC07 / 重大度 low / confirmed
+- [ ] **verify.sh と CI extra_gates で markdownlint の実行順が乖離** — 根拠 `scripts/verify.sh:3,22-47`, `.github/workflows/ci.yml:25-30` / R3-CF08 / 重大度 low / confirmed
+- [ ] **Duration::from_millis の doc がクランプと誤記（実装は格納のみ）** — 根拠 `src/ports/duration.rs:14-17` / R3-DC08 / 重大度 low / confirmed
+- [ ] **WorkspaceRegistry::sessions_in が未存在 workspace を空 Vec に丸める** — 根拠 `src/services/workspace.rs:123-128` / R3-AP02 / 重大度 low / confirmed
+- [ ] **6 件の ADR に古いテスト件数が残り doc-count ゲート対象外** — 根拠 `docs/ADR-002...:78` 他 / R4-DC09 / 重大度 low / confirmed
+- [ ] **PROGRESS.md と README の検証ゲート記述が verify.sh の実順と不一致** — 根拠 `docs/PROGRESS.md:52-54`, `README.md:129` / R4-DC10 / 重大度 low / confirmed
+- [ ] **runbook が mount_real_composition / require の旧挙動を案内** — 根拠 `docs/troubleshooting.md:49-50,66` / R4-DC11 / 重大度 low / confirmed
+- [ ] **公開ドキュメントにホスト固有絶対パスと非公開レポート参照が残存** — 根拠 `docs/troubleshooting.md:36`, `README.md:195` / R4-DC12 / 重大度 low / confirmed
+- [ ] **examples が固定 /tmp パスを使用し smoke 並列実行で衝突しうる** — 根拠 `examples/mount_real_composition.rs:23`, `examples/agent_demo.rs:44` / R4-OB04 / 重大度 low / confirmed
+- [ ] **Shell の stdout/stderr 読み取りエラーが握り潰され不完全出力が成功として返る** — 根拠 `src/services/shell.rs:215-232` / R4-ER07 / 重大度 low / likely
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -191,3 +206,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-21、round 38）**: `swarm-project-review`（R1-R5: architecture/API/error-handling/boundary/input-validation/deps-exposure/observability/CI/testing/docs/UX）と `swarm-todo-discovery`（R1静的シグナル/R3テスト・依存/R5価値運用）の8エージェントから約60件を取得。重複統合（固定sleep、markdownlint、otlp redaction）、却下2件: (1) 「tokio exact pin を外す」— 前回 R1 で xattr 0.2.3 衝突判断済みのため既存判断維持、(2) 「16箇所の `let _ = mount_retained` がゴーストファイバー」— `src/plugin.rs:174-188` を確認し mount_retained 自体が effect で fiber を保持しておりアンロードは動作（既存却下維持）。ただし `tool_fs.rs:318-321` のコメント（Weak 保持のためハンドル必須）とは内部矛盾するため要判断として記録。**CI ゲートの `let _fiber` パターン不一致は事実**なので gate 改善を high で採用。speculative 1件（services→ports 非対称依存）はメモ留め。
 - **swarm コンボ R6 集約（2026-11-21、round 89）**: `swarm-project-review` R1（AR/CF/DR）と `swarm-todo-discovery` R1（ST/FG）の2エージェントから17件を取得。重複0件、却下0件、17件すべてを根拠 confirmed で `## 未着手` へ追記（子の重大度を reference として親が再判定: high2 / medium12 / low3）。並列2・深度1の制限プロファイル。R2〜R5 は同一情報の重複取得を避けるため省略し、R1 で打ち切る。
 - **swarm コンボ R6 集約（2026-11-22、round 102）**: `swarm-project-review` R1（AR/CF/DR）と `swarm-todo-discovery` R1（ST/FG/TQ/DC）の2エージェントから16件を取得。既知の hooks-claude-code 重複は Codex 側の未接続として整理して追記。root が path:line を Runtime Proof で確認し16件を `## 未着手` へ追記（high1 / medium10 / low5、すべて small/medium の実装容易性）。R2〜R5 は同一情報の重複取得を避け省略。
+- **swarm コンボ R6 集約（2026-11-22、round 119）**: `swarm-project-review` R1（AR/CF/AP/DC）と `swarm-todo-discovery` R1（ST/TQ/DC）の2エージェントから14件を取得。root が path:line を Runtime Proof で確認し14件を `## 未着手` へ追記（high1 / medium2 / low11）。R2〜R5 は同一情報の重複取得を避け省略。
