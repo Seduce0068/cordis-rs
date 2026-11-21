@@ -2,10 +2,23 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
-use cordis_rs::{Context, Event, FunctionPlugin, Lifecycle, Plugin, Result};
+use cordis_rs::{Context, Event, Fiber, FunctionPlugin, Lifecycle, Plugin, Result};
 
 #[derive(Clone)]
 struct Counter(Arc<AtomicUsize>);
+
+/// Wait until a fiber reaches `expected`, polling with a bounded deadline.
+/// A non-zero poll interval yields to spawned refresh tasks on the
+/// current-thread Tokio runtime (swarm review R5-TS02).
+async fn wait_for_state(fiber: &Fiber, expected: Lifecycle) {
+    tokio::time::timeout(Duration::from_secs(2), async {
+        while fiber.state() != expected {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .unwrap_or_else(|_| panic!("fiber did not reach {expected:?} within 2s"));
+}
 
 #[tokio::test]
 async fn service_registry_and_isolate() {
@@ -202,7 +215,7 @@ async fn fiber_waits_for_inject_and_reloads_when_it_returns() {
     assert!(!applied.load(Ordering::SeqCst));
 
     ctx.provide("config", 1u32).await.unwrap();
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    wait_for_state(&fiber, Lifecycle::Active).await;
     assert_eq!(fiber.state(), Lifecycle::Active);
     assert!(applied.load(Ordering::SeqCst));
     assert_eq!(
@@ -211,7 +224,7 @@ async fn fiber_waits_for_inject_and_reloads_when_it_returns() {
     );
 
     ctx.remove_service("config").unwrap();
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    wait_for_state(&fiber, Lifecycle::Pending).await;
     assert_eq!(fiber.state(), Lifecycle::Pending);
     assert!(fiber.context().get::<String>("greeting").is_none());
 }
@@ -706,17 +719,17 @@ async fn fiber_reloads_via_async_drain_after_dependency_loss() {
     .unwrap();
 
     ctx.provide("config", 1u32).await.unwrap();
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    wait_for_state(&fiber, Lifecycle::Active).await;
     assert_eq!(fiber.state(), Lifecycle::Active);
 
     // Async removal drains dependents; the fiber retires temporarily.
     ctx.remove_service_async("config").await.unwrap();
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    wait_for_state(&fiber, Lifecycle::Pending).await;
     assert_eq!(fiber.state(), Lifecycle::Pending);
 
     // Dependency returns: drain must refresh the (no longer retiring) fiber.
     ctx.provide("config", 1u32).await.unwrap();
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    wait_for_state(&fiber, Lifecycle::Active).await;
     assert_eq!(
         fiber.state(),
         Lifecycle::Active,

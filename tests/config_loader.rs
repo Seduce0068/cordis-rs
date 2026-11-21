@@ -357,7 +357,14 @@ async fn yaml_inject_delays_fiber_until_dependency_is_provided() {
     assert!(!ran.load(Ordering::SeqCst));
 
     ctx.provide("input", 1u32).await.unwrap();
-    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    // Poll with a bounded deadline instead of a fixed sleep (R5-TS02).
+    tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        while fibers[0].state() != Lifecycle::Active {
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("fiber did not reach Active within 2s");
     assert_eq!(fibers[0].state(), Lifecycle::Active);
     assert!(ran.load(Ordering::SeqCst));
 }
