@@ -179,7 +179,7 @@ pub async fn mount(ctx: &Context, max_parallel: usize) -> Result<NativeToolExecu
         .get::<ExecutorSelector>("toolExecutor")
         .map(|arc| (*arc).clone())
         .unwrap_or_default();
-    if ctx.get::<ExecutorSelector>("toolExecutor").is_none() {
+    if ctx.get_untyped("toolExecutor").is_none() {
         let _ = ctx.provide("toolExecutor", holder.clone()).await?;
     }
     let executor =

@@ -207,7 +207,7 @@ pub async fn mount(ctx: &Context, shell: Shell, config: ToolBashConfig) -> Resul
     if let Some(pipeline) = ctx.get::<crate::services::tools::ToolPipeline>("toolPipeline") {
         pipeline.require_approval();
     }
-    if ctx.get::<Shell>("shell").is_none() {
+    if ctx.get_untyped("shell").is_none() {
         ctx.provide("shell", shell).await?;
     }
     let _ = crate::Fiber::mount_retained(ctx, Box::new(ToolBash { config })).await?;

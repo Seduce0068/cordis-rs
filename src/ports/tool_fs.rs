@@ -312,7 +312,7 @@ impl crate::Plugin for ToolFs {
 /// Mount with a filesystem and the shared tools seam.
 pub async fn mount(ctx: &Context, fs: FileSystem, config: ToolFsConfig) -> Result<ToolRegistry> {
     let tools = ctx.require::<ToolRegistry>("tools").await?;
-    if ctx.get::<FileSystem>("fs").is_none() {
+    if ctx.get_untyped("fs").is_none() {
         ctx.provide("fs", fs).await?;
     }
     let fiber = crate::Fiber::mount_retained(ctx, Box::new(ToolFs { config })).await?;

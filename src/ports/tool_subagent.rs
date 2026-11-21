@@ -110,7 +110,7 @@ impl crate::Plugin for ToolSubagent {
 /// Mount with the shared tools and subagents seams.
 pub async fn mount(ctx: &Context, config: ToolSubagentConfig) -> Result<ToolRegistry> {
     let tools = ctx.require::<ToolRegistry>("tools").await?;
-    if ctx.get::<SubagentRegistry>("subagents").is_none() {
+    if ctx.get_untyped("subagents").is_none() {
         crate::core_services::provide_subagents(ctx).await?;
     }
     let _ = crate::Fiber::mount_retained(ctx, Box::new(ToolSubagent { config })).await?;

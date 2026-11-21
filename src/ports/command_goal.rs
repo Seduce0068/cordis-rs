@@ -114,7 +114,7 @@ pub async fn mount(ctx: &Context) -> Result<GoalStore> {
     } else {
         crate::core_services::provide_goals(ctx).await?
     };
-    if ctx.get::<CommandRegistry>("commands").is_none() {
+    if ctx.get_untyped("commands").is_none() {
         crate::core_services::provide_commands(ctx).await?;
     }
     let _ = crate::Fiber::mount_retained(ctx, Box::new(CommandGoal)).await?;

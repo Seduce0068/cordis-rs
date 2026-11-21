@@ -5122,3 +5122,17 @@ fn plugin_error_preserves_source_chain() {
     assert!(source.to_string().contains("config"));
     assert!(wrapped.to_string().contains("greeter"));
 }
+
+#[tokio::test]
+async fn provide_if_absent_guard_detects_type_mismatch() {
+    use cordis_rs::Context;
+
+    let ctx = Context::root("type-mismatch-guard");
+    // Register a service under "shell" with a type the port does not expect.
+    ctx.provide("shell", 42u32).await.unwrap();
+
+    // A typed get would downcast to None and look "absent"; the untyped
+    // guard must see the entry and skip re-registration (R1-AR02).
+    assert!(ctx.get_untyped("shell").is_some());
+    assert!(ctx.get::<String>("shell").is_none());
+}
