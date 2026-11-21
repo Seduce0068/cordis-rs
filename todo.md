@@ -67,7 +67,7 @@ status: current
 - [ ] **loader.rs が YAML 解析・式評価・検証・composition 構築の4責務（2102行）** — 根拠 `src/loader.rs:1,706,1220,2102` / R1-AR01 / 重大度 medium / confirmed
 - [ ] **23個のドメイン Error enum が Error::Other に平坦化され種別分岐不能** — 根拠 `src/error.rs:4,30,34`, `src/loader.rs:108` / R1-AP02 / 重大度 medium / confirmed
 - [ ] **port 初期化 API が mount と provide の二系統（lifecycle も不同）** — 根拠 `src/ports/tool_fs.rs:mount`, `src/ports/fs_patch.rs:provide` / R1-AP03 / 重大度 medium / confirmed
-- [ ] **require_untyped が未登録サービスを無期限・無ログで待つ** — 根拠 `src/context.rs:555-571` / R5-VU09 / 重大度 medium / confirmed
+- [x] **require_untyped が未登録サービスを無期限・無ログで待つ** — 2026-11-21 修正（require_untyped_with_timeout を追加、既存 require 85 箇所は不変、エラーに service 名と ctx 名、R1 指摘反映）。
 - [x] **GUI のエラー表示が次の成功後も消えない** — 2026-11-21 修正（take_prompt で前回の error バナーをクリア、R5-VU01 反映）。
 - [x] **smoke-gui.sh が外部 dsh / DeepSeek 認証を要するバイナリを含み失敗する** — 2026-11-21 修正（認証必須 / 外部 dsh 必須の2 bin を除外し手動起動を README に明記、R5-VU02 反映）。
 - [x] **EventLogReporter が max_events 超過を無音破棄し消失検知手段がない** — 2026-11-21 修正（dropped_events カウンタと dropped() アクセサを追加、R5-VU04 反映）。

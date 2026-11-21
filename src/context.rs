@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
+use std::time::Duration;
 
 use tokio::sync::Notify;
 
@@ -563,6 +564,25 @@ impl Context {
             }
             notified.await;
         }
+    }
+
+    /// Resolve a service with a bounded wait. Unlike `require_untyped`, this
+    /// returns an error instead of waiting forever, so a missing dependency
+    /// surfaces as a diagnosable failure (swarm review R5-VU09). Existing
+    /// `require` / `require_untyped` keep their unbounded-wait contract.
+    pub async fn require_untyped_with_timeout(
+        &self,
+        name: &str,
+        timeout: Duration,
+    ) -> Result<Arc<dyn Any + Send + Sync>> {
+        tokio::time::timeout(timeout, self.require_untyped(name))
+            .await
+            .map_err(|_| {
+                Error::Other(format!(
+                    "timed out waiting for service `{name}` in context `{}`",
+                    self.name()
+                ))
+            })?
     }
 
     pub async fn require<T>(&self, name: &str) -> Result<Arc<T>>

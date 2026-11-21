@@ -769,3 +769,35 @@ async fn once_listener_fires_exactly_once_under_concurrent_emit() {
         "once listener must fire exactly once under concurrent emit"
     );
 }
+
+#[tokio::test]
+async fn require_untyped_with_timeout_bounds_wait() {
+    use cordis_rs::Context;
+    use std::time::Duration;
+
+    let ctx = Context::root("require-timeout");
+
+    // Missing service: bounded wait returns an error naming both the service
+    // and the context (swarm review R5-VU09).
+    let error = ctx
+        .require_untyped_with_timeout("missing", Duration::from_millis(20))
+        .await
+        .unwrap_err()
+        .to_string();
+    assert!(
+        error.contains("missing"),
+        "error must name the service: {error}"
+    );
+    assert!(
+        error.contains("require-timeout"),
+        "error must name the waiting context: {error}"
+    );
+
+    // After registration the same call succeeds.
+    ctx.provide("missing", 42u32).await.unwrap();
+    let value = ctx
+        .require_untyped_with_timeout("missing", Duration::from_secs(1))
+        .await
+        .unwrap();
+    assert_eq!(*value.downcast::<u32>().unwrap(), 42);
+}
