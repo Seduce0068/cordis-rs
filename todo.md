@@ -163,7 +163,7 @@ status: current
 - [x] **check-doc-counts.sh が core service 数（38）を検証しない** — 2026-11-22 修正（services モジュール数+messageFeedback を計算し3ドキュメントで照合、gate 通過、R3 指摘反映）。
 
 - [x] **PermissionPresets::register で追加したカスタム preset を switch できない** — 2026-11-22 修正（Preset::parse 失敗を Err ではなく preset=None として扱い spec の sandbox/approval を適用、公開型不変、回帰テスト追加、R1 指摘反映）。
-- [ ] **RetryPolicy::error_code が任意テキストの3桁数字を HTTP ステータスとして誤抽出** — 根拠 `src/services/retry.rs:54-66,76-80` / R3-IV03 / 重大度 medium / confirmed
+- [x] **RetryPolicy::error_code が任意テキストの3桁数字を HTTP ステータスとして誤抽出** — 2026-11-22 修正（HTTP/status/TIMEOUT ラベル直後の3桁のみ抽出、"retry in 500ms" 等は拒否、回帰テスト追加、R1 指摘反映）。
 - [x] **RetryPolicy::jitter_ratio に検証がなく不正値で busy retry になる** — 2026-11-22 修正（ratio を [0,1] にクランプ＋NaN 防御、jitter に 0.1 下限、回帰テスト追加、R3 指摘反映）。
 - [ ] **EventLogReporter::new が EventLogOptions を検証せず不正設定を保持** — 根拠 `src/services/telemetry.rs:36-45,87-94` / R3-CF07 / 重大度 low / confirmed
 - [ ] **check-secrets.sh がローカル導入法として存在しない cargo install gitleaks を案内** — 根拠 `scripts/check-secrets.sh:38` / R3-DC07 / 重大度 low / confirmed

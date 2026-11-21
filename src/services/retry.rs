@@ -51,14 +51,30 @@ impl RetryPolicy {
         }
     }
 
-    /// Extract an HTTP status code from an error message (e.g. `429`).
+    /// Extract an HTTP status code from a labelled error message (e.g.
+    /// `"HTTP 429"`, `"status 503"`, `"TIMEOUT 504: ..."`). Bare 3-digit runs
+    /// such as `"retry in 500ms"` are ignored so unrelated numbers cannot
+    /// trigger a retry (swarm review R3-IV03).
     pub fn error_code(error: &crate::Error) -> Option<u32> {
         let text = error.to_string();
-        for token in text.split(|ch: char| !ch.is_ascii_digit()) {
-            if token.len() == 3
-                && let Ok(code) = token.parse::<u32>()
-                && (100..600).contains(&code)
-            {
+        for (start, token) in digits_with_positions(&text) {
+            if token.len() != 3 {
+                continue;
+            }
+            let code: u32 = match token.parse() {
+                Ok(code) => code,
+                Err(_) => continue,
+            };
+            if !(100..600).contains(&code) {
+                continue;
+            }
+            // Require a known label immediately before the number, separated
+            // by whitespace. `start` is the byte offset of the first digit.
+            let before = &text[..start];
+            let labelled = ["HTTP ", "status ", "TIMEOUT "]
+                .iter()
+                .any(|label| before.ends_with(label));
+            if labelled {
                 return Some(code);
             }
         }
@@ -102,6 +118,25 @@ impl RetryPolicy {
             .min(self.max_delay_ms as f64)
             .max(0.0) as u64
     }
+}
+
+/// Yield (byte offset, digit run) for each run of ASCII digits in `text`.
+fn digits_with_positions(text: &str) -> Vec<(usize, &str)> {
+    let mut result = Vec::new();
+    let bytes = text.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i].is_ascii_digit() {
+            let start = i;
+            while i < bytes.len() && bytes[i].is_ascii_digit() {
+                i += 1;
+            }
+            result.push((start, &text[start..i]));
+        } else {
+            i += 1;
+        }
+    }
+    result
 }
 
 pub async fn provide(ctx: &crate::Context) -> Result<RetryPolicy> {

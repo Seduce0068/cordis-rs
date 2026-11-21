@@ -5311,3 +5311,24 @@ fn retry_backoff_stays_positive_with_invalid_jitter_ratio() {
         );
     }
 }
+
+#[test]
+fn retry_error_code_requires_a_label() {
+    use cordis_rs::Error;
+    use cordis_rs::core_services::RetryPolicy;
+
+    for (message, expected) in [
+        ("HTTP 429 rate limited", Some(429)),
+        ("status 503", Some(503)),
+        ("TIMEOUT 504: no done", Some(504)),
+        ("retry in 500ms", None),
+        ("timed out after 1000ms", None),
+        ("error 499", None),
+    ] {
+        assert_eq!(
+            RetryPolicy::error_code(&Error::Other(message.to_string())),
+            expected,
+            "message: {message}"
+        );
+    }
+}
