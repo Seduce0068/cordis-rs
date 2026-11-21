@@ -169,7 +169,7 @@ status: current
 - [x] **check-secrets.sh がローカル導入法として存在しない cargo install gitleaks を案内** — 2026-11-22 修正（案内を pre-commit install と GitHub Releases／taiki-e に差し替え、R3 指摘反映）。
 - [x] **verify.sh と CI extra_gates で markdownlint の実行順が乖離** — 2026-11-22 修正（markdownlint を secret scan 直後に移動し CI の extra_gates と同順に、別 cwd から全ゲート通過を検証、R3 指摘反映）。
 - [x] **Duration::from_millis の doc がクランプと誤記（実装は格納のみ）** — 2026-11-22 修正（コメントを「検証なしの格納」に修正、範囲チェックは try_from_millis の責務と明記、R3 指摘反映）。
-- [ ] **WorkspaceRegistry::sessions_in が未存在 workspace を空 Vec に丸める** — 根拠 `src/services/workspace.rs:123-128` / R3-AP02 / 重大度 low / confirmed
+- [x] **WorkspaceRegistry::sessions_in が未存在 workspace を空 Vec に丸める** — 2026-11-22 修正（tool_session_list 側で事前に get(id) 存在確認し NotFound を InvalidArgs として拒否、公開 API 不変、R3 指摘反映）。
 - [x] **6 件の ADR に古いテスト件数が残り doc-count ゲート対象外** — 2026-11-22 修正（6 ADR の件数に「受諾時点」と明記、現行値は README/PROGRESS を参照と注記、履歴文書として保持、R4 指摘反映）。
 - [x] **PROGRESS.md と README の検証ゲート記述が verify.sh の実順と不一致** — 2026-11-22 修正（PROGRESS / README / runbook の3記述を verify.sh 実順に統一、R4 指摘反映）。
 - [x] **runbook が mount_real_composition / require の旧挙動を案内** — 2026-11-22 修正（diagnostic レポートと require_untyped_with_timeout を反映、R4-DC11 反映）。

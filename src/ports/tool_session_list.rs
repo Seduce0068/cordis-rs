@@ -106,8 +106,17 @@ fn list_session_handler(
                 .and_then(|value| value.as_bool())
                 .unwrap_or(false);
 
-            let allowed: Option<Vec<String>> =
-                workspace_id.as_deref().map(|id| workspaces.sessions_in(id));
+            // Reject an unknown workspace rather than silently returning an
+            // empty session list (swarm review R3-AP02).
+            let allowed: Option<Vec<String>> = match workspace_id.as_deref() {
+                Some(id) => match workspaces.get(id) {
+                    Some(_) => Some(workspaces.sessions_in(id)),
+                    None => {
+                        return Err(ToolError::InvalidArgs(format!("workspace not found: {id}")));
+                    }
+                },
+                None => None,
+            };
             // Archived sessions are those not present in the live store.
             let live: std::collections::HashSet<String> = sessions
                 .list()
