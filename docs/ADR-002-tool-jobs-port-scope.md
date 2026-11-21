@@ -75,4 +75,4 @@ AgentLoop が `ToolExecContext::agent("agent-1")` 固定であるため、実効
 ## 検証
 
 `cargo fmt --all --check` / `cargo check --all-targets` / `cargo clippy --all-targets -- -D warnings` /
-`cargo test --all-targets`（140 tests）および GitHub Actions が成功していること。
+`cargo test --all-targets`（140 tests（受諾時点の件数。現行値は README / PROGRESS を参照））および GitHub Actions が成功していること。

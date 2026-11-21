@@ -34,5 +34,5 @@ disposer が fiber の effect scope とともに確実に解除される。
 
 ## 検証
 
-`cargo test --all-targets`（159 tests）と CI（audit / unsafe lint / ghost-fiber gate
+`cargo test --all-targets`（159 tests（受諾時点の件数。現行値は README / PROGRESS を参照））と CI（audit / unsafe lint / ghost-fiber gate
 含む）が成功すること。

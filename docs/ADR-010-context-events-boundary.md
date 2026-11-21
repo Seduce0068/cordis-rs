@@ -89,7 +89,7 @@ status: proposed
    `context::Context` の re-export なので**意味的な型依存は残存**する。
    "真の cycle 解消" ではなく "direct import の除去" と表現するのが正確。
 6. ✅ 既存の全イベントテスト（`emit` / `parallel` / `serial` / `bail` / `waterfall` と
-   scope filter 系）が通ることを確認（215 tests）。
+   scope filter 系）が通ることを確認（215 tests（受諾時点の件数。現行値は README / PROGRESS を参照））。
 
 ### R1 再評価（2026-11-21）
 

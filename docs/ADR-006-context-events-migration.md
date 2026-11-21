@@ -37,4 +37,4 @@ Context に追加する。既存の `Event<A,R>` descriptor API は維持し、�
 ## 検証
 
 `cargo fmt --all --check` / `cargo check --all-targets` / `cargo clippy --all-targets -- -D warnings` /
-`cargo test --all-targets`（143 tests）が成功すること。
+`cargo test --all-targets`（143 tests（受諾時点の件数。現行値は README / PROGRESS を参照））が成功すること。

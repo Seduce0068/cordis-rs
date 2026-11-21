@@ -34,4 +34,4 @@ API 設計レビュー第3弾の指摘を受け、seam ごとの既定 fail 動�
 ## 検証
 
 `cargo fmt --all --check` / `cargo check --all-targets` / `cargo clippy --all-targets -- -D warnings` /
-`cargo test --all-targets`（142 tests）が成功すること。
+`cargo test --all-targets`（142 tests（受諾時点の件数。現行値は README / PROGRESS を参照））が成功すること。

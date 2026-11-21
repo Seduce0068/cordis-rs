@@ -59,4 +59,4 @@ re-export を `src/lib.rs` から削除する。削除前に次を確認する�
 ## 検証
 
 `cargo fmt --all --check` / `cargo check --all-targets` / `cargo clippy --all-targets -- -D warnings` /
-`cargo test --all-targets`（142 tests）が成功すること。
+`cargo test --all-targets`（142 tests（受諾時点の件数。現行値は README / PROGRESS を参照））が成功すること。
