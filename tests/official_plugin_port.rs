@@ -4,6 +4,10 @@
 //! deepseek-ai/deepseek-harness. The port keeps the plugin's contract:
 //! `inject = ['commands', 'compaction']`, an argument-free `/compact`
 //! command, and the human-facing outcome strings.
+//!
+//! NOTE: this is a LOCAL REPRODUCTION with in-test stubs, NOT a test of the
+//! production `src/ports/command_compact.rs` (whose result string differs).
+//! Production ports are covered by `tests/production_ports.rs`.
 
 use std::sync::{Arc, Mutex};
 

@@ -5,9 +5,12 @@
 //! - `packages/goal/command-goal/src/index.ts` (`@deepseek-ai/dsh-command-goal`)
 //! - `packages/todo/tool-todo/src/index.ts` (`@deepseek-ai/dsh-tool-todo`)
 //!
-//! The ports preserve the upstream contracts (`name`, `inject`, reversible
-//! registration, and the human-facing result strings) with small in-test
-//! service stubs, so no new dependency and no `src/*` change is needed.
+//! NOTE: these are LOCAL REPRODUCTIONS of the upstream contracts (`name`,
+//! `inject`, reversible registration, result strings) using in-test stubs.
+//! They are NOT tests of the production `src/ports/{command_goal,tool_todo}.rs`
+//! implementations — those are covered by `tests/production_ports.rs` and the
+//! core-services suite. Do not treat a passing stub test as proof that the
+//! production port works (swarm review R5-TS01).
 
 use cordis_rs::Context;
 
