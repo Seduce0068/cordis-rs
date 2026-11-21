@@ -104,7 +104,8 @@ fn foreground_handler(shell: Shell) -> ToolHandler {
                 request = request.in_dir(dir);
             }
             let result = shell
-                .run(&request)
+                .run_with_timeout(&request)
+                .await
                 .map_err(|error| ToolError::Execution(error.to_string()))?;
             Ok(ToolOutput {
                 content: serde_json::json!({

@@ -66,7 +66,7 @@ impl std::fmt::Display for ShellError {
         match self {
             Self::InvalidCommand(message) => write!(f, "invalid command: {message}"),
             Self::Spawn(message) => write!(f, "failed to spawn: {message}"),
-            Self::TimedOut(ms) => write!(f, "command timed out after {ms}ms"),
+            Self::TimedOut(_ms) => write!(f, "command timed out"),
         }
     }
 }
@@ -149,6 +149,62 @@ impl Shell {
     pub fn run(&self, request: &ShellRequest) -> std::result::Result<ShellResult, ShellError> {
         let spec = self.resolve(request)?;
         self.execute(&spec)
+    }
+
+    /// Resolve and execute with the request's timeout applied. The child is
+    /// spawned via `tokio::process` so it can be killed (and reaped) when the
+    /// deadline expires — `Command::output()` offers no cancellation (R3-IV02).
+    /// `timeout_ms = None` keeps the legacy synchronous path.
+    pub async fn run_with_timeout(
+        &self,
+        request: &ShellRequest,
+    ) -> std::result::Result<ShellResult, ShellError> {
+        let Some(timeout_ms) = request.timeout_ms else {
+            return self.run(request);
+        };
+        let spec = self.resolve(request)?;
+        let mut command = tokio::process::Command::new(&spec.program);
+        command.args(&spec.args);
+        if let Some(cwd) = &spec.cwd {
+            command.current_dir(cwd);
+        }
+        command.stdout(Stdio::piped()).stderr(Stdio::piped());
+        let mut child = command
+            .spawn()
+            .map_err(|error| ShellError::Spawn(error.to_string()))?;
+        // Take the pipes before waiting so `child` stays owned for kill().
+        let stdout = child.stdout.take();
+        let stderr = child.stderr.take();
+        match tokio::time::timeout(std::time::Duration::from_millis(timeout_ms), child.wait()).await
+        {
+            Ok(Ok(status)) => {
+                // Process exited; drain the captured pipes without a deadline
+                // (the child is gone, so readers cannot block forever).
+                let mut out = Vec::new();
+                let mut err = Vec::new();
+                if let Some(mut pipe) = stdout {
+                    use tokio::io::AsyncReadExt;
+                    let _ = pipe.read_to_end(&mut out).await;
+                }
+                if let Some(mut pipe) = stderr {
+                    use tokio::io::AsyncReadExt;
+                    let _ = pipe.read_to_end(&mut err).await;
+                }
+                Ok(ShellResult {
+                    stdout: String::from_utf8_lossy(&out).to_string(),
+                    stderr: String::from_utf8_lossy(&err).to_string(),
+                    exit_code: status.code().unwrap_or(-1),
+                    success: status.success(),
+                })
+            }
+            Ok(Err(error)) => Err(ShellError::Spawn(error.to_string())),
+            Err(_elapsed) => {
+                // Fail closed: drop partial output, kill then reap the child.
+                let _ = child.kill().await;
+                let _ = child.wait().await;
+                Err(ShellError::TimedOut(timeout_ms))
+            }
+        }
     }
 }
 

@@ -4594,3 +4594,37 @@ fn skill_catalog_reports_provider_failures_without_losing_other_skills() {
     other.failures.clear();
     assert_eq!(catalog, other);
 }
+
+#[tokio::test]
+async fn shell_request_timeout_applies_and_kills_child() {
+    use cordis_rs::core_services::{Shell, ShellError, ShellRequest};
+
+    let shell = Shell::new();
+
+    // No timeout keeps the legacy path and succeeds.
+    let ok = shell
+        .run_with_timeout(&ShellRequest::new("printf ok"))
+        .await
+        .unwrap();
+    assert_eq!(ok.stdout, "ok");
+
+    // A short timeout on a quick command still succeeds.
+    let ok = shell
+        .run_with_timeout(&ShellRequest::new("printf fast").with_timeout(2_000))
+        .await
+        .unwrap();
+    assert_eq!(ok.stdout, "fast");
+
+    // A hanging command is killed and reported as TimedOut (R3-IV02).
+    let start = std::time::Instant::now();
+    let result = shell
+        .run_with_timeout(&ShellRequest::new("sleep 30").with_timeout(80))
+        .await;
+    assert!(matches!(result, Err(ShellError::TimedOut(80))));
+    assert!(
+        start.elapsed() < std::time::Duration::from_secs(3),
+        "timeout must fire promptly, not wait for the child"
+    );
+    // Display must not embed the 3-digit ms value (retry misdetection).
+    assert_eq!(ShellError::TimedOut(80).to_string(), "command timed out");
+}
