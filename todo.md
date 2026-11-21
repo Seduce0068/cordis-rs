@@ -145,7 +145,7 @@ status: current
 - [x] **v1.0.0 での旧名 alias 削除が未トラック（deprecated 7個）** — 2026-11-21 修正（ADR-005 に v1.0.0 削除チェックリストと検証手順を追加、R2-FG10 反映）。
 - [x] **クレート版数とリリースタグの記述が Cargo.toml / PROGRESS / ADR-001 で食い違う** — 2026-11-21 修正（PROGRESS/ADR-001 のタグ範囲を v0.261.0 に最新化、README に crate version 0.1.0 固定・タグは時系列マーカー方針を明記、R1-CF03 反映）。
 
-- [ ] **tool_todo::mount が "sessionProjections" を core と同名で提供し二重登録で衝突** — 根拠 `src/ports/tool_todo.rs:454`, `src/services/sessions.rs:388` / R2-AR04 / 重大度 high / confirmed
+- [x] **tool_todo::mount が "sessionProjections" を core と同名で提供し二重登録で衝突** — 2026-11-22 修正（`TODO_PROJECTIONS_SERVICE_NAME` = "todoProjections" に改名、provide/inject/apply 3箇所同時、core 側不変、両順序共存テスト追加、R2 指摘反映）。
 - [ ] **inject() が空なのに apply() で require() する port（tool_schedule / tool_exit_plan_mode）** — 根拠 `src/ports/tool_schedule.rs:146-153`, `src/ports/tool_exit_plan_mode.rs:88-94` / R2-ST02 / 重大度 medium / confirmed
 - [ ] **SessionTitles::derive_from_messages が get→set 別ロックで LLM 生成タイトルを上書き** — 根拠 `src/services/session_titles.rs:66-75` / R2-DI01 / 重大度 medium / confirmed
 - [ ] **CredentialProvider::set が参照名規則を検証せず解決不能な値を受理** — 根拠 `src/services/credentials.rs:19-32,78-89` / R2-IV01 / 重大度 medium / confirmed

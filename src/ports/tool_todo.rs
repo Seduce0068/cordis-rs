@@ -8,6 +8,10 @@
 /// Service name for this port's Tools seam, distinct from the core
 /// ToolRegistry registered under `"tools"` (swarm review R1-AR01).
 pub const TODO_TOOLS_SERVICE_NAME: &str = "todoTools";
+/// Service name for this port's SessionProjections seam, distinct from the
+/// core SessionProjectionRegistry registered under "sessionProjections"
+/// (swarm review R2-AR04).
+pub const TODO_PROJECTIONS_SERVICE_NAME: &str = "todoProjections";
 
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
@@ -399,13 +403,13 @@ impl Plugin for ToolTodo {
     }
 
     fn inject(&self) -> &[&str] {
-        &[TODO_TOOLS_SERVICE_NAME, "sessionProjections"]
+        &[TODO_TOOLS_SERVICE_NAME, TODO_PROJECTIONS_SERVICE_NAME]
     }
 
     async fn apply(&self, ctx: &Context) -> Result<()> {
         let tools = ctx.require::<Tools>(TODO_TOOLS_SERVICE_NAME).await?;
         let projections = ctx
-            .require::<SessionProjections>("sessionProjections")
+            .require::<SessionProjections>(TODO_PROJECTIONS_SERVICE_NAME)
             .await?;
         let allow_parallel = self.allow_parallel;
         let tools_for_effect = tools.clone();
@@ -451,7 +455,7 @@ pub async fn mount(ctx: &Context, allow_parallel: bool) -> Result<MountedTodo> {
     let tools = Tools::default();
     let projections = SessionProjections::default();
     ctx.provide(TODO_TOOLS_SERVICE_NAME, tools.clone()).await?;
-    ctx.provide("sessionProjections", projections.clone())
+    ctx.provide(TODO_PROJECTIONS_SERVICE_NAME, projections.clone())
         .await?;
     let fiber = crate::Fiber::mount_retained(ctx, Box::new(ToolTodo { allow_parallel })).await?;
     if fiber.state() != crate::Lifecycle::Active {

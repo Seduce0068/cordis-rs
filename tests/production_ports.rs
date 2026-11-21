@@ -84,3 +84,29 @@ async fn tool_registry_and_todo_tools_coexist_on_one_context() {
             .is_some()
     );
 }
+
+#[tokio::test]
+async fn todo_projections_coexist_with_core_session_projections() {
+    use cordis_rs::core_services::provide_sessions;
+    use cordis_rs::plugin_ports::{TODO_PROJECTIONS_SERVICE_NAME, mount_tool_todo};
+
+    let ctx = Context::root("coexist-projections");
+    // Core registry and the tool-todo projection use distinct service names
+    // (swarm review R2-AR04), so both mounts succeed in either order.
+    provide_sessions(&ctx).await.unwrap();
+    mount_tool_todo(&ctx, false).await.unwrap();
+    assert!(
+        ctx.get::<cordis_rs::plugin_ports::TodoTools>(
+            cordis_rs::plugin_ports::TODO_TOOLS_SERVICE_NAME
+        )
+        .is_some()
+    );
+    assert!(ctx.get_untyped(TODO_PROJECTIONS_SERVICE_NAME).is_some());
+    assert!(ctx.get_untyped("sessionProjections").is_some());
+
+    let ctx2 = Context::root("coexist-projections-reverse");
+    mount_tool_todo(&ctx2, false).await.unwrap();
+    provide_sessions(&ctx2).await.unwrap();
+    assert!(ctx2.get_untyped(TODO_PROJECTIONS_SERVICE_NAME).is_some());
+    assert!(ctx2.get_untyped("sessionProjections").is_some());
+}
