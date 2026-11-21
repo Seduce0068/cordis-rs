@@ -11,7 +11,8 @@ use crate::Error;
 pub struct Duration(i64);
 
 impl Duration {
-    /// Build a duration, clamping to i64 range (never fails).
+    /// Build a duration from an `i64` millisecond value without validation.
+    /// Use `try_from_millis` when the safe-integer range must be enforced.
     pub fn from_millis(millis: i64) -> Self {
         Self(millis)
     }

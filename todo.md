@@ -168,7 +168,7 @@ status: current
 - [ ] **EventLogReporter::new が EventLogOptions を検証せず不正設定を保持** — 根拠 `src/services/telemetry.rs:36-45,87-94` / R3-CF07 / 重大度 low / confirmed
 - [ ] **check-secrets.sh がローカル導入法として存在しない cargo install gitleaks を案内** — 根拠 `scripts/check-secrets.sh:38` / R3-DC07 / 重大度 low / confirmed
 - [ ] **verify.sh と CI extra_gates で markdownlint の実行順が乖離** — 根拠 `scripts/verify.sh:3,22-47`, `.github/workflows/ci.yml:25-30` / R3-CF08 / 重大度 low / confirmed
-- [ ] **Duration::from_millis の doc がクランプと誤記（実装は格納のみ）** — 根拠 `src/ports/duration.rs:14-17` / R3-DC08 / 重大度 low / confirmed
+- [x] **Duration::from_millis の doc がクランプと誤記（実装は格納のみ）** — 2026-11-22 修正（コメントを「検証なしの格納」に修正、範囲チェックは try_from_millis の責務と明記、R3 指摘反映）。
 - [ ] **WorkspaceRegistry::sessions_in が未存在 workspace を空 Vec に丸める** — 根拠 `src/services/workspace.rs:123-128` / R3-AP02 / 重大度 low / confirmed
 - [ ] **6 件の ADR に古いテスト件数が残り doc-count ゲート対象外** — 根拠 `docs/ADR-002...:78` 他 / R4-DC09 / 重大度 low / confirmed
 - [ ] **PROGRESS.md と README の検証ゲート記述が verify.sh の実順と不一致** — 根拠 `docs/PROGRESS.md:52-54`, `README.md:129` / R4-DC10 / 重大度 low / confirmed
