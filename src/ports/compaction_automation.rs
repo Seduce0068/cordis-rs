@@ -172,6 +172,10 @@ pub async fn mount(
     if config.overflow_code.is_empty() {
         return Err(Error::Other("overflow_code must be non-empty".to_string()));
     }
+    // Keep the legacy synchronous lookup: tests/cordis.rs and
+    // tests/core_services.rs require mount to fail fast when dependencies are
+    // absent. R1 suggested require() to honour inject, but that would hang on
+    // a context with no providers (swarm review R1-ST01, reverted).
     let engine = ctx
         .get::<CompactionEngine>("compaction")
         .ok_or_else(|| Error::Other("compaction service not available".to_string()))?;
