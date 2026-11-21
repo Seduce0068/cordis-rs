@@ -159,7 +159,7 @@ status: current
 - [x] **未生成の error enum バリアントが API サーフェスに残る（UserQuestionError 等）** — 2026-11-22 一部修正（user_questions の5バリアントに phase-2 予約コメント＋code() 回帰テスト。NotInPlanMode は既存テストが Ok の "PLAN_NOT_ACTIVE" を期待するため Err 化を見送り、StaleVersion は適用側 comparison 未配線で別 ADR 案件として残す）。
 - [x] **README のテストファイル一覧に tests/production_ports.rs が載っていない** — 2026-11-22 修正（テストファイル一覧に本番 port mount 検証を追加、R3 指摘反映）。
 - [x] **verify.sh がリポジトリ直下を cwd 前提でスクリプト参照表記も混在** — 2026-11-22 修正（先頭で repo root に cd、全スクリプト参照を `bash scripts/...` に統一、別 cwd から全ゲート通過を検証、R3 指摘反映）。
-- [ ] **CodexToolPayload が未使用で hook rewrite 相当が未接続（Claude と同じ ADR で扱う）** — 根拠 `src/ports/hooks_codex.rs:19-25,119-145` / R3-FG04 / 重大度 low / likely
+- [x] **CodexToolPayload が未使用で hook rewrite 相当が未接続（Claude と同じ ADR で扱う）** — 2026-11-22 一部修正（CodexToolPayload に Serialize を付与し tool_payload() が struct を構築、未使用シンボル解消。 rewritten input 相当の未接続は Claude/Codex 共通の phase-2 として残る）。
 - [x] **check-doc-counts.sh が core service 数（38）を検証しない** — 2026-11-22 修正（services モジュール数+messageFeedback を計算し3ドキュメントで照合、gate 通過、R3 指摘反映）。
 
 ## 完了

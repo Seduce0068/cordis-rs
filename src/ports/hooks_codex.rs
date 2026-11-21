@@ -18,7 +18,7 @@ pub const DEFAULT_STDERR_SUMMARY_CHARS: usize = 500;
 
 /// Codex dialect: tool hook payload uses snake_case keys and only deny is
 /// honoured (ask / rewrite are not implemented in phase 1).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct CodexToolPayload {
     pub tool_name: String,
     pub command: Option<String>,
@@ -26,10 +26,11 @@ pub struct CodexToolPayload {
 
 /// Build a snake_case payload from a tool name and optional command.
 pub fn tool_payload(tool_name: &str, command: Option<&str>) -> serde_json::Value {
-    serde_json::json!({
-        "tool_name": tool_name,
-        "command": command,
-    })
+    let payload = CodexToolPayload {
+        tool_name: tool_name.to_string(),
+        command: command.map(str::to_string),
+    };
+    serde_json::to_value(payload).expect("CodexToolPayload is always serializable")
 }
 
 /// Build a merged hook outcome for a Codex deny/allow decision.
