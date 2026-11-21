@@ -55,6 +55,9 @@ struct FsState {
 pub struct FileSystem {
     state: Arc<RwLock<FsState>>,
     root: Option<PathBuf>,
+    /// Canonicalised once at construction so a symlinked root cannot point
+    /// outside the intended boundary later (R3-DE03 adversarial review).
+    canonical_root: Option<PathBuf>,
 }
 
 impl FileSystem {
@@ -62,11 +65,15 @@ impl FileSystem {
         Self::default()
     }
 
-    /// Confine every operation under `root`.
+    /// Confine every operation under `root`. The root is canonicalised once
+    /// here; a failure yields a handle that fails closed on every operation.
     pub fn scoped(root: impl AsRef<Path>) -> Self {
+        let root = root.as_ref().to_path_buf();
+        let canonical_root = std::fs::canonicalize(&root).ok();
         Self {
             state: Arc::new(RwLock::new(FsState::default())),
-            root: Some(root.as_ref().to_path_buf()),
+            root: Some(root),
+            canonical_root,
         }
     }
 
@@ -80,8 +87,8 @@ impl FileSystem {
                 } else {
                     root.join(candidate)
                 };
-                let canonical_root = std::fs::canonicalize(root).map_err(|error| {
-                    Error::Other(format!("cannot resolve filesystem root: {error}"))
+                let canonical_root = self.canonical_root.as_ref().ok_or_else(|| {
+                    Error::Other("filesystem root could not be canonicalised".to_string())
                 })?;
                 // Canonicalize before checking containment. A path that does
                 // not exist yet (a file about to be created) is resolved via
@@ -115,7 +122,7 @@ impl FileSystem {
                         resolved
                     }
                 };
-                if !canonical.starts_with(&canonical_root) {
+                if !canonical.starts_with(canonical_root) {
                     return Err(Error::Other(format!(
                         "path escapes filesystem root: {path}"
                     )));
@@ -280,6 +287,15 @@ impl FileSystem {
 
 pub async fn provide(ctx: &crate::Context) -> Result<FileSystem> {
     let fs = FileSystem::local();
+    ctx.provide("fs", fs.clone()).await?;
+    Ok(fs)
+}
+
+/// Register a confined filesystem under `root`. Production hosts should use
+/// this instead of `provide()` (which registers an unrestricted local FS for
+/// backward compatibility) — swarm review R3-DE03.
+pub async fn provide_scoped(ctx: &crate::Context, root: impl AsRef<Path>) -> Result<FileSystem> {
+    let fs = FileSystem::scoped(root);
     ctx.provide("fs", fs.clone()).await?;
     Ok(fs)
 }

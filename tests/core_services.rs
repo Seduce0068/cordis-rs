@@ -4684,3 +4684,37 @@ fn deepseek_base_url_validation_blocks_credential_exfiltration() {
         assert!(transport.requests().is_empty(), "no request to {base}");
     }
 }
+
+#[tokio::test]
+async fn provide_scoped_fs_rejects_outside_paths_and_symlink_roots() {
+    use cordis_rs::core_services::{FileSystem, provide_fs_scoped};
+
+    let base = std::env::temp_dir().join(format!("cordis-scoped-fs-{}", std::process::id()));
+    let root = base.join("root");
+    let outside = base.join("outside.txt");
+    let _ = std::fs::remove_dir_all(&base);
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(&outside, "secret").unwrap();
+
+    let ctx = Context::root("scoped-fs");
+    let fs = provide_fs_scoped(&ctx, &root).await.unwrap();
+
+    // Relative path inside root works.
+    fs.write_text("inside.txt", "ok").unwrap();
+    assert_eq!(fs.read_text("inside.txt").unwrap(), "ok");
+
+    // Absolute path outside root is rejected (scoped root enforced).
+    assert!(fs.read_text(outside.to_str().unwrap()).is_err());
+
+    // A symlinked root pointing outside is rejected at construction and every
+    // operation fails closed (canonical root fixed at construction).
+    let link = base.join("link");
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(&outside, &link).unwrap();
+        let linked = FileSystem::scoped(&link);
+        assert!(linked.read_text("x").is_err());
+    }
+
+    std::fs::remove_dir_all(&base).unwrap();
+}

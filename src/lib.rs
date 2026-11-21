@@ -317,7 +317,7 @@ pub mod core_services {
     };
     pub use crate::services::fs::{
         FileSystem, FsEditOutcome, FsInfo, FsWriteOutcome, ReadWindow, WriteOperation,
-        provide as provide_fs,
+        provide as provide_fs, provide_scoped as provide_fs_scoped,
     };
     pub use crate::services::goals::{
         Goal, GoalError, GoalStatus, GoalStore, provide as provide_goals,
