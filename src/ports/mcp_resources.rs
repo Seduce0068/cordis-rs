@@ -102,7 +102,7 @@ impl McpResourceRegistry {
                     allowed_schemes,
                 },
             )
-            .is_some()
+            .is_none() // true on first registration, like other registries (R2-AP05)
     }
 
     /// Remove a globally registered server.
@@ -111,12 +111,21 @@ impl McpResourceRegistry {
     }
 
     pub fn unregister_scoped(&self, scope: &ScopeKey, server: &str) -> bool {
-        self.providers
+        let mut guard = self
+            .providers
             .write()
-            .expect("mcp resource registry poisoned")
+            .expect("mcp resource registry poisoned");
+        let removed = guard
             .get_mut(scope)
             .and_then(|map| map.remove(server))
-            .is_some()
+            .is_some();
+        // Drop the scope key entirely once it has no providers left, so an
+        // unregistered scope does not linger (swarm review R2-AP05).
+        let empty = guard.get(scope).is_some_and(|map| map.is_empty());
+        if removed && empty {
+            guard.remove(scope);
+        }
+        removed
     }
 
     pub fn servers(&self) -> Vec<String> {

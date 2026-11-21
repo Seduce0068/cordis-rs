@@ -153,7 +153,7 @@ status: current
 - [x] **FieldSpec::range に min>max スキーマ不正チェックが無い** — 2026-11-22 修正（range()/range_int() に assert!(min<=max) 追加、should_panic テスト2件、R2 指摘反映）。
 - [x] **EventLogReporter::with_max_counters(0) が黙って 1 に丸め validate と方針不一致** — 2026-11-22 修正（assert!(max_counters > 0) で fail-fast、should_panic テスト追加、R2 指摘反映）。
 - [ ] **DeepSeek 拡張の warn-once 集合が永続し初回以降の provider 失敗が不可視** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:30,86-105` / R2-OB03 / 重大度 medium / confirmed
-- [ ] **McpResourceRegistry::register_scoped の bool が他レジストリと逆意味、unregister が空スロープを残す** — 根拠 `src/ports/mcp_resources.rs:86-120` / R2-AP05 / 重大度 medium / confirmed
+- [x] **McpResourceRegistry::register_scoped の bool が他レジストリと逆意味、unregister が空スロープを残す** — 2026-11-22 修正（新規登録で true、空スコープを remove、回帰テスト追加、R2 指摘反映）。
 - [ ] **SessionQueryEngine::index がスナップショット保持で更新が反映されず unindex 手段も無い** — 根拠 `src/services/session_query.rs:38-44` / R2-DI02 / 重大度 medium / likely
 - [ ] **production_ports.rs の本番 port カバレッジが3件に留まる（tool_fs/tool_bash/session_persistence_jsonl を追加）** — 根拠 `tests/production_ports.rs:10-54` / R3-TS02 / 重大度 medium / confirmed
 - [ ] **未生成の error enum バリアントが API サーフェスに残る（UserQuestionError 等）** — 根拠 `src/ports/user_questions.rs:25-35`, `src/ports/tool_exit_plan_mode.rs:17-20` / R2-ER06 / 重大度 low / confirmed

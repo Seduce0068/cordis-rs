@@ -3441,3 +3441,23 @@ fn session_log_masks_sensitive_data_before_egress() {
     // Scalar payloads carry no key-level signal and are fully redacted.
     assert_eq!(mask_event_data(&serde_json::json!("secret")), "[redacted]");
 }
+
+#[test]
+fn mcp_resource_registry_register_bool_and_empty_scope_cleanup() {
+    use cordis_rs::plugin_ports::{McpResourceRegistry, ScopeKey};
+
+    let registry = McpResourceRegistry::new();
+    let provider = std::sync::Arc::new(|_method: &str, _params: serde_json::Value| {
+        Ok(serde_json::json!({ "resources": [] }))
+    });
+    let scope = ScopeKey::Agent("agent-a".to_string());
+
+    // true on first registration, false on overwrite (consistent with other
+    // registries; swarm review R2-AP05).
+    assert!(registry.register_scoped(scope.clone(), "srv", provider.clone(), Vec::new()));
+    assert!(!registry.register_scoped(scope.clone(), "srv", provider.clone(), Vec::new()));
+    assert!(registry.unregister_scoped(&scope, "srv"));
+    assert!(!registry.unregister_scoped(&scope, "srv"));
+    // After the scope became empty and was removed, re-registering is "new".
+    assert!(registry.register_scoped(scope, "srv", provider, Vec::new()));
+}
