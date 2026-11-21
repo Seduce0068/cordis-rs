@@ -5341,3 +5341,18 @@ fn retry_error_code_requires_a_label() {
         );
     }
 }
+
+#[test]
+fn timeout_policy_inject_matches_apply_dependency() {
+    use cordis_rs::Plugin;
+    use cordis_rs::plugin_ports::{TimeoutPolicyPlugin, TimeoutPolicyPluginConfig};
+
+    let plugin = TimeoutPolicyPlugin {
+        config: TimeoutPolicyPluginConfig {
+            default_timeout_ms: None,
+        },
+    };
+    // apply() requires "toolPipeline", so inject() must declare it (swarm
+    // review R5-ST03).
+    assert_eq!(plugin.inject(), &["toolPipeline"]);
+}

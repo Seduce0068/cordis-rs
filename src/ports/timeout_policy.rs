@@ -64,7 +64,9 @@ impl crate::Plugin for TimeoutPolicyPlugin {
     }
 
     fn inject(&self) -> &[&str] {
-        &["tools"]
+        // apply() requires "toolPipeline"; declare the actual dependency so
+        // fiber refresh tracks it (swarm review R5-ST03).
+        &["toolPipeline"]
     }
 
     async fn apply(&self, ctx: &Context) -> Result<()> {

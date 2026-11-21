@@ -178,7 +178,7 @@ status: current
 - [ ] **Shell の stdout/stderr 読み取りエラーが握り潰され不完全出力が成功として返る** — 根拠 `src/services/shell.rs:215-232` / R4-ER07 / 重大度 low / likely
 
 - [ ] **LlmService の既定 provider を dispose 後も default 名が残り resolve(None) が失敗** — 根拠 `src/services/llm.rs:110-163` / R5-LL01 / 重大度 medium / confirmed
-- [ ] **TimeoutPolicyPlugin の inject("tools") と apply の require("toolPipeline") が不一致** — 根拠 `src/ports/timeout_policy.rs:66-73` / R5-ST03 / 重大度 medium / confirmed
+- [x] **TimeoutPolicyPlugin の inject("tools") と apply の require("toolPipeline") が不一致** — 2026-11-22 修正（inject を "toolPipeline" に変更、R2-ST02 と同種、回帰テスト追加、R5 指摘反映）。
 - [ ] **CommandRegistry が同名コマンドを先着優先で保持し ToolRegistry と世代ルールが異なる** — 根拠 `src/services/commands.rs:87-149` / R5-AP03 / 重大度 medium / confirmed
 - [ ] **FieldSpec の単発 min/max ビルダーに順序・NaN 検証がなく range() と方針が割れる** — 根拠 `src/config.rs:169-203` / R5-IV04 / 重大度 medium / confirmed
 - [ ] **ValidationReason::OutOfRange が i64 境界を f64 に丸め 2^53 超で診断値が誤る** — 根拠 `src/config.rs:224-228,382-396` / R5-DI03 / 重大度 medium / confirmed
