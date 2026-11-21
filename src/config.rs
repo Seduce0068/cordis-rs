@@ -127,6 +127,10 @@ pub struct FieldSpec {
     pub min: Option<f64>,
     /// Inclusive upper bound for `Integer` / `Number` fields.
     pub max: Option<f64>,
+    /// Exact integer bounds for `Integer` fields (avoids f64 precision loss
+    /// beyond 2^53, swarm review R1-AR03). When set, these take precedence.
+    pub min_int: Option<i64>,
+    pub max_int: Option<i64>,
     pub default: Option<Value>,
     /// Element schema for `FieldType::Array` fields.
     pub element: Option<Box<FieldSpec>>,
@@ -142,6 +146,8 @@ impl FieldSpec {
             required: true,
             min: None,
             max: None,
+            min_int: None,
+            max_int: None,
             default: None,
             element: None,
             fields: Vec::new(),
@@ -169,6 +175,23 @@ impl FieldSpec {
 
     pub fn min(mut self, min: f64) -> Self {
         self.min = Some(min);
+        self
+    }
+
+    /// Exact integer range; used for `Integer` fields to avoid f64 rounding.
+    pub fn range_int(mut self, min: i64, max: i64) -> Self {
+        self.min_int = Some(min);
+        self.max_int = Some(max);
+        self
+    }
+
+    pub fn min_int(mut self, min: i64) -> Self {
+        self.min_int = Some(min);
+        self
+    }
+
+    pub fn max_int(mut self, max: i64) -> Self {
+        self.max_int = Some(max);
         self
     }
 
@@ -352,7 +375,24 @@ fn validate_value(
     }
 
     let mut errors = Vec::new();
-    if spec.min.is_some() || spec.max.is_some() {
+    // Exact i64 comparison when integer bounds are configured: casting to f64
+    // would silently collapse distinct values beyond 2^53 (R1-AR03).
+    if (spec.min_int.is_some() || spec.max_int.is_some())
+        && let Value::Integer(number) = value
+    {
+        if spec.min_int.is_some_and(|min| *number < min)
+            || spec.max_int.is_some_and(|max| *number > max)
+        {
+            errors.push(ValidationError {
+                path: path.to_string(),
+                reason: ValidationReason::OutOfRange {
+                    min: spec.min_int.map(|value| value as f64).or(spec.min),
+                    max: spec.max_int.map(|value| value as f64).or(spec.max),
+                    actual: *number as f64,
+                },
+            });
+        }
+    } else if spec.min.is_some() || spec.max.is_some() {
         let number = match value {
             Value::Integer(number) => Some(*number as f64),
             Value::Number(number) => Some(*number),

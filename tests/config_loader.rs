@@ -1331,3 +1331,37 @@ fn composition_state_save_leaves_no_temp_residue() {
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn integer_range_validation_uses_exact_i64_comparison() {
+    use cordis_rs::{ConfigValue, FieldSpec, FieldType, ValidationReason, validate_config};
+    use std::collections::BTreeMap;
+
+    fn run(spec: FieldSpec, value: i64) -> Vec<cordis_rs::ValidationError> {
+        let mut map = BTreeMap::new();
+        map.insert(spec.name.clone(), ConfigValue::Integer(value));
+        match validate_config(&[spec], &ConfigValue::Object(map)) {
+            Ok(_) => Vec::new(),
+            Err(errors) => errors,
+        }
+    }
+
+    // Beyond 2^53, casting to f64 would collapse distinct values: 2^53+1
+    // becomes 2^53 and would pass a max bound of 2^53 (swarm review R1-AR03).
+    let spec = FieldSpec::new("big", FieldType::Integer)
+        .range_int(9_007_199_254_740_992, 9_007_199_254_740_993);
+
+    assert!(run(spec.clone(), 9_007_199_254_740_992).is_empty());
+    assert!(run(spec.clone(), 9_007_199_254_740_993).is_empty());
+    let errors = run(spec, 9_007_199_254_740_994);
+    assert!(
+        errors
+            .iter()
+            .any(|error| matches!(error.reason, ValidationReason::OutOfRange { .. }))
+    );
+
+    // Existing f64 `range()` still works for Integer fields (backward compat).
+    let legacy = FieldSpec::new("small", FieldType::Integer).range(1.0, 5.0);
+    assert!(run(legacy.clone(), 3).is_empty());
+    assert!(!run(legacy, 9).is_empty());
+}

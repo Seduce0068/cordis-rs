@@ -130,8 +130,8 @@ status: current
 - [x] **サービス名 "tools" が ToolRegistry と TodoTools で衝突し文字列キー127箇所に散在** — 2026-11-21 修正（tool_todo 側を `TODO_TOOLS_SERVICE_NAME` = "todoTools" に改名、provide/inject/apply 3箇所同時、25箇所の require は不変、両順序共存テスト追加、R1 指摘反映）。
 - [ ] **ToolRegistry::invoke 直呼びが approval ゲートを素通り** — 根拠 `docs/ADR-012-shell-command-approval.md:98-102`, `src/services/tools.rs:226` / R2-FG01 / 重大度 high / confirmed（ADR-012 で既知制約として明記済み、完全 fail-closed は未実装）
 - [ ] **job kill が状態反転のみで実プロセスを停止しない** — 根拠 `docs/ADR-002-tool-jobs-port-scope.md:30-31`, `src/services/jobs.rs:275-282` / R2-FG04 / 重大度 medium / confirmed（意図的差分だが停止経路なし）
-- [ ] **provide-if-absent ガードが `get::<T>()` の型不一致を未登録と誤判定（6箇所）** — 根拠 `src/ports/tool_bash.rs:210`, `src/ports/tool_fs.rs:315`, `src/ports/command_goal.rs:117` / R1-AR02 / 重大度 medium / confirmed
-- [ ] **FieldSpec の min/max が f64 のみで Integer(i64) の範囲検証が精度落ち** — 根拠 `src/config.rs:24,127-129,355-373` / R1-AR03 / 重大度 medium / confirmed
+- [x] **provide-if-absent ガードが `get::<T>()` の型不一致を未登録と誤判定（6箇所）** — 2026-11-21 修正（6箇所を get_untyped() に置換、型衝突を正しく検出、回帰テスト追加、R1 指摘反映）。
+- [x] **FieldSpec の min/max が f64 のみで Integer(i64) の範囲検証が精度落ち** — 2026-11-21 修正（min_int/max_int + range_int を追加、i64 同士で比較、既存 range(f64) は維持、2^53 超回帰テスト追加、R1 指摘反映）。
 - [ ] **check-doc-counts.sh が src 内 unit test を件数から除外** — 根拠 `scripts/check-doc-counts.sh:2,7`, `src/context.rs:675` / R1-CF01 / 重大度 medium / confirmed
 - [ ] **verify.sh が cargo-audit 未インストール時に警告だけでスキップし全ゲート合格と表示** — 根拠 `scripts/verify.sh:22-27,42` / R1-CF02 / 重大度 medium / confirmed
 - [ ] **ADR-010 の status と進捗記述が index / 本文で矛盾（段4 未着手なのに完了表記）** — 根拠 `docs/index.md:26`, `docs/ADR-010-context-events-boundary.md:81-84` / R1-DR01 / 重大度 medium / confirmed
