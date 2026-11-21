@@ -157,7 +157,8 @@ danger-full-access は allow）。
 に分かれています（全 240 件）。
 
 `mount_real_composition` は上流 `snapshots/sdk/text-turn/cordis.yml` の
-6 エントリすべてを fiber として起動します。
+6 エントリのうち port が存在するものだけを fiber として起動し、
+failed / skipped を id と理由付きで一覧出力します（診断レポート）。
 
 ## ライセンス
 
