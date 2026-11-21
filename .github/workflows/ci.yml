@@ -23,6 +23,7 @@ jobs:
       clippy_args: -A clippy::type_complexity -D clippy::undocumented_unsafe_blocks
       audit: true
       extra_gates: |
+        bash scripts/check-secrets.sh
         bash scripts/smoke-examples.sh
         bash scripts/check-no-unsafe.sh
         bash scripts/check-doc-counts.sh

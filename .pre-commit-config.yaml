@@ -1,0 +1,9 @@
+# Local pre-commit gate. Install once with `pre-commit install`.
+# This can be bypassed with `git commit --no-verify`; CI runs the same
+# gitleaks rules as the authoritative final gate (scripts/check-secrets.sh).
+# gitleaks is feature-complete (upstream notes future work on Betterleaks).
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.28.0
+    hooks:
+      - id: gitleaks

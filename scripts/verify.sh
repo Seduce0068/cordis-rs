@@ -16,6 +16,9 @@ echo "=== clippy ==="
 # Keep flags in sync with `clippy_args` in .github/workflows/ci.yml.
 cargo clippy --all-targets --locked -- -D warnings -A clippy::type_complexity -D clippy::undocumented_unsafe_blocks
 
+echo "=== secret scan ==="
+bash scripts/check-secrets.sh
+
 echo "=== cargo audit ==="
 if command -v cargo-audit >/dev/null 2>&1; then
 	cargo audit

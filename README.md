@@ -114,8 +114,14 @@ bash scripts/smoke-examples.sh
 # examples/ 直下の .rs はすべて実行可能な smoke target として自動検出される。
 # 共有ヘルパは examples/fixtures/ 等に置くこと（smoke 対象外）。
 
-# fmt / check / clippy / test / smoke をまとめて実行
+# fmt / check / clippy / test / smoke / シークレットスキャンをまとめて実行
 bash scripts/verify.sh
+
+# シークレットスキャンは pre-commit が主軸、CI が最終ゲート（AGENTS.md §4）。
+# ローカルで有効化する場合（pre-commit 自体は要インストール）:
+#   pre-commit install
+# gitleaks は CI では必須（未インストールなら check-secrets.sh が失敗する）。
+bash scripts/check-secrets.sh
 ```
 
 `agent_demo` は scripted LLM provider で agent-loop を回し、tool-fs の
