@@ -5102,3 +5102,17 @@ fn session_reference_bounds_input_and_escapes_mention() {
     assert!(mention.contains("\\\n"), "newline must be escaped");
     assert!(mention.starts_with("@[") && mention.contains("](dsh-session:"));
 }
+
+#[test]
+fn plugin_error_preserves_source_chain() {
+    use cordis_rs::Error;
+    use std::error::Error as _;
+
+    let inner = Error::ServiceNotFound("config".to_string());
+    let wrapped = Error::Plugin("greeter".to_string(), Box::new(inner));
+    let source = wrapped
+        .source()
+        .expect("Plugin must expose its cause via source()");
+    assert!(source.to_string().contains("config"));
+    assert!(wrapped.to_string().contains("greeter"));
+}

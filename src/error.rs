@@ -15,7 +15,7 @@ pub enum Error {
     Unloading,
 
     #[error("plugin `{0}` failed: {1}")]
-    Plugin(String, String),
+    Plugin(String, #[source] Box<Error>),
 
     #[error("session `{0}` already exists")]
     DuplicateSession(String),

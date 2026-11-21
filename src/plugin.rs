@@ -121,7 +121,7 @@ impl FiberInner {
                     // Keep the context lifecycle Unloaded: require()/effect()
                     // guards only treat Unloading/Unloaded as closed.
                     self.ctx.set_lifecycle(Lifecycle::Unloaded);
-                    return Err(Error::Plugin(self.name.clone(), error.to_string()));
+                    return Err(Error::Plugin(self.name.clone(), Box::new(error)));
                 }
             }
         }
