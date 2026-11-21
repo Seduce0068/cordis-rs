@@ -168,6 +168,7 @@ impl FieldSpec {
 
     /// Inclusive `[min, max]` range for numeric fields.
     pub fn range(mut self, min: f64, max: f64) -> Self {
+        assert!(min <= max, "range min must not exceed max");
         self.min = Some(min);
         self.max = Some(max);
         self
@@ -180,6 +181,7 @@ impl FieldSpec {
 
     /// Exact integer range; used for `Integer` fields to avoid f64 rounding.
     pub fn range_int(mut self, min: i64, max: i64) -> Self {
+        assert!(min <= max, "range_int min must not exceed max");
         self.min_int = Some(min);
         self.max_int = Some(max);
         self

@@ -150,7 +150,7 @@ status: current
 - [ ] **SessionTitles::derive_from_messages が get→set 別ロックで LLM 生成タイトルを上書き** — 根拠 `src/services/session_titles.rs:66-75` / R2-DI01 / 重大度 medium / confirmed
 - [ ] **CredentialProvider::set が参照名規則を検証せず解決不能な値を受理** — 根拠 `src/services/credentials.rs:19-32,78-89` / R2-IV01 / 重大度 medium / confirmed
 - [ ] **PlanMode セッション別ログが無上限で蓄積し削除 API も無い** — 根拠 `src/services/plan_mode.rs:20-23,36-49` / R2-OB02 / 重大度 medium / confirmed
-- [ ] **FieldSpec::range に min>max スキーマ不正チェックが無い** — 根拠 `src/config.rs:169-186,292-338` / R2-IV02 / 重大度 medium / confirmed
+- [x] **FieldSpec::range に min>max スキーマ不正チェックが無い** — 2026-11-22 修正（range()/range_int() に assert!(min<=max) 追加、should_panic テスト2件、R2 指摘反映）。
 - [ ] **EventLogReporter::with_max_counters(0) が黙って 1 に丸め validate と方針不一致** — 根拠 `src/services/telemetry.rs:36-44,98-101` / R2-CF03 / 重大度 medium / confirmed
 - [ ] **DeepSeek 拡張の warn-once 集合が永続し初回以降の provider 失敗が不可視** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:30,86-105` / R2-OB03 / 重大度 medium / confirmed
 - [ ] **McpResourceRegistry::register_scoped の bool が他レジストリと逆意味、unregister が空スロープを残す** — 根拠 `src/ports/mcp_resources.rs:86-120` / R2-AP05 / 重大度 medium / confirmed

@@ -1365,3 +1365,17 @@ fn integer_range_validation_uses_exact_i64_comparison() {
     assert!(run(legacy.clone(), 3).is_empty());
     assert!(!run(legacy, 9).is_empty());
 }
+
+#[test]
+#[should_panic(expected = "range min must not exceed max")]
+fn field_spec_range_rejects_inverted_bounds() {
+    use cordis_rs::{FieldSpec, FieldType};
+    let _ = FieldSpec::new("bad", FieldType::Number).range(10.0, 1.0);
+}
+
+#[test]
+#[should_panic(expected = "range_int min must not exceed max")]
+fn field_spec_range_int_rejects_inverted_bounds() {
+    use cordis_rs::{FieldSpec, FieldType};
+    let _ = FieldSpec::new("bad", FieldType::Integer).range_int(10, 1);
+}
