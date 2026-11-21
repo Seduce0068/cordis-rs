@@ -287,6 +287,16 @@ impl Tools {
         args: TodoWriteArgs,
         exec: ToolExecution,
     ) -> std::result::Result<TodoWriteResult, ToolFailure> {
+        // A blocking call inside a Tokio runtime would stall a current-thread
+        // runtime while the async handler awaits (swarm review R2-BV07). Fail
+        // closed and direct callers to the async API. Reuse the existing
+        // ContextUnavailable variant rather than adding one (semver).
+        if tokio::runtime::Handle::try_current().is_ok() {
+            return Err(ToolFailure::ContextUnavailable(
+                "invoke_blocking must not be called from a Tokio runtime; use invoke(...).await"
+                    .to_string(),
+            ));
+        }
         futures::executor::block_on(self.invoke(name, args, exec))
     }
 }

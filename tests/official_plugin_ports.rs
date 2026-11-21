@@ -3335,3 +3335,16 @@ async fn deepseek_llm_api_extensions_accept_is_thread_safe_and_idempotent() {
         "parallel callers must join one settlement"
     );
 }
+
+#[tokio::test]
+async fn tool_todo_invoke_blocking_rejects_tokio_runtime() {
+    use cordis_rs::plugin_ports::{TodoWriteArgs, ToolExecution, ToolFailure, Tools};
+
+    let tools = Tools::default();
+    let args = TodoWriteArgs { todos: vec![] };
+    // Inside a Tokio runtime the blocking API must fail fast (R2-BV07).
+    let result = tools.invoke_blocking("todo_write", args, ToolExecution::anonymous());
+    assert!(
+        matches!(result, Err(ToolFailure::ContextUnavailable(message)) if message.contains("must not be called"))
+    );
+}

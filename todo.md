@@ -46,7 +46,7 @@ status: current
 - [x] **依存 fiber の refresh 失敗が notify/drain 両経路で握り潰される** — 2026-11-21 修正（drain の join_all Result を集約し remove_service_async / generation に伝播、同期 remove_service は互換維持、notify の fire-and-forget は次段、R1 指摘反映）。
 - [x] **CompositionState::save が固定 .tmp 名で並行保存競合（sessions.rs は修正済み）** — 2026-11-21 修正（pid + nanos 一意 tmp 名、状態フィールド追加なしで Clone/PartialEq 維持、R1 指摘反映）。
 - [x] **Context::once が push と replace を別ロックで行い TOCTOU 二重発火の窓** — 2026-11-21 修正（EventRegistry::push_once で id 確保＋ラッパ登録を1ロック内でatomic化、R1 指摘反映）。
-- [ ] **tool_todo の invoke_blocking に Tokio runtime 内呼び出しガードがない** — 根拠 `src/ports/tool_todo.rs:282-291`, `src/services/tools.rs:556-565` / R2-BV07 / 重大度 medium / likely
+- [x] **tool_todo の invoke_blocking に Tokio runtime 内呼び出しガードがない** — 2026-11-21 修正（Handle::try_current で fail-closed、既存 ContextUnavailable バリアント流用、R1 指摘反映）。
 - [ ] **シェル出力 stdout/stderr が無上限でメモリ保持（DoS）** — 根拠 `src/services/shell.rs:136-142`, `src/ports/tool_bash.rs:82-94` / R3-IV05 / 重大度 medium / confirmed
 - [ ] **read_window が bounded reads を謳いながらファイル全体を読み込む** — 根拠 `src/services/fs.rs:147-166` / R3-IV06 / 重大度 medium / confirmed
 - [ ] **Hook マッチャが設定由来 regex を毎回コンパイルし失敗時に fail-open** — 根拠 `src/services/hook_protocol.rs:98-128` / R3-IV07 / 重大度 medium / confirmed
