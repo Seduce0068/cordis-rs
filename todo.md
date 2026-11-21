@@ -58,7 +58,7 @@ status: current
 - [x] **OTLP タイムスタンプが固定 0 でイベント時刻が記録されない** — 2026-11-21 修正（otlp_payload が export 時 UTC nanos を timeUnixNano に設定、EventRecord は不変で後方互換維持。per-event 時刻は別 ADR、R1 指摘反映）。
 - [x] **counters が名前の高カーディナリティで無制限成長** — 2026-11-21 修正（with_max_counters builder で上限、超過名は `__other__` に集約、予約キー衝突防止、R1 指摘反映）。
 - [x] **シークレットスキャンゲートが CI にも pre-commit にも存在しない** — 2026-11-21 修正（scripts/check-secrets.sh を CI extra_gates と verify.sh に追加、pre-commit 設定、--redact、未インストール時 fail、R1 敵対レビュー反映）。
-- [ ] **markdownlint がローカル専用で CI ゲートに含まれていない** — 根拠 `scripts/verify.sh:36-40`, `.github/workflows/ci.yml:25-28` / R4-CI02, R4-DP05 / 重大度 medium / confirmed
+- [x] **markdownlint がローカル専用で CI ゲートに含まれていない** — 2026-11-21 修正（check-markdown.sh を追加し全17 md を動的 lint、verify.sh と CI extra_gates に統合、CI は npx で v0.24.1 pin、R1 指摘反映）。
 - [ ] **公式 plugin port テストが本番 port ではなくテスト内再実装を検証** — 根拠 `tests/official_plugin_port.rs:38-52`, `src/ports/command_compact.rs:18,34-38` / R5-TS01 / 重大度 medium / confirmed
 - [ ] **固定 sleep で非同期状態遷移を待つテストが CI 負荷下でフレーク** — 根拠 `tests/cordis.rs:205,214,510,513`, `tests/config_loader.rs:360` / R5-TS02, R4-TQ03 / 重大度 medium / confirmed
 - [ ] **JSONL 系テストの一時ディレクトリが PID のみで後始末されていない** — 根拠 `tests/core_services.rs:3419-3423,3928-3930,4173-4179` / R5-TS03 / 重大度 medium / confirmed

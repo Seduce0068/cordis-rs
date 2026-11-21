@@ -24,6 +24,7 @@ jobs:
       audit: true
       extra_gates: |
         bash scripts/check-secrets.sh
+        bash scripts/check-markdown.sh
         bash scripts/smoke-examples.sh
         bash scripts/check-no-unsafe.sh
         bash scripts/check-doc-counts.sh

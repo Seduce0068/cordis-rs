@@ -36,10 +36,7 @@ bash "$(dirname "$0")/check-no-unsafe.sh"
 echo "=== doc counts ==="
 bash "$(dirname "$0")/check-doc-counts.sh"
 
-# Local-only gate (not part of CI).
-if command -v markdownlint-cli2 >/dev/null 2>&1; then
-	echo "=== markdownlint (local only, not in CI) ==="
-	markdownlint-cli2 README.md docs/index.md docs/ADR-001-cordis-runtime-reimplementation.md docs/PROGRESS.md
-fi
+echo "=== markdownlint (all Markdown deliverables) ==="
+bash scripts/check-markdown.sh
 
 echo "all verification gates passed"

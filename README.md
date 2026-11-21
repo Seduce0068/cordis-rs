@@ -117,6 +117,9 @@ bash scripts/smoke-examples.sh
 # fmt / check / clippy / test / smoke / シークレットスキャンをまとめて実行
 bash scripts/verify.sh
 
+# 全 Markdown の lint（CI ゲートにも含まれる）
+bash scripts/check-markdown.sh
+
 # シークレットスキャンは pre-commit が主軸、CI が最終ゲート（AGENTS.md §4）。
 # ローカルで有効化する場合（pre-commit 自体は要インストール）:
 #   pre-commit install
