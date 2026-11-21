@@ -107,7 +107,7 @@ status: current
 - [x] **読み取り path が省略表記で src/ports 配下を辿れない（README 安定性マトリクス）** — 2026-11-21 修正（6つの根拠パスを root 相対完全修飾に変更、R5-DC07 反映）。
 - [x] **port 件数の定義が README と PROGRESS で食い違う** — 2026-11-21 検証の結果却下（両者とも「再利用 port 63、library port は hook-protocol 別枠」で整合済み。doc-count gate も tests=240 ports=63 で通過）。R5-DC08 の指摘は古いスナップショット Based。
 - [x] **EventLogOptions に validation がなく batch_size=0 で除数判定が不成立** — 2026-11-21 修正（validate() と InvalidOptions、record() が不正設定を fail-closed で拒否、R4-OB07 反映）。
-- [ ] **unsafe 禁止ゲートの走査範囲が狭く lint 設定と迂回可能** — 根拠 `scripts/check-no-unsafe.sh:6,15`, `.github/workflows/ci.yml:23` / R4-CI03 / 重大度 low / confirmed
+- [x] **unsafe 禁止ゲートの走査範囲が狭く lint 設定と迂回可能** — 2026-11-21 修正（全 Rust ソースを走査、unsafe extern パターン追加、benches 配下の検出を自己検証、R4-CI03 反映）。
 - [x] **smoke-examples.sh が example 0 件をそのまま成功と報告** — 2026-11-21 修正（検出0件で明示エラー終了、R4-DP09 反映）。
 - [x] **MSRV (rust-version) が未宣言で edition 2024 要求が伝わらない** — 2026-11-21 修正（rust-version = "1.85" を宣言、cargo metadata で確認、R4-DP07 反映）。
 - [x] **session reference のデコード上限欠如と markdown 引用の不完全エスケープ** — 2026-11-21 修正（ペイロード長上限とエラーの URI 非露出、ラベルは [ ] ) 改行をエスケープ、R3-IV10 反映）。

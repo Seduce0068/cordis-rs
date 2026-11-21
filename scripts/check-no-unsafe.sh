@@ -3,7 +3,11 @@
 # Comments and string literals that merely mention the word are allowed.
 set -euo pipefail
 
-hits=$(grep -RIn --include='*.rs' -E '^[[:space:]]*(pub[[:space:]]+)?(async[[:space:]]+)?unsafe[[:space:]]+(fn|impl|trait|block)|[[:space:]]unsafe[[:space:]]*\{' src tests examples 2>/dev/null || true)
+# Scan the whole repository (excluding build artifacts) so benches/, build.rs
+# and any future Rust source cannot bypass the gate (swarm review R4-CI03).
+# The pattern also covers `unsafe extern` forms.
+rust_files=$(find . -path './target' -prune -o -name '*.rs' -print)
+hits=$(printf '%s\n' "$rust_files" | xargs -r grep -HnE '(^|[[:space:]])(pub[[:space:]]+)?(async[[:space:]]+)?unsafe[[:space:]]+(extern[[:space:]]+("[^"]*"[[:space:]])?(fn|block)|fn|impl|trait|block)|[[:space:]]unsafe[[:space:]]*\{' || true)
 if [ -n "$hits" ]; then
   echo "unsafe Rust usage is forbidden (AGENTS.md §15):" >&2
   echo "$hits" >&2
