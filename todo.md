@@ -68,7 +68,7 @@ status: current
 - [ ] **23個のドメイン Error enum が Error::Other に平坦化され種別分岐不能** — 根拠 `src/error.rs:4,30,34`, `src/loader.rs:108` / R1-AP02 / 重大度 medium / confirmed
 - [ ] **port 初期化 API が mount と provide の二系統（lifecycle も不同）** — 根拠 `src/ports/tool_fs.rs:mount`, `src/ports/fs_patch.rs:provide` / R1-AP03 / 重大度 medium / confirmed
 - [ ] **require_untyped が未登録サービスを無期限・無ログで待つ** — 根拠 `src/context.rs:555-571` / R5-VU09 / 重大度 medium / confirmed
-- [ ] **GUI のエラー表示が次の成功後も消えない** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_prompt_agent_ui.rs:165-187` / R5-VU01 / 重大度 medium / confirmed
+- [x] **GUI のエラー表示が次の成功後も消えない** — 2026-11-21 修正（take_prompt で前回の error バナーをクリア、R5-VU01 反映）。
 - [ ] **smoke-gui.sh が外部 dsh / DeepSeek 認証を要するバイナリを含み失敗する** — 根拠 `dsh-gpui-client-poc/scripts/smoke-gui.sh:16-29,71-81` / R5-VU02 / 重大度 medium / likely
 - [ ] **EventLogReporter が max_events 超過を無音破棄し消失検知手段がない** — 根拠 `src/services/telemetry.rs:77-102` / R5-VU04 / 重大度 medium / confirmed
 - [ ] **破損 composition state が GUI で警告されず無効化設定が失われる** — 根拠 `src/loader.rs:238-283`, `dsh-gpui-client-poc/src/bin/cordis_entries_toggle_ui.rs:617-638` / R5-VU05 / 重大度 medium / confirmed
