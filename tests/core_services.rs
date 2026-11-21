@@ -4776,3 +4776,40 @@ async fn shell_output_cap_truncates_without_breaking_utf8() {
     assert!(unicode.stdout.ends_with("…[truncated]"));
     assert!(std::str::from_utf8(unicode.stdout.as_bytes()).is_ok());
 }
+
+#[test]
+fn read_window_streams_without_materialising_whole_file() {
+    use cordis_rs::core_services::FileSystem;
+
+    let dir = std::env::temp_dir().join(format!("cordis-window-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("lines.txt");
+    let content = (0..1000)
+        .map(|i| format!("line {i}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    std::fs::write(&path, &content).unwrap();
+
+    let fs = FileSystem::local();
+    let path_str = path.to_str().unwrap();
+
+    // Window in the middle: fields match the old full-read semantics.
+    let window = fs.read_window(path_str, 10, 3, 100).unwrap();
+    assert_eq!(window.total_lines, 1000);
+    assert_eq!(window.start_line, 10);
+    assert_eq!(window.lines_returned, 3);
+    assert_eq!(window.content, "line 9\nline 10\nline 11");
+
+    // Beyond EOF: same boundary behaviour as before.
+    let tail = fs.read_window(path_str, 2000, 5, 100).unwrap();
+    assert_eq!(tail.total_lines, 1000);
+    assert_eq!(tail.lines_returned, 0);
+
+    // max_line_length truncation does not affect the total count.
+    let short = fs.read_window(path_str, 1, 2, 4).unwrap();
+    assert_eq!(short.total_lines, 1000);
+    assert_eq!(short.content, "line…\nline…");
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}

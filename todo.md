@@ -48,7 +48,7 @@ status: current
 - [x] **Context::once が push と replace を別ロックで行い TOCTOU 二重発火の窓** — 2026-11-21 修正（EventRegistry::push_once で id 確保＋ラッパ登録を1ロック内でatomic化、R1 指摘反映）。
 - [x] **tool_todo の invoke_blocking に Tokio runtime 内呼び出しガードがない** — 2026-11-21 修正（Handle::try_current で fail-closed、既存 ContextUnavailable バリアント流用、R1 指摘反映）。
 - [x] **シェル出力 stdout/stderr が無上限でメモリ保持（DoS）** — 2026-11-21 修正（with_max_output_bytes builder、UTF-8 境界安全な切り詰め＋マーカー、run / run_with_timeout 両経路、R1 指摘反映）。
-- [ ] **read_window が bounded reads を謳いながらファイル全体を読み込む** — 根拠 `src/services/fs.rs:147-166` / R3-IV06 / 重大度 medium / confirmed
+- [x] **read_window が bounded reads を謳いながらファイル全体を読み込む** — 2026-11-21 修正（BufReader::lines 1パスで全行保持せずカウント、total_lines 契约維持、R1 指摘反映）。
 - [ ] **Hook マッチャが設定由来 regex を毎回コンパイルし失敗時に fail-open** — 根拠 `src/services/hook_protocol.rs:98-128` / R3-IV07 / 重大度 medium / confirmed
 - [ ] **base64 添付デコードにサイズ上限がなく正規性チェックが全量再確保** — 根拠 `src/ports/attachment_admission.rs:56-80` / R3-IV08 / 重大度 medium / confirmed
 - [ ] **otel_exporter の redaction が exporter 境界のみで events()/otlp_payload は生データ** — 根拠 `src/ports/otel_exporter.rs:22-65,96-113`, `src/services/telemetry.rs:104-110` / R4-OB01, R3-DE09 / 重大度 medium / confirmed

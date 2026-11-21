@@ -169,30 +169,40 @@ impl FileSystem {
                 "offset and limit must be positive".to_string(),
             ));
         }
-        let text = self.read_text(path)?;
-        let lines: Vec<&str> = text.lines().collect();
-        let total_lines = lines.len();
-        let start = (offset - 1).min(total_lines);
-        let end = (start + limit).min(total_lines);
-        let selected = &lines[start..end];
-        let rendered: Vec<String> = selected
-            .iter()
-            .map(|line| {
-                if line.chars().count() > max_line_length {
-                    format!(
-                        "{}…",
-                        line.chars().take(max_line_length).collect::<String>()
-                    )
-                } else {
-                    line.to_string()
-                }
-            })
-            .collect();
+        // Stream lines one at a time: never materialise the whole file. Only
+        // the requested window is retained; every other line is counted then
+        // dropped (swarm review R3-IV06). BufReader::lines() matches
+        // str::lines() semantics, so total_lines stays identical.
+        use std::io::BufRead;
+        let resolved = self.resolve(path)?;
+        let file =
+            std::fs::File::open(&resolved).map_err(|error| Error::Other(error.to_string()))?;
+        let reader = std::io::BufReader::new(file);
+        let mut total_lines = 0usize;
+        let start = offset - 1;
+        let end = start.saturating_add(limit);
+        let mut rendered: Vec<String> = Vec::new();
+        for line in reader.lines() {
+            let line = line.map_err(|error| Error::Other(error.to_string()))?;
+            let index = total_lines;
+            total_lines += 1;
+            if index < start || index >= end {
+                continue;
+            }
+            rendered.push(if line.chars().count() > max_line_length {
+                format!(
+                    "{}…",
+                    line.chars().take(max_line_length).collect::<String>()
+                )
+            } else {
+                line
+            });
+        }
         Ok(ReadWindow {
             content: rendered.join("\n"),
             total_lines,
             start_line: offset,
-            lines_returned: end - start,
+            lines_returned: rendered.len(),
         })
     }
 
