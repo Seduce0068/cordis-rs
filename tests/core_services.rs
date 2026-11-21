@@ -4813,3 +4813,28 @@ fn read_window_streams_without_materialising_whole_file() {
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn compiled_matcher_caches_regex_and_fails_closed() {
+    use cordis_rs::core_services::{CompiledMatcher, is_match_all, matcher_diagnostic, matches};
+
+    // Existing adapter still works for all sentinels and literal mode.
+    assert!(matches(None, "anything", false));
+    assert!(matches(Some(""), "anything", false));
+    assert!(matches(Some("*"), "anything", false));
+    assert!(matches(Some("a|b"), "b", true));
+    assert!(!matches(Some("a|b"), "c", true));
+    assert!(is_match_all(Some("*")));
+
+    // Compiled once, reused across dispatches with identical results.
+    let compiled = CompiledMatcher::compile(Some("^tool_[0-9]+$"), false);
+    for index in 0..100 {
+        assert!(compiled.matches(&format!("tool_{index}")));
+        assert!(!compiled.matches("other"));
+    }
+
+    // Invalid pattern is a fail-closed non-match and is diagnosed at config load.
+    let invalid = CompiledMatcher::compile(Some("["), false);
+    assert!(!invalid.matches("anything"));
+    assert!(matcher_diagnostic(Some("["), false).is_some());
+}

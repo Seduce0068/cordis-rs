@@ -95,21 +95,46 @@ pub fn is_match_all(matcher: Option<&str>) -> bool {
 /// Literal-mode matcher: pipe-separated alternatives, exact match.
 /// Regex-mode uses an unanchored `regex::Regex`; invalid patterns are
 /// non-matches at runtime and rejected by `matcher_diagnostic` at config load.
-pub fn matches(matcher: Option<&str>, query: &str, literal: bool) -> bool {
-    if is_match_all(matcher) {
-        return true;
-    }
-    let Some(pattern) = matcher else {
-        return true;
-    };
-    if literal {
-        pattern.split('|').any(|alternative| alternative == query)
-    } else {
+/// A pre-compiled, validated matcher. Compiling once avoids re-running
+/// `Regex::new` on every dispatch (swarm review R3-IV07).
+pub enum CompiledMatcher {
+    MatchAll,
+    Literal(Vec<String>),
+    Regex(regex::Regex),
+    /// Invalid pattern or config that slipped through validation: always
+    /// non-match (fail-closed).
+    Never,
+}
+
+impl CompiledMatcher {
+    pub fn compile(matcher: Option<&str>, literal: bool) -> Self {
+        if is_match_all(matcher) {
+            return Self::MatchAll;
+        }
+        let Some(pattern) = matcher else {
+            return Self::MatchAll;
+        };
+        if literal {
+            return Self::Literal(pattern.split('|').map(str::to_string).collect());
+        }
         match regex::Regex::new(pattern) {
-            Ok(re) => re.is_match(query),
-            Err(_) => false, // invalid regexes are non-matches at runtime
+            Ok(re) => Self::Regex(re),
+            Err(_) => Self::Never,
         }
     }
+
+    pub fn matches(&self, query: &str) -> bool {
+        match self {
+            Self::MatchAll => true,
+            Self::Literal(alternatives) => alternatives.iter().any(|alt| alt == query),
+            Self::Regex(re) => re.is_match(query),
+            Self::Never => false,
+        }
+    }
+}
+
+pub fn matches(matcher: Option<&str>, query: &str, literal: bool) -> bool {
+    CompiledMatcher::compile(matcher, literal).matches(query)
 }
 
 /// Validate a matcher before a config bridge accepts it. Returns `None` for

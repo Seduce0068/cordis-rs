@@ -323,8 +323,8 @@ pub mod core_services {
         Goal, GoalError, GoalStatus, GoalStore, provide as provide_goals,
     };
     pub use crate::services::hook_protocol::{
-        HookOutput, MergedDecision, MergedHookOutcome, is_match_all, matcher_diagnostic, matches,
-        merge_hook_outputs,
+        CompiledMatcher, HookOutput, MergedDecision, MergedHookOutcome, is_match_all,
+        matcher_diagnostic, matches, merge_hook_outputs,
     };
     pub use crate::services::jobs::{
         JobError, JobHandle, JobRegistry, JobStatus, JobView, provide as provide_jobs,
