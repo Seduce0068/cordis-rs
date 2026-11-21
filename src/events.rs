@@ -91,6 +91,17 @@ macro_rules! typed_event {
 }
 
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+/// Build a disposer that removes one listener from the registry by id.
+/// Shared by all `on_*_with_registry` helpers (R1 review).
+fn disposer_for(registry: &EventRegistry, key: SlotKey, id: u64) -> Disposer {
+    let registry = registry.clone();
+    Disposer::new(move || {
+        let registry = registry.clone();
+        let key = key.clone();
+        async move { registry.remove(key, id) }
+    })
+}
 pub type Shared<A> = Arc<Mutex<A>>;
 
 pub type Next<A, R> = Arc<dyn Fn(Shared<A>) -> BoxFuture<'static, Result<R>> + Send + Sync>;
@@ -432,15 +443,18 @@ where
     where
         F: Fn(A) -> BoxFuture<'static, Option<R>> + Send + Sync + 'static,
     {
+        self.on_serial_with_registry(ctx.event_registry(), listener)
+    }
+
+    /// Register with an explicit registry (ADR-010 stage 4).
+    pub fn on_serial_with_registry<F>(&self, registry: &EventRegistry, listener: F) -> Disposer
+    where
+        F: Fn(A) -> BoxFuture<'static, Option<R>> + Send + Sync + 'static,
+    {
         let listener: SerialListener<A, R> = Arc::new(listener);
-        let registry = ctx.event_registry().clone();
         let key = self.key::<SerialListener<A, R>>();
-        let id = registry.push::<SerialListener<A, R>>(key.clone(), listener.clone());
-        Disposer::new(move || {
-            let registry = registry.clone();
-            let key = key.clone();
-            async move { registry.remove(key, id) }
-        })
+        let id = registry.push::<SerialListener<A, R>>(key.clone(), listener);
+        disposer_for(registry, key, id)
     }
 
     /// Upstream's `false` is a non-bail value; detect it generically via Any.
@@ -451,9 +465,13 @@ where
 
     /// Await serial listeners in registration order, stopping at the first bail.
     pub async fn serial(&self, ctx: &Context, args: A) -> Option<R> {
-        let listeners: Vec<SerialListener<A, R>> = ctx
-            .event_registry()
-            .snapshot(self.key::<SerialListener<A, R>>());
+        self.serial_with_registry(ctx.event_registry(), args).await
+    }
+
+    /// Dispatch with an explicit registry (ADR-010 stage 4).
+    pub async fn serial_with_registry(&self, registry: &EventRegistry, args: A) -> Option<R> {
+        let listeners: Vec<SerialListener<A, R>> =
+            registry.snapshot(self.key::<SerialListener<A, R>>());
         for listener in listeners {
             if let Some(value) = listener(args.clone()).await
                 && Self::is_bail_value(&value)
@@ -469,22 +487,29 @@ where
     where
         F: Fn(A) -> Option<R> + Send + Sync + 'static,
     {
+        self.on_bail_with_registry(ctx.event_registry(), listener)
+    }
+
+    /// Register with an explicit registry (ADR-010 stage 4).
+    pub fn on_bail_with_registry<F>(&self, registry: &EventRegistry, listener: F) -> Disposer
+    where
+        F: Fn(A) -> Option<R> + Send + Sync + 'static,
+    {
         let listener: BailListener<A, R> = Arc::new(listener);
-        let registry = ctx.event_registry().clone();
         let key = self.key::<BailListener<A, R>>();
-        let id = registry.push::<BailListener<A, R>>(key.clone(), listener.clone());
-        Disposer::new(move || {
-            let registry = registry.clone();
-            let key = key.clone();
-            async move { registry.remove(key, id) }
-        })
+        let id = registry.push::<BailListener<A, R>>(key.clone(), listener);
+        disposer_for(registry, key, id)
     }
 
     /// Run synchronous bail listeners in registration order.
     pub fn bail(&self, ctx: &Context, args: A) -> Option<R> {
-        let listeners: Vec<BailListener<A, R>> = ctx
-            .event_registry()
-            .snapshot(self.key::<BailListener<A, R>>());
+        self.bail_with_registry(ctx.event_registry(), args)
+    }
+
+    /// Dispatch with an explicit registry (ADR-010 stage 4).
+    pub fn bail_with_registry(&self, registry: &EventRegistry, args: A) -> Option<R> {
+        let listeners: Vec<BailListener<A, R>> =
+            registry.snapshot(self.key::<BailListener<A, R>>());
         for listener in listeners {
             if let Some(value) = listener(args.clone())
                 && Self::is_bail_value(&value)
@@ -504,15 +529,18 @@ where
     where
         F: Fn(A) -> BoxFuture<'static, ()> + Send + Sync + 'static,
     {
+        self.on_emit_with_registry(ctx.event_registry(), listener)
+    }
+
+    /// Register with an explicit registry (ADR-010 stage 4).
+    pub fn on_emit_with_registry<F>(&self, registry: &EventRegistry, listener: F) -> Disposer
+    where
+        F: Fn(A) -> BoxFuture<'static, ()> + Send + Sync + 'static,
+    {
         let listener: EmitListener<A> = Arc::new(listener);
-        let registry = ctx.event_registry().clone();
         let key = self.key::<EmitListener<A>>();
-        let id = registry.push::<EmitListener<A>>(key.clone(), listener.clone());
-        Disposer::new(move || {
-            let registry = registry.clone();
-            let key = key.clone();
-            async move { registry.remove(key, id) }
-        })
+        let id = registry.push::<EmitListener<A>>(key.clone(), listener);
+        disposer_for(registry, key, id)
     }
 
     /// Await observers in registration order (deterministic test helper).
@@ -521,9 +549,16 @@ where
     where
         A: Clone,
     {
-        let listeners: Vec<EmitListener<A>> = ctx
-            .event_registry()
-            .snapshot::<EmitListener<A>>(self.key::<EmitListener<A>>());
+        self.emit_with_registry(ctx.event_registry(), args).await
+    }
+
+    /// Dispatch with an explicit registry (ADR-010 stage 4).
+    pub async fn emit_with_registry(&self, registry: &EventRegistry, args: A)
+    where
+        A: Clone,
+    {
+        let listeners: Vec<EmitListener<A>> =
+            registry.snapshot::<EmitListener<A>>(self.key::<EmitListener<A>>());
         for listener in listeners {
             listener(args.clone()).await;
         }
@@ -535,9 +570,17 @@ where
     where
         A: Clone + 'static,
     {
-        let listeners: Vec<EmitListener<A>> = ctx
-            .event_registry()
-            .snapshot::<EmitListener<A>>(self.key::<EmitListener<A>>());
+        self.emit_spawn_with_registry(ctx.event_registry(), args)
+    }
+
+    /// Fire-and-forget dispatch with an explicit registry (ADR-010 stage 4).
+    /// The registry borrow ends before spawn so the moved listener stays 'static.
+    pub fn emit_spawn_with_registry(&self, registry: &EventRegistry, args: A)
+    where
+        A: Clone + 'static,
+    {
+        let listeners: Vec<EmitListener<A>> =
+            registry.snapshot::<EmitListener<A>>(self.key::<EmitListener<A>>());
         for listener in listeners {
             let args = args.clone();
             tokio::spawn(async move { listener(args).await });
@@ -560,9 +603,14 @@ where
 {
     /// Run all observers concurrently on the current executor.
     pub async fn parallel(&self, ctx: &Context, args: A) {
-        let listeners: Vec<EmitListener<A>> = ctx
-            .event_registry()
-            .snapshot::<EmitListener<A>>(self.key::<EmitListener<A>>());
+        self.parallel_with_registry(ctx.event_registry(), args)
+            .await
+    }
+
+    /// Dispatch with an explicit registry (ADR-010 stage 4).
+    pub async fn parallel_with_registry(&self, registry: &EventRegistry, args: A) {
+        let listeners: Vec<EmitListener<A>> =
+            registry.snapshot::<EmitListener<A>>(self.key::<EmitListener<A>>());
         let futures = listeners.into_iter().map(|listener| {
             let args = args.clone();
             async move { listener(args).await }
@@ -576,15 +624,22 @@ where
     where
         F: Fn(A) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static,
     {
+        self.on_emit_fallible_with_registry(ctx.event_registry(), listener)
+    }
+
+    /// Register with an explicit registry (ADR-010 stage 4).
+    pub fn on_emit_fallible_with_registry<F>(
+        &self,
+        registry: &EventRegistry,
+        listener: F,
+    ) -> Disposer
+    where
+        F: Fn(A) -> BoxFuture<'static, Result<()>> + Send + Sync + 'static,
+    {
         let listener: FallibleEmitListener<A> = Arc::new(listener);
-        let registry = ctx.event_registry().clone();
         let key = self.key::<FallibleEmitListener<A>>();
-        let id = registry.push::<FallibleEmitListener<A>>(key.clone(), listener.clone());
-        Disposer::new(move || {
-            let registry = registry.clone();
-            let key = key.clone();
-            async move { registry.remove(key, id) }
-        })
+        let id = registry.push::<FallibleEmitListener<A>>(key.clone(), listener);
+        disposer_for(registry, key, id)
     }
 
     /// Run fallible observers concurrently and aggregate every failure in
@@ -595,9 +650,18 @@ where
         ctx: &Context,
         args: A,
     ) -> std::result::Result<(), EmitErrors> {
-        let listeners: Vec<FallibleEmitListener<A>> = ctx
-            .event_registry()
-            .snapshot::<FallibleEmitListener<A>>(self.key::<FallibleEmitListener<A>>());
+        self.parallel_errors_with_registry(ctx.event_registry(), args)
+            .await
+    }
+
+    /// Dispatch with an explicit registry (ADR-010 stage 4).
+    pub async fn parallel_errors_with_registry(
+        &self,
+        registry: &EventRegistry,
+        args: A,
+    ) -> std::result::Result<(), EmitErrors> {
+        let listeners: Vec<FallibleEmitListener<A>> =
+            registry.snapshot::<FallibleEmitListener<A>>(self.key::<FallibleEmitListener<A>>());
         let futures = listeners.into_iter().map(|listener| {
             let args = args.clone();
             async move { listener(args).await }

@@ -650,3 +650,42 @@ async fn removing_listeners_clears_hook_meta() {
     d2.dispose().await.unwrap();
     assert_eq!(ctx.event_registry().meta_len(), baseline);
 }
+
+#[tokio::test]
+async fn dispatch_with_registry_matches_context_adapter() {
+    use cordis_rs::events::named_emit_slot;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let ctx = Context::root("with-registry");
+    let registry = ctx.event_registry().clone();
+    let counter = Arc::new(AtomicUsize::new(0));
+
+    // Register through the with_registry entry point directly.
+    let listener = {
+        let counter = counter.clone();
+        move |_args: serde_json::Value| -> cordis_rs::events::BoxFuture<'static, ()> {
+            let counter = counter.clone();
+            Box::pin(async move {
+                counter.fetch_add(1, Ordering::SeqCst);
+            })
+        }
+    };
+    let event = cordis_rs::events::Event::<serde_json::Value, ()>::new("reg-dispatch");
+    let disposer = event.on_emit_with_registry(&registry, listener);
+
+    // Both the Context adapter and the explicit registry see the same slot.
+    let args = serde_json::json!({"n": 1});
+    event.emit(&ctx, args.clone()).await;
+    event.emit_with_registry(&registry, args).await;
+    assert_eq!(counter.load(Ordering::SeqCst), 2);
+
+    // The shared disposer helper removes by id from the registry.
+    disposer.dispose().await.unwrap();
+    // named_emit_slot is used internally; ensure no lingering listener.
+    let _ = named_emit_slot("reg-dispatch");
+    event
+        .emit_with_registry(&registry, serde_json::json!({}))
+        .await;
+    assert_eq!(counter.load(Ordering::SeqCst), 2);
+}
