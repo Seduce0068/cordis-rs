@@ -9,7 +9,7 @@ tags:
   - events
 resource: https://github.com/Seduce0068/cordis-rs
 generated: 2026-11-21T08:46:32+09:00
-verified: 2026-11-21T08:46:32+09:00
+verified: 2026-11-21T10:42:00+09:00
 status: accepted
 ---
 
@@ -60,7 +60,8 @@ core-services-research は「上流では子スコープが root の registry �
 を持つ**（Context::make 内の EventRegistry::default()）。これを root 共有へ変更すると、
 `ctx.provide` からの notify や inject 依存 reload（ADR-009 で保護した経路）に
 波及し大規模変更となる。よって ADR-011 は**現行の独立 registry を前提**とし、
-上流型の root 共有は第2段の段階的移行として「未着手」に記録する。
+上流型の root 共有は第2段の段階的移行として本 ADR 内で扱う
+（2026-11-21 更新: accessor は実装済み、named 移行は設計済み・未実装）。
 `EventScopeView` は単一 registry のみを指し、階層を導入しない。
 
 ## global と cleanup の扱い
@@ -79,14 +80,14 @@ core-services-research は「上流では子スコープが root の registry �
    getter は `pub(crate)` とし、`EventFilter` を public にしない。
 3. `emit_with` の内部を view 経由に変更（公開シグネチャ維持）。
 4. emit 系 adapter を `filter: None` の view に統一。
-5. 既存テスト（tests/cordis.rs の global/filtered dispatch テスト の global/filtered dispatch）が
+5. 既存テスト（tests/cordis.rs の global/filtered dispatch テスト）が
    通ることを確認。
 
 ## 残る論点
 
 - ADR-010 の `&dyn EventSink` 方針は本 ADR の concrete 型で置き換える。
   ADR-010 を proposed のまま残し、実装時に本 ADR を優先する。
-- 子スコープの registry 共有（上流整合）は第2段 ADR で扱う。
+- 子スコープの registry 共有（上流整合）は本 ADR の第2段セクション（下記）で扱う。
   **現状の既知制約**: 上流では registry が root に1つだけ存在し子はそれを
   共有するが、ローカルは各 Context が独立 registry を持つため、
   子で登録した listener は親や兄弟から emit しても届かない。
@@ -98,6 +99,41 @@ core-services-research は「上流では子スコープが root の registry �
   追加（R1 で Arc/Weak 保持は不要と判定。parent が强参照なので borrow は安全）。
   dispatch は現行の `event_registry()` のままで変更なし。次ステップで
   named emit → typed descriptor の順に shared へ移行する。
+
+### 第2段の第二段: named emit の shared registry 移行（設計、未実装・Trigger 待ち）
+
+**下記の移行手順は Trigger が来るまで実装しない**（現状は独立 registry を
+維持）。上流の root 共有セマンティクスへ近づける必要が生じた場合に、
+named emit の4経路を `root_event_registry()` へ集約する。R1 分析（reviewer）に基づく移行順序:
+
+1. `on_with` の登録先を `root_event_registry().clone()` に変更。
+2. `emit` / `emit_with` の snapshot を root へ。`emit_with` の view は
+   `EventScopeView::new(self.root_event_registry(), this.event_filter())` とし、
+   **filter は `this` のまま**（2スコープ契約を維持）。
+3. `once` の `OnceRemover.registry` も root へ統一（登録先と削除先の不一致で
+   一度きり semantics が壊れるのを防ぐ）。
+4. Disposer の cleanup も root registry を clone したままにする（ghost listener 防止）。
+
+**テスト前提の反転（重要）**: 現在の unit test
+`root_event_registry_is_shared_and_dispatch_stays_local` は「子の listener が
+root に現れない」ことを固定している。**移行時はこの期待を反転**させ、
+「子で `on` した listener が root の `emit` で届く」を検証する。
+一方 `tests/cordis.rs` の stage_b（登録も dispatch も root）は共有化しても
+通るため、**「stage_b が通る＝移行 OK」と誤判定しないこと**。
+
+**typed Event は別途**: `Event::on_emit` / `emit` 系（events.rs）は
+`ctx.event_registry()` を直接見る。段5で切った events→context 依存を復活
+させないため、host が `*_with_registry` 版を root registry で呼ぶ形にする
+（typed descriptor の shared 移行はさらに別段階）。
+
+**移行 Trigger（core-services-research の R1）**: 現行コードには cross-scope
+の実需要が無く（named 登録・emit は同一 Context 对、tests も同一 ctx）、
+独立 registry の裁定を即座に覆す根拠は無い。次のいずれかが要件に入った
+時点で root 共有が必須となる: (1) port を増やし fiber ctx で購読して root
+から emit する構成、(2) 上流 port 追加で cross-scope 購読が発生する構成。
+スコープ制御は isolate ではなく `EventScopeView.filter` に集約する点は
+上流と整合しており、isolate ごとの registry 分割は採らない。移行は
+「accessor（実装済み）→ named のみ共有 → typed も共有」の3段で低リスク。
 
 ## 関連
 
