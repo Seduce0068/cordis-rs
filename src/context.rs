@@ -212,6 +212,15 @@ impl Context {
         &self.inner.events
     }
 
+    /// Registry owned by the root context. ADR-011 stage 2 begins by exposing
+    /// this reference; dispatch still uses `event_registry()` (per-context)
+    /// and is unchanged. `parent` is a strong reference, so the borrow is
+    /// valid for the lifetime of `&self` (R1 review).
+    #[allow(dead_code)] // staged migration accessor (ADR-011 stage 2)
+    pub(crate) fn root_event_registry(&self) -> &EventRegistry {
+        self.root_context().event_registry()
+    }
+
     pub(crate) fn event_filter(&self) -> Option<&EventFilter> {
         self.inner.event_filter.as_ref()
     }
@@ -660,5 +669,44 @@ impl Context {
             Some(error) => Err(error),
             None => Ok(()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn root_event_registry_is_shared_and_dispatch_stays_local() {
+        use crate::events::named_emit_slot;
+
+        let root = Context::root("root");
+        let child = root.filtered(|name| name == "allowed");
+
+        // The accessor reaches the root registry from any scope.
+        let root_registry = root.event_registry();
+        assert!(std::ptr::eq(child.root_event_registry(), root_registry));
+        assert!(std::ptr::eq(root.root_event_registry(), root_registry));
+
+        // Child's own registry stays independent: dispatch still uses
+        // event_registry(), so a listener registered on the child is local.
+        let child_registry = child.event_registry();
+        assert!(!std::ptr::eq(child_registry, root_registry));
+        let slot = named_emit_slot("local");
+        let listener: crate::events::EmitListener<serde_json::Value> =
+            Arc::new(|_args| Box::pin(async {}));
+        child_registry
+            .push::<crate::events::EmitListener<serde_json::Value>>(slot.clone(), listener);
+        assert!(
+            child_registry
+                .snapshot::<crate::events::EmitListener<serde_json::Value>>(slot.clone())
+                .len()
+                == 1
+        );
+        assert!(
+            root_registry
+                .snapshot::<crate::events::EmitListener<serde_json::Value>>(slot)
+                .is_empty()
+        );
     }
 }

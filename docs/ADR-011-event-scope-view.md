@@ -93,9 +93,11 @@ core-services-research は「上流では子スコープが root の registry �
   port 側では cross-scope 購読を避ける規約を取る（R1 調査で確認）。
 - isolate は service 解決の影であり event 可視性を変えない（上流整合）。
   EventScopeView に isolate 情報は入れず、`{ registry, filter }` の形を維持する。
-- 第2段の最初の一歩: ContextInner に root registry への参照を追加し、
-  `shared_event_registry()` accessor を pub(crate) で公開するだけ（dispatch は
-  変更しない）。その後 named emit → typed descriptor の順に shared へ移行する。
+- 第2段の最初の一歩（実装済み 2026-11-21）: 新規フィールドは追加せず、
+  `Context::root_event_registry() -> &EventRegistry` を pub(crate) accessor として
+  追加（R1 で Arc/Weak 保持は不要と判定。parent が强参照なので borrow は安全）。
+  dispatch は現行の `event_registry()` のままで変更なし。次ステップで
+  named emit → typed descriptor の順に shared へ移行する。
 
 ## 関連
 
