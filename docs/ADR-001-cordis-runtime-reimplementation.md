@@ -1,8 +1,13 @@
-# ADR-001: Cordis 互換ランタイムを Rust で再実装する
-
-- ステータス: accepted
-- 日付: 2026-11-17
-- 決定者: Seduce0068
+---
+type: Reference
+title: ADR-001 Cordis 互換ランタイムを Rust で再実装する
+description: Cordis プラグイン互換ランタイムを Rust で再実装する決定と意図的差分
+tags: [cordis-rs, adr, runtime, reimplementation]
+resource: https://github.com/Seduce0068/cordis-rs
+generated: 2026-11-17T00:00:00+09:00
+verified: 2026-11-22T07:53:02+09:00
+status: accepted
+---
 
 ## 背景
 

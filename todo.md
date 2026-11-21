@@ -185,7 +185,7 @@ status: current
 - [ ] **PluginRegistry::register が同一 id を黙って上書きし MountReport に現れない** — 根拠 `src/loader.rs:612-628` / R5-AP04 / 重大度 medium / confirmed
 - [ ] **FsError の Display に安定コードがなくログから種別を判別できない** — 根拠 `src/ports/fs_errno.rs:9-27,50-54` / R5-OB05 / 重大度 low / confirmed
 - [x] **unsafe 禁止ゲートの行頭 unsafe { 取りこぼしとセルフテスト欠如** — 2026-11-22 修正（regex を (^|空白)unsafe{ に修正、行頭・インデント・extern fn の3形セルフテスト追加、検出を実証、R5 指摘反映）。
-- [ ] **ADR-001 だけ OKF frontmatter がなくメタデータ形式が他と不一致** — 根拠 `docs/ADR-001-cordis-runtime-reimplementation.md:1-5` / R5-DC13 / 重大度 low / confirmed
+- [x] **ADR-001 だけ OKF frontmatter がなくメタデータ形式が他と不一致** — 2026-11-22 修正（type/title/description/tags/generated/verified/status の YAML frontmatter を追加、箇条書きメタデータ削除、R5 指摘反映）。
 - [ ] **CommandDefinition::new がコマンド名を検証せず parse_command と規約が切れる** — 根拠 `src/services/commands.rs:65-76`, `src/ports/command_parse.rs:21-25` / R5-IV05 / 重大度 medium / confirmed
 - [ ] **PROGRESS.md の残タスク件数が todo.md の実未着手数と乖離** — 根拠 `docs/PROGRESS.md:63`, `todo.md` / R6-DC14 / 重大度 low / confirmed
 - [x] **tool_goal の max_goal_rounds が u64→u32 無検証キャストで丸められる** — 2026-11-22 修正（u32::try_from で範囲外を InvalidArgs 拒否、回帰テスト追加、R6 指摘反映）。
