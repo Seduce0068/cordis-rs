@@ -134,7 +134,7 @@ status: current
 - [x] **FieldSpec の min/max が f64 のみで Integer(i64) の範囲検証が精度落ち** — 2026-11-21 修正（min_int/max_int + range_int を追加、i64 同士で比較、既存 range(f64) は維持、2^53 超回帰テスト追加、R1 指摘反映）。
 - [x] **check-doc-counts.sh が src 内 unit test を件数から除外** — 2026-11-21 修正（src+tests の総数 247 に統一し内訳明記、stale test count チェック追加、cargo test --list と一致、R1 指摘反映）。
 - [x] **verify.sh が cargo-audit 未インストール時に警告だけでスキップし全ゲート合格と表示** — 2026-11-21 修正（未インストール時は AUDIT_SKIP=1 の明示 opt-out を要求、なければ fail、README に記載、R1 指摘反映）。
-- [ ] **ADR-010 の status と進捗記述が index / 本文で矛盾（段4 未着手なのに完了表記）** — 根拠 `docs/index.md:26`, `docs/ADR-010-context-events-boundary.md:81-84` / R1-DR01 / 重大度 medium / confirmed
+- [x] **ADR-010 の status と進捗記述が index / 本文で矛盾（段4 未着手なのに完了表記）** — 2026-11-21 修正（index を「段5-6 完了・段4 未着手・真の cycle 解消未達」に修正、R1 指摘反映）。
 - [ ] **ApprovalService に agent/callId/audit pair/allowed-once が無い** — 根拠 `docs/ADR-012-shell-command-approval.md:67-68,104-107`, `src/services/approval.rs:14-19` / R2-FG02 / 重大度 medium / confirmed
 - [ ] **sandbox escalation の共通 helper が無く実行ポイントへ接続されていない** — 根拠 `docs/ADR-012-shell-command-approval.md:108-109`, `src/ports/sandbox_policy.rs:1-6` / R2-FG03 / 重大度 medium / confirmed
 - [ ] **completion notice 配信とモデル cursor 追跡が未実装** — 根拠 `docs/ADR-002-tool-jobs-port-scope.md:16,21-24,28-29` / R2-FG05 / 重大度 medium / confirmed

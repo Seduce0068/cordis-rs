@@ -23,7 +23,8 @@ cordis-rs の設計判断と開発資料の索引です。
 - [ADR-009: Context と plugin の依存境界](ADR-009-context-plugin-boundary.md)
   — FiberObserver による依存逆転（accepted）。
 - [ADR-010: Context と events の依存境界](ADR-010-context-events-boundary.md)
-  — 一方向化の設計。段4-5 完了、direct import は除去済み（proposed）。
+  — 一方向化の設計。段5-6 完了（direct import 除去）だが、段4（残り dispatch API の
+  registry 化）は未着手で真の cycle 解消は未達（proposed）。
 - [ADR-011: EventScopeView によるスコープ表現](ADR-011-event-scope-view.md)
   — emit_with の2スコープ問題の設計と root registry 共有の段階移行（accepted）。
 - [ADR-012: model 由来 Shell コマンドの承認境界](ADR-012-shell-command-approval.md)
