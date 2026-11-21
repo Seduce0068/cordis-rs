@@ -68,8 +68,20 @@ impl CommandDefinition {
         description: impl Into<String>,
         handler: CommandHandler,
     ) -> Self {
+        let name = name.into();
+        // Match parse_command's registered_name contract: a leading slash and
+        // `[a-z][a-z0-9_-]*`, so parsed input can find the command (swarm
+        // review R5-IV05).
+        let valid = name.strip_prefix('/').is_some_and(|rest| {
+            let mut chars = rest.chars();
+            chars.next().is_some_and(|first| first.is_ascii_lowercase())
+                && chars.all(|ch| {
+                    ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_' || ch == '-'
+                })
+        });
+        assert!(valid, "invalid command name: {name}");
         Self {
-            name: name.into(),
+            name,
             description: description.into(),
             handler,
         }

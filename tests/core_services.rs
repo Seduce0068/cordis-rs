@@ -5439,3 +5439,25 @@ fn turn_outline_compares_large_turn_numbers_without_i64_wrap() {
     let next = fold(state, &stale);
     assert_eq!(next["turns"].as_array().unwrap().len(), 3);
 }
+
+#[test]
+#[should_panic(expected = "invalid command name")]
+fn command_definition_rejects_unparseable_name() {
+    use cordis_rs::core_services::{CommandDefinition, CommandHandler, CommandResult};
+
+    let handler: CommandHandler = Arc::new(|_| Box::pin(async { CommandResult::success("") }));
+    // parse_command only produces "/[a-z][a-z0-9_-]*"; a bare name would never
+    // be found by parsed input (swarm review R5-IV05).
+    let _ = CommandDefinition::new("compact", "bad", handler);
+}
+
+#[test]
+fn command_definition_accepts_canonical_name() {
+    use cordis_rs::core_services::{CommandDefinition, CommandHandler, CommandResult};
+
+    let handler: CommandHandler = Arc::new(|_| Box::pin(async { CommandResult::success("") }));
+    assert_eq!(
+        CommandDefinition::new("/compact", "ok", handler).name(),
+        "/compact"
+    );
+}
