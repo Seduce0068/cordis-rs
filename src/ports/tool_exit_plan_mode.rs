@@ -86,7 +86,7 @@ impl crate::Plugin for ToolExitPlanMode {
     }
 
     fn inject(&self) -> &[&str] {
-        &[]
+        &["tools", "planMode"]
     }
 
     async fn apply(&self, ctx: &Context) -> Result<()> {

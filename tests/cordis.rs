@@ -801,3 +801,18 @@ async fn require_untyped_with_timeout_bounds_wait() {
         .unwrap();
     assert_eq!(*value.downcast::<u32>().unwrap(), 42);
 }
+
+#[tokio::test]
+async fn tool_schedule_declares_its_injected_dependencies() {
+    use cordis_rs::core_services::provide_tools;
+    use cordis_rs::plugin_ports::mount_tool_schedule;
+    use cordis_rs::services::schedule::provide as provide_schedule;
+
+    let ctx = Context::root("schedule-inject");
+    provide_tools(&ctx).await.unwrap();
+    provide_schedule(&ctx).await.unwrap();
+    let registry = mount_tool_schedule(&ctx).await.unwrap();
+    // The port registers its tool only when both injected seams are present;
+    // apply() requires "tools" and "schedule" (swarm review R2-ST02).
+    assert!(registry.names().iter().any(|name| name == "schedule_list"));
+}

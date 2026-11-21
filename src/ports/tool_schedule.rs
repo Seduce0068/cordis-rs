@@ -144,7 +144,7 @@ impl crate::Plugin for ToolSchedule {
     }
 
     fn inject(&self) -> &[&str] {
-        &[]
+        &["tools", "schedule"]
     }
 
     async fn apply(&self, ctx: &Context) -> Result<()> {
