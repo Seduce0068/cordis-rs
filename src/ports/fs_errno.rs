@@ -26,6 +26,12 @@ impl FsErrorCode {
     }
 }
 
+impl fmt::Display for FsErrorCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// A classified filesystem error, preserving the original error as cause.
 #[derive(Debug, Clone)]
 pub struct FsError {
@@ -49,7 +55,9 @@ impl PartialEq for FsError {
 
 impl fmt::Display for FsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.message)
+        // Include the stable code so logs can classify errors mechanically
+        // (swarm review R5-OB05). Message text is unchanged for compatibility.
+        write!(f, "{}: {}", self.code, self.message)
     }
 }
 

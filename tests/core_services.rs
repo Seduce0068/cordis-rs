@@ -5396,3 +5396,17 @@ async fn disposing_default_provider_clears_stale_default_name() {
         Some("secondary".to_string())
     );
 }
+
+#[test]
+fn fs_error_display_includes_stable_code() {
+    use cordis_rs::plugin_ports::{FsErrorCode, fs_error_from_errno};
+
+    let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "missing");
+    let error = fs_error_from_errno("read", "/tmp/x", &io_error);
+    let rendered = error.to_string();
+    assert!(
+        rendered.starts_with(FsErrorCode::NotFound.as_str()),
+        "Display must include the stable code so logs can classify: {rendered}"
+    );
+    assert_eq!(FsErrorCode::NotFound.to_string(), "FS_NOT_FOUND");
+}
