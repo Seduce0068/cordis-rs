@@ -43,6 +43,12 @@ impl std::ops::Deref for TempDirGuard {
     }
 }
 
+impl AsRef<std::path::Path> for TempDirGuard {
+    fn as_ref(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
 fn echo_tool() -> ToolDefinition {
     ToolDefinition::new(
         "echo",
@@ -408,7 +414,7 @@ async fn tool_fs_read_write_edit_through_shared_seams() {
     names.sort();
     assert_eq!(names, ["edit", "read", "write"]);
 
-    let dir = std::env::temp_dir().join(format!("cordis-tool-fs-{}", std::process::id()));
+    let dir = TempDirGuard::new("cordis-tool-fs");
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("note.txt");
     let path_str = path.to_string_lossy().to_string();
@@ -625,7 +631,7 @@ async fn jsonl_persistence_appends_reads_and_restores() {
         JsonlPersistence, PersistenceError, mount_session_persistence_jsonl,
     };
 
-    let dir = std::env::temp_dir().join(format!("cordis-jsonl-{}", std::process::id()));
+    let dir = TempDirGuard::new("cordis-jsonl");
     let _ = std::fs::remove_dir_all(&dir);
 
     let ctx = Context::root("jsonl-persistence");
@@ -797,7 +803,7 @@ async fn checkpoint_cursor_appends_only_new_events() {
 async fn checkpoint_cursor_survives_restart() {
     use cordis_rs::core_services::{CheckpointCursor, Session};
 
-    let dir = std::env::temp_dir().join(format!("cordis-cursor-{}", std::process::id()));
+    let dir = TempDirGuard::new("cordis-cursor");
     let _ = std::fs::create_dir_all(&dir);
     let cursor_path = dir.join("cursor.json");
 
@@ -835,7 +841,7 @@ async fn checkpoint_cursor_survives_restart() {
 async fn checkpoint_cursor_save_is_atomic_and_overwrites_cleanly() {
     use cordis_rs::core_services::{CheckpointCursor, Session};
 
-    let dir = std::env::temp_dir().join(format!("cordis-cursor-atomic-{}", std::process::id()));
+    let dir = TempDirGuard::new("cordis-cursor-atomic");
     let _ = std::fs::create_dir_all(&dir);
     let cursor_path = dir.join("cursor.json");
 
@@ -862,7 +868,7 @@ async fn checkpoint_cursor_save_is_atomic_and_overwrites_cleanly() {
 async fn skill_filesystem_discovers_and_registers_a_provider() {
     use cordis_rs::plugin_ports::{SkillFsConfig, mount_skill_filesystem};
 
-    let dir = std::env::temp_dir().join(format!("cordis-skills-{}", std::process::id()));
+    let dir = TempDirGuard::new("cordis-skills");
     let skill_dir = dir.join("demo-skill");
     let _ = std::fs::create_dir_all(&skill_dir);
     std::fs::write(
@@ -873,7 +879,7 @@ async fn skill_filesystem_discovers_and_registers_a_provider() {
 
     let ctx = Context::root("skill-fs");
     let config = SkillFsConfig {
-        roots: vec![dir.clone()],
+        roots: vec![dir.to_path_buf()],
         rank: 10,
     };
     let registry = mount_skill_filesystem(&ctx, config).await.unwrap();
@@ -2499,7 +2505,7 @@ async fn agent_instructions_register_baseline_sections() {
     let ctx = Context::root("agent-instructions");
     let prompt = provide_system_prompt(&ctx).await.unwrap();
 
-    let dir = std::env::temp_dir().join(format!("agent-instructions-{}", std::process::id()));
+    let dir = TempDirGuard::new("agent-instructions");
     let _ = std::fs::create_dir_all(&dir);
     std::fs::write(dir.join("AGENTS.md"), "# Agent rules\nuse bash").unwrap();
     std::fs::write(dir.join("GEMINI.md"), "# Gemini rules").unwrap();
@@ -2573,14 +2579,14 @@ async fn file_reference_formats_and_detects_mentions() {
 async fn workspace_file_search_indexes_and_filters() {
     use cordis_rs::core_services::WorkspaceFileSearch;
 
-    let dir = std::env::temp_dir().join(format!("file-search-{}", std::process::id()));
+    let dir = TempDirGuard::new("file-search");
     let _ = std::fs::create_dir_all(dir.join("src"));
     let _ = std::fs::create_dir_all(dir.join("node_modules"));
     std::fs::write(dir.join("src/main.rs"), "").unwrap();
     std::fs::write(dir.join("src/lib.rs"), "").unwrap();
     std::fs::write(dir.join("node_modules/ignored.js"), "").unwrap();
 
-    let search = WorkspaceFileSearch::new(dir.clone(), Default::default()).unwrap();
+    let search = WorkspaceFileSearch::new(dir.to_path_buf(), Default::default()).unwrap();
     let all = search.search("");
     assert!(all.iter().any(|entry| entry.path == "src/main.rs"));
     assert!(!all.iter().any(|entry| entry.path.contains("node_modules")));
@@ -2594,7 +2600,7 @@ async fn workspace_file_search_indexes_and_filters() {
         max_results: 0,
         ..Default::default()
     };
-    assert!(WorkspaceFileSearch::new(&dir, config).is_err());
+    assert!(WorkspaceFileSearch::new(dir.path(), config).is_err());
 
     std::fs::remove_dir_all(&dir).unwrap();
 }
@@ -3215,7 +3221,7 @@ async fn agent_loop_propagates_caller_and_session_to_tool_exec() {
 async fn checkpoint_try_load_fails_closed_on_corruption_and_tool_output_exposes_error() {
     use cordis_rs::core_services::{CheckpointCursor, ToolOutput};
 
-    let dir = std::env::temp_dir().join(format!("checkpoint-fc-{}", std::process::id()));
+    let dir = TempDirGuard::new("checkpoint-fc");
     let _ = std::fs::create_dir_all(&dir);
     let path = dir.join("cursor.json");
 
@@ -4263,7 +4269,7 @@ async fn llm_stream_without_done_is_an_error_not_partial_success() {
 fn scoped_fs_rejects_symlink_escape_even_when_target_missing() {
     use cordis_rs::core_services::FileSystem;
 
-    let base = std::env::temp_dir().join(format!("cordis-fs-escape-{}", std::process::id()));
+    let base = TempDirGuard::new("cordis-fs-escape");
     let root = base.join("root");
     let outside = base.join("outside");
     let _ = std::fs::remove_dir_all(&base);
@@ -4421,7 +4427,7 @@ fn jsonl_persistence_lists_sessions_from_disk_after_restart() {
     use cordis_rs::plugin_ports::JsonlPersistence;
     use std::fs;
 
-    let root = std::env::temp_dir().join(format!("cordis-list-{}", std::process::id()));
+    let root = TempDirGuard::new("cordis-list");
     let _ = fs::remove_dir_all(&root);
 
     // First instance creates a session and writes its file.
@@ -4447,7 +4453,7 @@ fn jsonl_restore_preserves_persisted_seq_and_rejects_nonmonotonic() {
     use cordis_rs::plugin_ports::{JsonlPersistence, PersistenceError};
     use std::io::Write;
 
-    let root = std::env::temp_dir().join(format!("cordis-restore-seq-{}", std::process::id()));
+    let root = TempDirGuard::new("cordis-restore-seq");
     let _ = std::fs::remove_dir_all(&root);
     let store = JsonlPersistence::new(&root);
     let handle = store.create("seq").unwrap();
@@ -4486,7 +4492,7 @@ fn jsonl_restore_preserves_persisted_seq_and_rejects_nonmonotonic() {
 fn file_search_reports_index_truncation_and_io_errors() {
     use cordis_rs::core_services::{FileSearchConfig, WorkspaceFileSearch};
 
-    let dir = std::env::temp_dir().join(format!("cordis-fs-search-{}", std::process::id()));
+    let dir = TempDirGuard::new("cordis-fs-search");
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     for name in ["a", "b", "c", "d"] {
@@ -4497,7 +4503,7 @@ fn file_search_reports_index_truncation_and_io_errors() {
         max_entries: 2,
         ..Default::default()
     };
-    let search = WorkspaceFileSearch::new(&dir, config).unwrap();
+    let search = WorkspaceFileSearch::new(dir.path(), config).unwrap();
     assert!(
         search.status().truncated,
         "small max_entries must mark truncation"
@@ -4724,7 +4730,7 @@ fn deepseek_base_url_validation_blocks_credential_exfiltration() {
 async fn provide_scoped_fs_rejects_outside_paths_and_symlink_roots() {
     use cordis_rs::core_services::{FileSystem, provide_fs_scoped};
 
-    let base = std::env::temp_dir().join(format!("cordis-scoped-fs-{}", std::process::id()));
+    let base = TempDirGuard::new("cordis-scoped-fs");
     let root = base.join("root");
     let outside = base.join("outside.txt");
     let _ = std::fs::remove_dir_all(&base);
@@ -4816,7 +4822,7 @@ async fn shell_output_cap_truncates_without_breaking_utf8() {
 fn read_window_streams_without_materialising_whole_file() {
     use cordis_rs::core_services::FileSystem;
 
-    let dir = std::env::temp_dir().join(format!("cordis-window-{}", std::process::id()));
+    let dir = TempDirGuard::new("cordis-window");
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("lines.txt");

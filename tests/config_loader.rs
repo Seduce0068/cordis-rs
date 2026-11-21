@@ -8,6 +8,41 @@ use cordis_rs::{
     PluginFactory, PluginRegistry, ValidationErrors, ValidationReason, VarTable,
 };
 
+/// Auto-cleaning temp directory (keep in sync with core_services.rs). Uses a
+/// PID + nanosecond suffix and ignores cleanup errors in Drop (R4-TQ09).
+struct TempDirGuard(std::path::PathBuf);
+
+impl TempDirGuard {
+    fn new(prefix: &str) -> Self {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let path = std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()));
+        let _ = std::fs::create_dir_all(&path);
+        Self(path)
+    }
+}
+
+impl Drop for TempDirGuard {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+impl std::ops::Deref for TempDirGuard {
+    type Target = std::path::Path;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl AsRef<std::path::Path> for TempDirGuard {
+    fn as_ref(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
 fn schema() -> Vec<FieldSpec> {
     vec![
         FieldSpec::new("greeting", FieldType::String)
@@ -709,7 +744,7 @@ entries:
     let ids: Vec<_> = enabled.iter().map(|entry| entry.id.as_str()).collect();
     assert_eq!(ids, ["b"]);
 
-    let dir = std::env::temp_dir().join(format!("cordis-composition-state-{}", std::process::id()));
+    let dir = TempDirGuard::new("cordis-composition-state");
     let _ = std::fs::create_dir_all(&dir);
     let path = dir.join("state.json");
     state.save(&path).unwrap();
@@ -1150,7 +1185,7 @@ entries:
 fn composition_state_try_load_surfaces_corruption() {
     use cordis_rs::CompositionState;
 
-    let dir = std::env::temp_dir().join(format!("cordis-state-corrupt-{}", std::process::id()));
+    let dir = TempDirGuard::new("cordis-state-corrupt");
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
 
@@ -1261,7 +1296,7 @@ fn js_literal_block_preserves_bare_hash() {
 fn composition_state_save_leaves_no_temp_residue() {
     use cordis_rs::loader::CompositionState;
 
-    let dir = std::env::temp_dir().join(format!("cordis-state-tmp-{}", std::process::id()));
+    let dir = TempDirGuard::new("cordis-state-tmp");
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("state.json");

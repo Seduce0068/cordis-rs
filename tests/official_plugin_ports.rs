@@ -14,6 +14,40 @@
 
 use cordis_rs::Context;
 
+/// Auto-cleaning temp directory (keep in sync with core_services.rs).
+struct TempDirGuard(std::path::PathBuf);
+
+impl TempDirGuard {
+    fn new(prefix: &str) -> Self {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let path = std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()));
+        let _ = std::fs::create_dir_all(&path);
+        Self(path)
+    }
+}
+
+impl Drop for TempDirGuard {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+impl std::ops::Deref for TempDirGuard {
+    type Target = std::path::Path;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl AsRef<std::path::Path> for TempDirGuard {
+    fn as_ref(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
 mod command_goal {
     use std::collections::HashMap;
     use std::future::Future;
@@ -1489,7 +1523,7 @@ async fn tool_str_replace_editor_handles_four_commands() {
     mount_tool_str_replace_editor(&ctx).await.unwrap();
     assert!(tools.names().contains(&"str_replace_editor".to_string()));
 
-    let dir = std::env::temp_dir().join(format!("str-replace-{}", std::process::id()));
+    let dir = TempDirGuard::new("str-replace");
     let _ = std::fs::create_dir_all(&dir);
     let path = dir.join("sample.txt");
     let _ = std::fs::remove_file(&path);
