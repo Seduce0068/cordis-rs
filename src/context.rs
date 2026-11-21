@@ -438,7 +438,7 @@ impl Context {
             return Ok(());
         }
         self.drop_service_entry(name);
-        self.drain_dependent_fibers(name).await;
+        self.drain_dependent_fibers(name).await?;
         Ok(())
     }
 
@@ -457,7 +457,7 @@ impl Context {
     /// provider service disappears while its dependents are still running.
     pub async fn remove_service_async(&self, name: &str) -> Result<()> {
         self.drop_service_entry(name);
-        self.drain_dependent_fibers(name).await;
+        self.drain_dependent_fibers(name).await?;
         Ok(())
     }
 
@@ -507,7 +507,7 @@ impl Context {
     /// Notify observers that inject `name` and await their refresh, so callers
     /// can drain dependents before removing a service they depend on.
     /// Retiring observers are skipped to avoid a self-deadlock.
-    pub(crate) async fn drain_dependent_fibers(&self, name: &str) {
+    pub(crate) async fn drain_dependent_fibers(&self, name: &str) -> Result<()> {
         use futures::future::join_all;
         let tasks: Vec<_> = self
             .dependent_fibers()
@@ -516,7 +516,14 @@ impl Context {
             .filter(|observer| observer.injects(name) && !observer.is_retiring())
             .map(|observer| async move { observer.refresh().await })
             .collect();
-        let _ = join_all(tasks).await;
+        // Surface the first refresh failure instead of silently discarding
+        // every Result (swarm review R2-ER02). join_all runs all tasks, so one
+        // failure cannot prevent other dependents from being drained.
+        let results = join_all(tasks).await;
+        results
+            .into_iter()
+            .find_map(std::result::Result::err)
+            .map_or(Ok(()), Err)
     }
 
     pub fn get_untyped(&self, name: &str) -> Option<Arc<dyn Any + Send + Sync>> {

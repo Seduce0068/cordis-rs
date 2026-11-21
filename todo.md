@@ -43,7 +43,7 @@ status: current
 
 ### 優先度: 中
 
-- [ ] **依存 fiber の refresh 失敗が notify/drain 両経路で握り潰される** — 根拠 `src/context.rs:497-520`, `src/plugin.rs:112-120` / R2-ER02 / 重大度 medium / confirmed
+- [x] **依存 fiber の refresh 失敗が notify/drain 両経路で握り潰される** — 2026-11-21 修正（drain の join_all Result を集約し remove_service_async / generation に伝播、同期 remove_service は互換維持、notify の fire-and-forget は次段、R1 指摘反映）。
 - [x] **CompositionState::save が固定 .tmp 名で並行保存競合（sessions.rs は修正済み）** — 2026-11-21 修正（pid + nanos 一意 tmp 名、状態フィールド追加なしで Clone/PartialEq 維持、R1 指摘反映）。
 - [ ] **Context::once が push と replace を別ロックで行い TOCTOU 二重発火の窓** — 根拠 `src/context.rs:276-302`, `src/events.rs:264-274` / R2-BV04 / 重大度 medium / likely
 - [ ] **tool_todo の invoke_blocking に Tokio runtime 内呼び出しガードがない** — 根拠 `src/ports/tool_todo.rs:282-291`, `src/services/tools.rs:556-565` / R2-BV07 / 重大度 medium / likely
