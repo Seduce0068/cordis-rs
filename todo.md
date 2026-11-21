@@ -148,7 +148,7 @@ status: current
 - [x] **tool_todo::mount が "sessionProjections" を core と同名で提供し二重登録で衝突** — 2026-11-22 修正（`TODO_PROJECTIONS_SERVICE_NAME` = "todoProjections" に改名、provide/inject/apply 3箇所同時、core 側不変、両順序共存テスト追加、R2 指摘反映）。
 - [x] **inject() が空なのに apply() で require() する port（tool_schedule / tool_exit_plan_mode）** — 2026-11-22 修正（両 port の inject() に依存名を宣言、回帰テスト追加、R2 指摘反映）。
 - [x] **SessionTitles::derive_from_messages が get→set 別ロックで LLM 生成タイトルを上書き** — 2026-11-22 修正（set_if_absent で単一 write guard の原子的挿入、回帰テスト追加、R2 指摘反映）。
-- [ ] **CredentialProvider::set が参照名規則を検証せず解決不能な値を受理** — 根拠 `src/services/credentials.rs:19-32,78-89` / R2-IV01 / 重大度 medium / confirmed
+- [x] **CredentialProvider::set が参照名規則を検証せず解決不能な値を受理** — 2026-11-22 修正（大文字・数字・アンダースコアのみ許可、不正名は false、回帰テスト追加、R2 指摘反映）。
 - [ ] **PlanMode セッション別ログが無上限で蓄積し削除 API も無い** — 根拠 `src/services/plan_mode.rs:20-23,36-49` / R2-OB02 / 重大度 medium / confirmed
 - [x] **FieldSpec::range に min>max スキーマ不正チェックが無い** — 2026-11-22 修正（range()/range_int() に assert!(min<=max) 追加、should_panic テスト2件、R2 指摘反映）。
 - [x] **EventLogReporter::with_max_counters(0) が黙って 1 に丸め validate と方針不一致** — 2026-11-22 修正（assert!(max_counters > 0) で fail-fast、should_panic テスト追加、R2 指摘反映）。

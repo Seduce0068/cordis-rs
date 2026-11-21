@@ -5193,3 +5193,16 @@ fn session_title_fallback_does_not_overwrite_existing_title() {
     titles.derive_from_messages("s2", &["fallback title".to_string()], 40);
     assert_eq!(titles.get("s2").as_deref(), Some("fallback title"));
 }
+
+#[test]
+fn credential_provider_set_rejects_unresolvable_names() {
+    use cordis_rs::core_services::CredentialProvider;
+
+    let provider = CredentialProvider::new();
+    assert!(provider.set("API_KEY", "secret-value"));
+    // Lowercase names cannot be referenced via `$NAME` (swarm review R2-IV01).
+    assert!(!provider.set("api_key", "secret-value"));
+    assert!(!provider.set("", "secret-value"));
+    assert!(!provider.set("BAD-NAME", "secret-value"));
+    assert!(!provider.set("API_KEY", ""));
+}

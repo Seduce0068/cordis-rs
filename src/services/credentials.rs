@@ -76,15 +76,24 @@ impl CredentialProvider {
 
     /// Store a non-empty value in the writable source.
     pub fn set(&self, name: impl Into<String>, value: impl Into<String>) -> bool {
+        let name = name.into();
         let value = value.into();
-        if value.is_empty() {
+        // Names must be resolvable via `$NAME` references; reject lowercase
+        // or otherwise invalid names so a config typo cannot look successful
+        // (swarm review R2-IV01).
+        if value.is_empty()
+            || name.is_empty()
+            || !name
+                .chars()
+                .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_')
+        {
             return false;
         }
         self.state
             .write()
             .expect("credential state poisoned")
             .store
-            .insert(name.into(), value);
+            .insert(name, value);
         true
     }
 
