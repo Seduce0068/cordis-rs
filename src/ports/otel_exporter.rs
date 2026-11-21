@@ -29,7 +29,10 @@ pub fn redact_record(record: &EventRecord) -> EventRecord {
             (
                 key.clone(),
                 if safe {
-                    value.clone()
+                    // Allowlisted keys still carry untrusted values (e.g. a
+                    // model-supplied tool name): strip control chars so they
+                    // cannot forge log lines (R4-OB02).
+                    value.chars().filter(|ch| !ch.is_control()).collect()
                 } else {
                     "[redacted]".to_string()
                 },
@@ -95,10 +98,14 @@ impl OTelExporter for FakeCollector {
 
 /// Build an OTLP/HTTP JSON log payload from records (no network I/O here).
 pub fn otlp_payload(records: &[EventRecord]) -> serde_json::Value {
+    // Always redact at the payload boundary: callers must not be able to leak
+    // raw secrets by passing `EventLogReporter::events()` directly (R4-OB01).
+    // redact_record is idempotent, so pre-redacted records stay unchanged.
+    let safe: Vec<EventRecord> = records.iter().map(redact_record).collect();
     serde_json::json!({
         "resourceLogs": [{
             "scopeLogs": [{
-                "logRecords": records.iter().map(|record| serde_json::json!({
+                "logRecords": safe.iter().map(|record| serde_json::json!({
                     "timeUnixNano": "0",
                     "severityNumber": 9,
                     "name": record.name,

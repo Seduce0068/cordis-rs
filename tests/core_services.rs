@@ -4838,3 +4838,37 @@ fn compiled_matcher_caches_regex_and_fails_closed() {
     assert!(!invalid.matches("anything"));
     assert!(matcher_diagnostic(Some("["), false).is_some());
 }
+
+#[test]
+fn otlp_payload_always_redacts_raw_records() {
+    use cordis_rs::plugin_ports::{otlp_payload, redact_record};
+    use cordis_rs::services::telemetry::EventRecord;
+    use std::collections::HashMap;
+
+    let mut attrs = HashMap::new();
+    attrs.insert("api_key".to_string(), "super-secret".to_string());
+    attrs.insert("tool".to_string(), "bash\nINJECTED".to_string());
+    let raw = EventRecord {
+        name: "evil\nline".to_string(),
+        attributes: attrs,
+        seq: 7,
+    };
+
+    // Passing a RAW record directly must not leak the secret (R4-OB01).
+    let payload = otlp_payload(std::slice::from_ref(&raw)).to_string();
+    assert!(
+        !payload.contains("super-secret"),
+        "secret leaked: {payload}"
+    );
+    assert!(
+        !payload.contains('\n'),
+        "raw control char in payload: {payload}"
+    );
+    assert!(payload.contains("[redacted]"));
+
+    // Idempotence: redact_record is stable under a second application
+    // (compare records directly; HashMap iteration order is not significant).
+    let safe = redact_record(&raw);
+    let twice = redact_record(&safe);
+    assert_eq!(safe, twice);
+}
