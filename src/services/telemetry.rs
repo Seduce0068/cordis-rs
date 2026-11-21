@@ -85,6 +85,12 @@ pub struct EventLogReporter {
 
 impl EventLogReporter {
     pub fn new(name: impl Into<String>, options: EventLogOptions) -> Self {
+        // Fail fast on an invalid config instead of accepting it and only
+        // erroring on the first record() (swarm review R3-CF07).
+        assert!(
+            options.validate().is_ok(),
+            "invalid EventLogOptions: max_events and batch_size must be positive"
+        );
         Self {
             name: name.into(),
             options,

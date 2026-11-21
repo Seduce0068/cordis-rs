@@ -5055,7 +5055,7 @@ fn telemetry_counters_are_bounded_and_collapse_into_other() {
 
 #[test]
 fn event_log_options_reject_zero_values() {
-    use cordis_rs::core_services::{EventLogOptions, EventLogReporter, TelemetryError};
+    use cordis_rs::core_services::EventLogOptions;
 
     for options in [
         EventLogOptions {
@@ -5067,15 +5067,24 @@ fn event_log_options_reject_zero_values() {
             batch_size: 0,
         },
     ] {
+        // new() itself now fails fast on invalid options (swarm review R3-CF07).
         assert!(options.validate().is_err());
-        let reporter = EventLogReporter::new("invalid", options);
-        assert!(matches!(
-            reporter.record("evt", std::collections::HashMap::new()),
-            Err(TelemetryError::InvalidOptions)
-        ));
     }
 
     assert!(EventLogOptions::default().validate().is_ok());
+}
+
+#[test]
+#[should_panic(expected = "invalid EventLogOptions")]
+fn event_log_reporter_new_rejects_invalid_options() {
+    use cordis_rs::core_services::{EventLogOptions, EventLogReporter};
+    let _ = EventLogReporter::new(
+        "invalid",
+        EventLogOptions {
+            max_events: 0,
+            batch_size: 100,
+        },
+    );
 }
 
 #[test]

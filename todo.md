@@ -165,7 +165,7 @@ status: current
 - [x] **PermissionPresets::register で追加したカスタム preset を switch できない** — 2026-11-22 修正（Preset::parse 失敗を Err ではなく preset=None として扱い spec の sandbox/approval を適用、公開型不変、回帰テスト追加、R1 指摘反映）。
 - [x] **RetryPolicy::error_code が任意テキストの3桁数字を HTTP ステータスとして誤抽出** — 2026-11-22 修正（HTTP/status/TIMEOUT ラベル直後の3桁のみ抽出、"retry in 500ms" 等は拒否、回帰テスト追加、R1 指摘反映）。
 - [x] **RetryPolicy::jitter_ratio に検証がなく不正値で busy retry になる** — 2026-11-22 修正（ratio を [0,1] にクランプ＋NaN 防御、jitter に 0.1 下限、回帰テスト追加、R3 指摘反映）。
-- [ ] **EventLogReporter::new が EventLogOptions を検証せず不正設定を保持** — 根拠 `src/services/telemetry.rs:36-45,87-94` / R3-CF07 / 重大度 low / confirmed
+- [x] **EventLogReporter::new が EventLogOptions を検証せず不正設定を保持** — 2026-11-22 修正（new() で validate() を assert、with_max_counters と方針統一、should_panic テスト追加、R3 指摘反映）。
 - [x] **check-secrets.sh がローカル導入法として存在しない cargo install gitleaks を案内** — 2026-11-22 修正（案内を pre-commit install と GitHub Releases／taiki-e に差し替え、R3 指摘反映）。
 - [ ] **verify.sh と CI extra_gates で markdownlint の実行順が乖離** — 根拠 `scripts/verify.sh:3,22-47`, `.github/workflows/ci.yml:25-30` / R3-CF08 / 重大度 low / confirmed
 - [x] **Duration::from_millis の doc がクランプと誤記（実装は格納のみ）** — 2026-11-22 修正（コメントを「検証なしの格納」に修正、範囲チェックは try_from_millis の責務と明記、R3 指摘反映）。
