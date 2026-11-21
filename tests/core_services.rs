@@ -5266,3 +5266,31 @@ fn user_question_error_codes_cover_all_reserved_variants() {
     assert!(codes.iter().all(|code| !code.is_empty()));
     assert!(codes.iter().all(|code| *code == code.trim()));
 }
+
+#[test]
+fn registered_custom_preset_can_be_switched() {
+    use cordis_rs::core_services::{ApprovalPolicy, PermissionPresets, PresetSpec, SandboxMode};
+
+    let registry = PermissionPresets::new();
+    registry.register(
+        "auto",
+        PresetSpec {
+            sandbox: SandboxMode::WorkspaceWrite,
+            approval: ApprovalPolicy::Never,
+            label: Some("Auto review".to_string()),
+            description: None,
+        },
+    );
+
+    // A custom name has no canonical Preset identity, but its spec must still
+    // be applicable (swarm review R3-AP01).
+    let state = registry.switch("auto").unwrap();
+    assert_eq!(state.preset, None);
+    assert_eq!(state.sandbox, SandboxMode::WorkspaceWrite);
+    assert_eq!(state.approval, ApprovalPolicy::Never);
+
+    // Canonical presets keep their identity, and unknown names still fail.
+    let canonical = registry.switch("read-only").unwrap();
+    assert!(canonical.preset.is_some());
+    assert!(registry.switch("unknown").is_err());
+}

@@ -165,10 +165,12 @@ impl PermissionPresets {
             .get(name)
             .cloned()
             .ok_or_else(|| Error::Other(format!("unknown permission preset: {name}")))?;
-        let preset = Preset::parse(name)
-            .ok_or_else(|| Error::Other(format!("preset has no canonical identity: {name}")))?;
+        // A registered custom name has no canonical Preset identity; represent
+        // it as `preset: None` while still applying its sandbox/approval spec
+        // (swarm review R3-AP01). The public types stay unchanged.
+        let preset = Preset::parse(name);
         guard.state = PermissionState {
-            preset: Some(preset),
+            preset,
             sandbox: spec.sandbox,
             approval: spec.approval,
         };

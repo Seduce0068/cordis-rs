@@ -162,7 +162,7 @@ status: current
 - [x] **CodexToolPayload が未使用で hook rewrite 相当が未接続（Claude と同じ ADR で扱う）** — 2026-11-22 一部修正（CodexToolPayload に Serialize を付与し tool_payload() が struct を構築、未使用シンボル解消。 rewritten input 相当の未接続は Claude/Codex 共通の phase-2 として残る）。
 - [x] **check-doc-counts.sh が core service 数（38）を検証しない** — 2026-11-22 修正（services モジュール数+messageFeedback を計算し3ドキュメントで照合、gate 通過、R3 指摘反映）。
 
-- [ ] **PermissionPresets::register で追加したカスタム preset を switch できない** — 根拠 `src/services/permission_presets.rs:161-195` / R3-AP01 / 重大度 high / confirmed
+- [x] **PermissionPresets::register で追加したカスタム preset を switch できない** — 2026-11-22 修正（Preset::parse 失敗を Err ではなく preset=None として扱い spec の sandbox/approval を適用、公開型不変、回帰テスト追加、R1 指摘反映）。
 - [ ] **RetryPolicy::error_code が任意テキストの3桁数字を HTTP ステータスとして誤抽出** — 根拠 `src/services/retry.rs:54-66,76-80` / R3-IV03 / 重大度 medium / confirmed
 - [ ] **RetryPolicy::jitter_ratio に検証がなく不正値で busy retry になる** — 根拠 `src/services/retry.rs:15,84-93` / R3-CF06 / 重大度 medium / confirmed
 - [ ] **EventLogReporter::new が EventLogOptions を検証せず不正設定を保持** — 根拠 `src/services/telemetry.rs:36-45,87-94` / R3-CF07 / 重大度 low / confirmed
