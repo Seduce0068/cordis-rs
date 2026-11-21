@@ -155,7 +155,7 @@ status: current
 - [ ] **DeepSeek 拡張の warn-once 集合が永続し初回以降の provider 失敗が不可視** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:30,86-105` / R2-OB03 / 重大度 medium / confirmed
 - [x] **McpResourceRegistry::register_scoped の bool が他レジストリと逆意味、unregister が空スロープを残す** — 2026-11-22 修正（新規登録で true、空スコープを remove、回帰テスト追加、R2 指摘反映）。
 - [ ] **SessionQueryEngine::index がスナップショット保持で更新が反映されず unindex 手段も無い** — 根拠 `src/services/session_query.rs:38-44` / R2-DI02 / 重大度 medium / likely
-- [ ] **production_ports.rs の本番 port カバレッジが3件に留まる（tool_fs/tool_bash/session_persistence_jsonl を追加）** — 根拠 `tests/production_ports.rs:10-54` / R3-TS02 / 重大度 medium / confirmed
+- [x] **production_ports.rs の本番 port カバレッジが3件に留まる（tool_fs/tool_bash/session_persistence_jsonl を追加）** — 2026-11-22 修正（3 port の mount スモークを追加、計6件の本番 port を検証、R3 指摘反映）。
 - [ ] **未生成の error enum バリアントが API サーフェスに残る（UserQuestionError 等）** — 根拠 `src/ports/user_questions.rs:25-35`, `src/ports/tool_exit_plan_mode.rs:17-20` / R2-ER06 / 重大度 low / confirmed
 - [ ] **README のテストファイル一覧に tests/production_ports.rs が載っていない** — 根拠 `README.md:168-171` / R3-DC06 / 重大度 low / confirmed
 - [ ] **verify.sh がリポジトリ直下を cwd 前提でスクリプト参照表記も混在** — 根拠 `scripts/verify.sh:4-44` / R3-CF04 / 重大度 low / confirmed

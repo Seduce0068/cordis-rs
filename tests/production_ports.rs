@@ -110,3 +110,57 @@ async fn todo_projections_coexist_with_core_session_projections() {
     assert!(ctx2.get_untyped(TODO_PROJECTIONS_SERVICE_NAME).is_some());
     assert!(ctx2.get_untyped("sessionProjections").is_some());
 }
+
+#[tokio::test]
+async fn production_tool_fs_mount_registers_tools() {
+    use cordis_rs::core_services::{FileSystem, provide_tools};
+    use cordis_rs::plugin_ports::{ToolFsConfig, mount_tool_fs};
+
+    let ctx = Context::root("prod-tool-fs");
+    provide_tools(&ctx).await.unwrap();
+    let fs = FileSystem::default();
+    let registry = mount_tool_fs(&ctx, fs, ToolFsConfig::default())
+        .await
+        .unwrap();
+    let names = registry.names();
+    assert!(
+        names.iter().any(|name| name == "read") && names.iter().any(|name| name == "write"),
+        "production tool-fs must register read/write; got {names:?}"
+    );
+}
+
+#[tokio::test]
+async fn production_tool_bash_mount_registers_command() {
+    use cordis_rs::core_services::{Shell, provide_tools};
+    use cordis_rs::plugin_ports::{ToolBashConfig, mount_tool_bash};
+
+    let ctx = Context::root("prod-tool-bash");
+    provide_tools(&ctx).await.unwrap();
+    let shell = Shell::default();
+    let registry = mount_tool_bash(&ctx, shell, ToolBashConfig::default())
+        .await
+        .unwrap();
+    assert!(
+        registry.names().iter().any(|name| name == "bash"),
+        "production tool-bash must register the bash tool"
+    );
+}
+
+#[tokio::test]
+async fn production_session_persistence_mount_registers_store() {
+    use cordis_rs::plugin_ports::mount_session_persistence_jsonl;
+
+    let base = std::env::temp_dir().join(format!(
+        "prod-session-persistence-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    ));
+    let ctx = Context::root("prod-session-persistence");
+    let store = mount_session_persistence_jsonl(&ctx, &base).await.unwrap();
+    store.create("s1").unwrap();
+    assert!(ctx.get_untyped("sessionPersistence").is_some());
+    let _ = std::fs::remove_dir_all(&base);
+}
