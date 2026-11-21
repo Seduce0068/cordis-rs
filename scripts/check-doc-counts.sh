@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # CI gate: docs must report the exact number of #[test] attributes and ports.
+# Test count covers both integration tests (tests/*.rs) and unit tests in src/.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-tests=$(grep -rhoE '#\[(tokio::)?test\]' tests/*.rs | wc -l | tr -d ' ')
+integration=$(grep -rhoE '#\[(tokio::)?test\]' tests/*.rs | wc -l | tr -d ' ')
+unit=$(grep -rhoE '#\[(tokio::)?test\]' src/ --include='*.rs' | wc -l | tr -d ' ')
+tests=$((integration + unit))
 ports=$(find src/ports -maxdepth 1 -name '*.rs' ! -name 'mod.rs' | wc -l | tr -d ' ')
 
 fail=0
@@ -16,11 +19,23 @@ check_file() {
   fi
 }
 
-check_file README.md "全 ${tests} 件" "tests"
-check_file docs/PROGRESS.md "テスト ${tests} 件" "tests"
-check_file docs/ADR-001-cordis-runtime-reimplementation.md "全 ${tests} テスト通過" "tests"
+check_file README.md "テスト ${tests} 件（統合 ${integration} ＋ unit ${unit}）" "tests"
+check_file docs/PROGRESS.md "テスト ${tests} 件（統合 ${integration} ＋ unit ${unit}）" "tests"
+check_file docs/ADR-001-cordis-runtime-reimplementation.md "全 ${tests} テスト通過（統合 ${integration} ＋ unit ${unit}）" "tests"
 check_file README.md "再利用 port（${ports}）" "ports"
 check_file docs/PROGRESS.md "現状 ${ports} port" "ports"
+
+# Also fail on a stale test count in any other sentence (R1-CF01). Lines
+# spelling out the breakdown (integration/unit) are allowed.
+for file in README.md docs/PROGRESS.md docs/ADR-001-cordis-runtime-reimplementation.md; do
+  stale=$(grep -nE '(テスト|全) [0-9]+ ?(件|テスト)' "$file" \
+    | grep -vE " ${tests} ?(件|テスト)|統合 ${integration}|unit ${unit}" || true)
+  if [ -n "$stale" ]; then
+    echo "docs drift: stale test count in $file:" >&2
+    echo "$stale" >&2
+    fail=1
+  fi
+done
 
 # Do not let a stale count survive in a second sentence: fail if any line that
 # mentions a port count disagrees with the computed value (R4 review).
@@ -35,7 +50,7 @@ for file in README.md docs/PROGRESS.md docs/ADR-001-cordis-runtime-reimplementat
 done
 
 if [ "$fail" -ne 0 ]; then
-  echo "Actual counts: tests=$tests ports=$ports" >&2
+  echo "Actual counts: tests=$tests (integration=$integration unit=$unit) ports=$ports" >&2
   exit 1
 fi
-echo "doc counts verified: tests=$tests ports=$ports"
+echo "doc counts verified: tests=$tests (integration=$integration unit=$unit) ports=$ports"
