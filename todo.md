@@ -101,7 +101,7 @@ status: current
 
 ### 優先度: 低
 
-- [ ] **EventRegistry::slot が読み取りのたび空スロットを生成し動的イベント名で無限成長** — 根拠 `src/events.rs:196-203,264-274` / R2-BV09 / 重大度 low / confirmed
+- [x] **EventRegistry::slot が読み取りのたび空スロットを生成し動的イベント名で無限成長** — 2026-11-21 修正（try_slot 追加で snapshot 系は空スロットを生成しない、R2-BV09 反映）。
 - [ ] **Error::Plugin が原因を文字列化し source チェーンと型情報が失われる** — 根拠 `src/error.rs:17-18`, `src/plugin.rs:118-119` / R2-ER05 / 重大度 low / confirmed
 - [ ] **plugin_ports が71のフラット re-export を持ち公開 API が肥大** — 根拠 `src/lib.rs:43,113` / R1-AP04 / 重大度 low / likely
 - [ ] **読み取り path が省略表記で src/ports 配下を辿れない（README 安定性マトリクス）** — 根拠 `README.md:88-90` / R5-DC07 / 重大度 low / confirmed

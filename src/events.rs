@@ -202,6 +202,16 @@ impl EventRegistry {
             .clone()
     }
 
+    /// Read-only slot lookup: never inserts an empty slot just because someone
+    /// emitted an event name with no listeners (swarm review R2-BV09).
+    fn try_slot(&self, key: &SlotKey) -> Option<ErasedListeners> {
+        self.slots
+            .read()
+            .expect("event slots poisoned")
+            .get(key)
+            .cloned()
+    }
+
     /// `T` is an owned listener handle such as `Arc<dyn Fn...>`.
     pub fn push<T>(&self, key: SlotKey, listener: T) -> u64
     where
@@ -274,7 +284,10 @@ impl EventRegistry {
     where
         T: Clone + Send + Sync + 'static,
     {
-        let erased = self.slot(key).read().expect("event slot poisoned").clone();
+        let Some(erased) = self.try_slot(&key) else {
+            return Vec::new();
+        };
+        let erased = erased.read().expect("event slot poisoned").clone();
         erased
             .into_iter()
             .filter_map(|(id, listener)| {
@@ -328,7 +341,10 @@ impl EventRegistry {
     where
         T: Clone + Send + Sync + 'static,
     {
-        let erased = self.slot(key).read().expect("event slot poisoned").clone();
+        let Some(erased) = self.try_slot(&key) else {
+            return Vec::new();
+        };
+        let erased = erased.read().expect("event slot poisoned").clone();
         erased
             .into_iter()
             .filter_map(|(_, listener)| listener.downcast::<T>().ok().map(|arc| (*arc).clone()))
