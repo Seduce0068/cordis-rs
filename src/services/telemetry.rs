@@ -33,6 +33,11 @@ impl Default for EventLogOptions {
     }
 }
 
+/// Default cap on distinct counter keys per reporter (swarm review R4-OB06).
+pub const DEFAULT_MAX_COUNTERS: usize = 1000;
+/// Bucket for event names beyond the cap so cardinality stays bounded.
+pub const OTHER_COUNTER_KEY: &str = "__other__";
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum TelemetryError {
     InvalidName,
@@ -59,6 +64,7 @@ pub struct EventLogReporter {
     name: String,
     options: EventLogOptions,
     state: Arc<RwLock<ReporterState>>,
+    max_counters: usize,
 }
 
 impl EventLogReporter {
@@ -67,7 +73,15 @@ impl EventLogReporter {
             name: name.into(),
             options,
             state: Arc::new(RwLock::new(ReporterState::default())),
+            max_counters: DEFAULT_MAX_COUNTERS,
         }
+    }
+
+    /// Override the distinct-counter cap (builder, keeps EventLogOptions
+    /// struct literals unchanged).
+    pub fn with_max_counters(mut self, max_counters: usize) -> Self {
+        self.max_counters = max_counters.max(1);
+        self
     }
 
     pub fn name(&self) -> &str {
@@ -84,6 +98,7 @@ impl EventLogReporter {
         if name.trim().is_empty() {
             return Err(TelemetryError::InvalidName);
         }
+        let name: String = name;
         let mut guard = self.state.write().expect("telemetry state poisoned");
         guard.next_seq += 1;
         let seq = guard.next_seq;
@@ -96,7 +111,16 @@ impl EventLogReporter {
             let drop_count = guard.events.len() - self.options.max_events;
             guard.events.drain(..drop_count);
         }
-        let count = guard.counters.entry(name).or_insert(0);
+        // Bound counter cardinality: unknown names beyond the cap collapse
+        // into a shared bucket. Reserve OTHER_COUNTER_KEY for internal use.
+        let key = if name == OTHER_COUNTER_KEY {
+            OTHER_COUNTER_KEY.to_string()
+        } else if guard.counters.contains_key(&name) || guard.counters.len() < self.max_counters {
+            name
+        } else {
+            OTHER_COUNTER_KEY.to_string()
+        };
+        let count = guard.counters.entry(key).or_insert(0);
         *count += 1;
         Ok((*count).is_multiple_of(self.options.batch_size))
     }

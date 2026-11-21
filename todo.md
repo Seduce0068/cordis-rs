@@ -56,7 +56,7 @@ status: current
 - [x] **セッションログの外部 API アップロード経路にマスキング機構がない** — 2026-11-21 修正（mask_event_data で deny-by-default allowlist、candidate 生成時に適用してバイト計算も正確、冪等、R1 敵対レビュー反映）。
 - [x] **Exporter 失敗が完全に握り潰されテレメトリ障害自体が観測不能** — 2026-11-21 修正（RedactingExporter が AtomicU64 失敗カウンタを保持し failures() で観測、export は Ok 維持、clone 間共有、R1 指摘反映）。
 - [x] **OTLP タイムスタンプが固定 0 でイベント時刻が記録されない** — 2026-11-21 修正（otlp_payload が export 時 UTC nanos を timeUnixNano に設定、EventRecord は不変で後方互換維持。per-event 時刻は別 ADR、R1 指摘反映）。
-- [ ] **counters が名前の高カーディナリティで無制限成長** — 根拠 `src/services/telemetry.rs:49-54,95-101` / R4-OB06 / 重大度 medium / confirmed
+- [x] **counters が名前の高カーディナリティで無制限成長** — 2026-11-21 修正（with_max_counters builder で上限、超過名は `__other__` に集約、予約キー衝突防止、R1 指摘反映）。
 - [ ] **シークレットスキャンゲートが CI にも pre-commit にも存在しない** — 根拠 `.github/workflows/ci.yml:25-28`, `scripts/verify.sh:19-40` / R4-CI01 / 重大度 medium / confirmed
 - [ ] **markdownlint がローカル専用で CI ゲートに含まれていない** — 根拠 `scripts/verify.sh:36-40`, `.github/workflows/ci.yml:25-28` / R4-CI02, R4-DP05 / 重大度 medium / confirmed
 - [ ] **公式 plugin port テストが本番 port ではなくテスト内再実装を検証** — 根拠 `tests/official_plugin_port.rs:38-52`, `src/ports/command_compact.rs:18,34-38` / R5-TS01 / 重大度 medium / confirmed

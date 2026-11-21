@@ -4974,3 +4974,40 @@ fn otlp_payload_carries_export_timestamp() {
         "timestamp must be unix nanoseconds as a numeric string: {nano}"
     );
 }
+
+#[test]
+fn telemetry_counters_are_bounded_and_collapse_into_other() {
+    use cordis_rs::core_services::{EventLogOptions, EventLogReporter, OTHER_COUNTER_KEY};
+
+    let reporter =
+        EventLogReporter::new("bounded", EventLogOptions::default()).with_max_counters(2);
+
+    // First two names get their own counters.
+    reporter
+        .record("alpha", std::collections::HashMap::new())
+        .unwrap();
+    reporter
+        .record("alpha", std::collections::HashMap::new())
+        .unwrap();
+    reporter
+        .record("beta", std::collections::HashMap::new())
+        .unwrap();
+    assert_eq!(reporter.count("alpha"), 2);
+    assert_eq!(reporter.count("beta"), 1);
+
+    // Third and later names collapse into the shared bucket.
+    reporter
+        .record("gamma", std::collections::HashMap::new())
+        .unwrap();
+    reporter
+        .record("delta", std::collections::HashMap::new())
+        .unwrap();
+    assert_eq!(reporter.count("gamma"), 0); // unknown name not tracked separately
+    assert_eq!(reporter.count(OTHER_COUNTER_KEY), 2);
+
+    // Reserved key cannot collide with a user event name.
+    reporter
+        .record(OTHER_COUNTER_KEY, std::collections::HashMap::new())
+        .unwrap();
+    assert_eq!(reporter.count(OTHER_COUNTER_KEY), 3);
+}

@@ -389,8 +389,8 @@ pub mod core_services {
         provide as provide_system_prompt,
     };
     pub use crate::services::telemetry::{
-        EventLogOptions, EventLogReporter, EventRecord, OTel, TelemetryError,
-        provide as provide_otel,
+        DEFAULT_MAX_COUNTERS, EventLogOptions, EventLogReporter, EventRecord, OTHER_COUNTER_KEY,
+        OTel, TelemetryError, provide as provide_otel,
     };
     pub use crate::services::time_context::{
         TimeContext, TimeContextConfig, format_sample, has_utc_offset,
