@@ -264,48 +264,36 @@ impl Context {
     where
         F: Fn(serde_json::Value) -> BoxFuture<'static, ()> + Send + Sync + 'static,
     {
-        // A standalone remover shared by the listener and the disposer avoids
-        // a Disposer <-> closure cycle while still unregistering after first
-        // invocation (upstream `once` semantics).
-        struct OnceRemover {
-            registry: crate::events::EventRegistry,
-            key: crate::events::SlotKey,
-            id: u64,
-            fired: std::sync::atomic::AtomicBool,
-        }
-        let listener: crate::events::EmitListener<serde_json::Value> = Arc::new(listener);
+        // Atomic registration: the raw listener is never visible in the slot,
+        // so a concurrent emit cannot fire it twice (R2-BV04).
         let registry = self.event_registry().clone();
         let key = crate::events::named_emit_slot(name);
-        let id = registry.push(key.clone(), listener.clone());
-        let remover = Arc::new(OnceRemover {
-            registry,
-            key: key.clone(),
-            id,
-            fired: std::sync::atomic::AtomicBool::new(false),
-        });
+        let (id, fired) = registry.push_once(
+            key.clone(),
+            Arc::new(listener) as crate::events::EmitListener<serde_json::Value>,
+            |_id, fired, listener| {
+                let once: crate::events::EmitListener<serde_json::Value> =
+                    Arc::new(move |args: serde_json::Value| {
+                        let listener = listener.clone();
+                        let fired = fired.clone();
+                        Box::pin(async move {
+                            if !fired.swap(true, Ordering::SeqCst) {
+                                listener(args).await;
+                            }
+                        })
+                    });
+                once
+            },
+        );
 
-        let listener_remover = remover.clone();
-        let once_listener: crate::events::EmitListener<serde_json::Value> =
-            Arc::new(move |args: serde_json::Value| {
-                let listener = listener.clone();
-                let remover = listener_remover.clone();
-                Box::pin(async move {
-                    if !remover.fired.swap(true, Ordering::SeqCst) {
-                        listener(args).await;
-                        let _ = remover.registry.remove(remover.key.clone(), remover.id);
-                    }
-                })
-            });
-        // Replace the listener we just pushed with the once-wrapping one.
-        let _ = self
-            .event_registry()
-            .replace(key.clone(), id, once_listener);
-
-        let disposer_remover = remover.clone();
+        let disposer_registry = registry.clone();
+        let disposer_fired = fired.clone();
         Disposer::new(move || {
-            let remover = disposer_remover.clone();
+            let registry = disposer_registry.clone();
+            let fired = disposer_fired.clone();
             async move {
-                let _ = remover.registry.remove(remover.key.clone(), remover.id);
+                fired.store(true, Ordering::SeqCst);
+                let _ = registry.remove(key, id);
                 Ok(())
             }
         })

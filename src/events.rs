@@ -235,6 +235,40 @@ impl EventRegistry {
         id
     }
 
+    /// Register an `once`-wrapped listener atomically: the id is reserved and
+    /// the wrapper is inserted in a single slot write, so a concurrent emit
+    /// can never observe the raw listener before it is wrapped (R2-BV04).
+    /// `make_wrapper` receives the reserved id and the shared fired flag.
+    pub fn push_once<L>(
+        &self,
+        key: SlotKey,
+        listener: L,
+        make_wrapper: impl FnOnce(
+            u64,
+            std::sync::Arc<std::sync::atomic::AtomicBool>,
+            L,
+        ) -> EmitListener<serde_json::Value>,
+    ) -> (u64, std::sync::Arc<std::sync::atomic::AtomicBool>)
+    where
+        L: Send + Sync + 'static,
+    {
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        let fired = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        self.meta.write().expect("event meta poisoned").insert(
+            id,
+            HookMeta {
+                options: EventOptions::default(),
+            },
+        );
+        let wrapper = make_wrapper(id, fired.clone(), listener);
+        let binding = self.slot(key);
+        binding
+            .write()
+            .expect("event slot poisoned")
+            .push((id, std::sync::Arc::new(wrapper)));
+        (id, fired)
+    }
+
     /// Snapshot listeners together with their registration ids.
     pub fn snapshot_with_ids<T>(&self, key: SlotKey) -> Vec<(u64, T)>
     where

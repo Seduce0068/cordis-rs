@@ -723,3 +723,36 @@ async fn fiber_reloads_via_async_drain_after_dependency_loss() {
         "fiber must reload after async drain, not stay retired"
     );
 }
+
+#[tokio::test]
+async fn once_listener_fires_exactly_once_under_concurrent_emit() {
+    // R2-BV04: the raw listener must never be visible before the once wrapper,
+    // otherwise concurrent emits can fire it more than once.
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let ctx = Context::root("once-concurrent");
+    let calls = Arc::new(AtomicUsize::new(0));
+    let counter = calls.clone();
+    let _disposer = ctx.once("burst", move |_args| {
+        let counter = counter.clone();
+        Box::pin(async move {
+            counter.fetch_add(1, Ordering::SeqCst);
+        })
+    });
+
+    let mut handles = Vec::new();
+    for _ in 0..8 {
+        let ctx = ctx.clone();
+        handles.push(tokio::spawn(async move {
+            ctx.emit("burst", serde_json::json!({})).await;
+        }));
+    }
+    for handle in handles {
+        handle.await.unwrap();
+    }
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "once listener must fire exactly once under concurrent emit"
+    );
+}
