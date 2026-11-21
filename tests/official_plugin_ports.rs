@@ -3381,3 +3381,26 @@ fn base64_decode_limited_rejects_before_allocating() {
     let error = decode_canonical_base64_limited(&huge, true, code, 1024).unwrap_err();
     assert!(error.message.contains("exceeds maximum size"));
 }
+
+#[test]
+fn session_log_masks_sensitive_data_before_egress() {
+    use cordis_rs::plugin_ports::mask_event_data;
+
+    let data = serde_json::json!({
+        "text": "hello",
+        "role": "user",
+        "api_key": "super-secret",
+        "nested": { "password": "hidden" }
+    });
+    let masked = mask_event_data(&data);
+    assert_eq!(masked["text"], "hello");
+    assert_eq!(masked["role"], "user");
+    assert_eq!(masked["api_key"], "[redacted]");
+    assert_eq!(masked["nested"], "[redacted]");
+
+    // Idempotent: re-masking produces the same value.
+    assert_eq!(mask_event_data(&masked), masked);
+
+    // Scalar payloads carry no key-level signal and are fully redacted.
+    assert_eq!(mask_event_data(&serde_json::json!("secret")), "[redacted]");
+}

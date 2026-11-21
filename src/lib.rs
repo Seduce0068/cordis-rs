@@ -171,8 +171,9 @@ pub mod plugin_ports {
         parse_session_format_log_filename, session_format_log_filename, session_format_version,
     };
     pub use crate::ports::session_log_deepseek::{
-        FIELD_NAME, SessionLogConfig, SessionLogDeepSeek, WATERMARK_EVENT, accepted_seq,
-        fitting_prefix, mount as mount_session_log_deepseek, prepare_field,
+        ALLOWED_DATA_KEYS, FIELD_NAME, SessionLogConfig, SessionLogDeepSeek, WATERMARK_EVENT,
+        accepted_seq, fitting_prefix, mask_event_data, mount as mount_session_log_deepseek,
+        prepare_field,
     };
     pub use crate::ports::session_persistence_jsonl::RecoveryReport;
     pub use crate::ports::session_persistence_jsonl::{

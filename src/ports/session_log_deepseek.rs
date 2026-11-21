@@ -15,6 +15,45 @@ pub const FIELD_NAME: &str = "dsh_session_log";
 pub const WATERMARK_EVENT: &str = "sessionLog/watermark";
 pub const DEFAULT_MAX_BYTES: usize = 8 * 1024 * 1024;
 
+/// Top-level keys in an event's `data` that may leave the process via the
+/// DeepSeek session-log field. Everything else is replaced with `[redacted]`
+/// (swarm review R4-OB03). Nested objects are not traversed: their value as a
+/// whole is redacted unless the key is allowlisted.
+pub const ALLOWED_DATA_KEYS: [&str; 7] = [
+    "text",
+    "role",
+    "status",
+    "tool",
+    "duration_ms",
+    "version",
+    "last_seq",
+];
+const REDACTED: &str = "[redacted]";
+
+/// Apply a deny-by-default allowlist to an event payload before egress.
+/// Idempotent: an already-`[redacted]` value stays `[redacted]`.
+pub fn mask_event_data(data: &serde_json::Value) -> serde_json::Value {
+    match data {
+        serde_json::Value::Object(map) => {
+            let mut safe = serde_json::Map::new();
+            for (key, value) in map {
+                let allowed = ALLOWED_DATA_KEYS.contains(&key.as_str());
+                safe.insert(
+                    key.clone(),
+                    if allowed {
+                        value.clone()
+                    } else {
+                        serde_json::Value::String(REDACTED.to_string())
+                    },
+                );
+            }
+            serde_json::Value::Object(safe)
+        }
+        // Scalar payloads have no key-level sensitivity signal; redact them.
+        _ => serde_json::Value::String(REDACTED.to_string()),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SessionLogConfig {
     pub enabled: bool,
@@ -80,7 +119,7 @@ pub fn fitting_prefix(
         let candidate = serde_json::json!({
             "seq": event.seq,
             "type": event.event_type,
-            "data": event.data,
+            "data": mask_event_data(&event.data),
         });
         let mut included = selected.clone();
         included.push(candidate.clone());
