@@ -105,7 +105,7 @@ status: current
 - [x] **Error::Plugin が原因を文字列化し source チェーンと型情報が失われる** — 2026-11-21 修正（`Plugin(String, #[source] Box<Error>)` で根本原因を保持、R2-ER05 反映）。
 - [ ] **plugin_ports が71のフラット re-export を持ち公開 API が肥大** — 根拠 `src/lib.rs:43,113` / R1-AP04 / 重大度 low / likely
 - [ ] **読み取り path が省略表記で src/ports 配下を辿れない（README 安定性マトリクス）** — 根拠 `README.md:88-90` / R5-DC07 / 重大度 low / confirmed
-- [ ] **port 件数の定義が README と PROGRESS で食い違う** — 根拠 `README.md:31-32`, `docs/PROGRESS.md:22` / R5-DC08 / 重大度 low / confirmed
+- [x] **port 件数の定義が README と PROGRESS で食い違う** — 2026-11-21 検証の結果却下（両者とも「再利用 port 63、library port は hook-protocol 別枠」で整合済み。doc-count gate も tests=240 ports=63 で通過）。R5-DC08 の指摘は古いスナップショット Based。
 - [x] **EventLogOptions に validation がなく batch_size=0 で除数判定が不成立** — 2026-11-21 修正（validate() と InvalidOptions、record() が不正設定を fail-closed で拒否、R4-OB07 反映）。
 - [ ] **unsafe 禁止ゲートの走査範囲が狭く lint 設定と迂回可能** — 根拠 `scripts/check-no-unsafe.sh:6,15`, `.github/workflows/ci.yml:23` / R4-CI03 / 重大度 low / confirmed
 - [x] **smoke-examples.sh が example 0 件をそのまま成功と報告** — 2026-11-21 修正（検出0件で明示エラー終了、R4-DP09 反映）。
