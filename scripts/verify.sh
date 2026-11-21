@@ -21,6 +21,8 @@ cargo clippy --all-targets --locked -- -D warnings -A clippy::type_complexity -D
 
 echo "=== secret scan ==="
 bash scripts/check-secrets.sh
+echo "=== markdownlint (all Markdown deliverables) ==="
+bash scripts/check-markdown.sh
 
 echo "=== cargo audit ==="
 if command -v cargo-audit >/dev/null 2>&1; then
@@ -42,8 +44,5 @@ bash scripts/check-no-unsafe.sh
 
 echo "=== doc counts ==="
 bash scripts/check-doc-counts.sh
-
-echo "=== markdownlint (all Markdown deliverables) ==="
-bash scripts/check-markdown.sh
 
 echo "all verification gates passed"

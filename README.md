@@ -126,7 +126,7 @@ bash scripts/smoke-examples.sh
 # examples/ 直下の .rs はすべて実行可能な smoke target として自動検出される。
 # 共有ヘルパは examples/fixtures/ 等に置くこと（smoke 対象外）。
 
-# fmt / check / clippy / test / smoke / シークレットスキャンをまとめて実行
+# fmt / check / test / clippy / シークレットスキャン / markdownlint / audit / smoke / no-unsafe / doc-counts をまとめて実行
 bash scripts/verify.sh
 # cargo-audit が未インストールの場合は明示的な opt-out が必要:
 #   AUDIT_SKIP=1 bash scripts/verify.sh

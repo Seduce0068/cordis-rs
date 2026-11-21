@@ -49,9 +49,9 @@ DSH の GPUI 再実装における最大の障壁だった Cordis プラグイ�
 
 ## 検証
 
-- `scripts/verify.sh`: fmt → check → clippy → test → smoke → シークレットスキャン
-  → cargo audit（未インストール時は `AUDIT_SKIP=1` 明示 opt-out 必須）
-  → no-unsafe → doc-counts → markdownlint
+- `scripts/verify.sh`: fmt → check → test → clippy → シークレットスキャン
+  → markdownlint → cargo audit（未インストール時は `AUDIT_SKIP=1` 明示 opt-out 必須）
+  → example smoke → no-unsafe → doc-counts（CI の `extra_gates` と同順）
 - CI は共通ワークフロー `Seduce0068/workflows` の `rust-gates.yml@v1` に委譲
 - `extra_gates`: smoke-examples / check-no-unsafe / check-doc-counts /
   check-secrets（gitleaks） / check-markdown（全 18 Markdown）

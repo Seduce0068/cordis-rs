@@ -37,8 +37,9 @@ cd /home/koppe/document/deepseek-harness/default-workspace/work/cordis-rs
 bash scripts/verify.sh
 ```
 
-`verify.sh` は fmt → check → test → clippy → シークレットスキャン → cargo audit
-→ example smoke → no-unsafe → doc-counts → markdownlint を順に実行する。
+`verify.sh` は fmt → check → test → clippy → シークレットスキャン → markdownlint
+→ cargo audit → example smoke → no-unsafe → doc-counts を順に実行する
+（CI の `extra_gates` と同順）。
 **CI は共通ワークフロー `rust-gates.yml@v1` に委譲**されており、extra_gates に
 smoke / no-unsafe / doc-counts / secrets / markdown が接続されている。
 
