@@ -108,7 +108,7 @@ status: current
 - [ ] **port 件数の定義が README と PROGRESS で食い違う** — 根拠 `README.md:31-32`, `docs/PROGRESS.md:22` / R5-DC08 / 重大度 low / confirmed
 - [x] **EventLogOptions に validation がなく batch_size=0 で除数判定が不成立** — 2026-11-21 修正（validate() と InvalidOptions、record() が不正設定を fail-closed で拒否、R4-OB07 反映）。
 - [ ] **unsafe 禁止ゲートの走査範囲が狭く lint 設定と迂回可能** — 根拠 `scripts/check-no-unsafe.sh:6,15`, `.github/workflows/ci.yml:23` / R4-CI03 / 重大度 low / confirmed
-- [ ] **smoke-examples.sh が example 0 件をそのまま成功と報告** — 根拠 `scripts/smoke-examples.sh:6-14` / R4-DP09 / 重大度 low / confirmed
+- [x] **smoke-examples.sh が example 0 件をそのまま成功と報告** — 2026-11-21 修正（検出0件で明示エラー終了、R4-DP09 反映）。
 - [ ] **MSRV (rust-version) が未宣言で edition 2024 要求が伝わらない** — 根拠 `Cargo.toml:1-8` / R4-DP07 / 重大度 low / confirmed
 - [ ] **session reference のデコード上限欠如と markdown 引用の不完全エスケープ** — 根拠 `src/services/session_reference.rs:29-58` / R3-IV10 / 重大度 low / confirmed
 - [ ] **compaction-automation の LLM 要約が pruning stub のまま（README に制約記載なし）** — 根拠 `src/ports/compaction_automation.rs:5-6`, `README.md:32,55` / R2-FG02 / 重大度 low / confirmed
