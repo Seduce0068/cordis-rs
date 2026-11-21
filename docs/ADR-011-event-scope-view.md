@@ -87,6 +87,15 @@ core-services-research は「上流では子スコープが root の registry �
 - ADR-010 の `&dyn EventSink` 方針は本 ADR の concrete 型で置き換える。
   ADR-010 を proposed のまま残し、実装時に本 ADR を優先する。
 - 子スコープの registry 共有（上流整合）は第2段 ADR で扱う。
+  **現状の既知制約**: 上流では registry が root に1つだけ存在し子はそれを
+  共有するが、ローカルは各 Context が独立 registry を持つため、
+  子で登録した listener は親や兄弟から emit しても届かない。
+  port 側では cross-scope 購読を避ける規約を取る（R1 調査で確認）。
+- isolate は service 解決の影であり event 可視性を変えない（上流整合）。
+  EventScopeView に isolate 情報は入れず、`{ registry, filter }` の形を維持する。
+- 第2段の最初の一歩: ContextInner に root registry への参照を追加し、
+  `shared_event_registry()` accessor を pub(crate) で公開するだけ（dispatch は
+  変更しない）。その後 named emit → typed descriptor の順に shared へ移行する。
 
 ## 関連
 

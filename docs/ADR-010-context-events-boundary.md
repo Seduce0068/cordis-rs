@@ -16,18 +16,24 @@ status: proposed
 
 `context.rs:12` が `events::{BoxFuture, EventRegistry}` を import し、
 `events.rs:29` が `context::{Context, Disposer}` を import する双方向依存を、
-**`EventSink` 抽象の導入と既存 `with_registry` パターンの拡張**で一方向化する。
+既存 `with_registry` パターンの拡張で一方向化する方針。
 
-1. `EventSink` trait を `context` 側に定義する。
-   `registry(&self) -> &EventRegistry` を提供する。
-2. `impl EventSink for Context` を追加。
-3. `events.rs` の dispatch API のうち、**スコープフィルタを必要としない**
-   もの（`on_serial` / `serial` / `on_bail` / `parallel` / `parallel_errors` 等）
-   に `&dyn EventSink` 受け取り版を追加する。
+> **2026-11-21 更新**: 当初の `EventSink` trait 方針は ADR-011 の concrete
+> `EventScopeView<'a>` に置き換えられた（trait object は `'static` 制約で
+> borrow 型を作れないため）。以下は当時の決定を履歴として残すもので、
+> 実装は ADR-011 経路のみ。
+
+1. ~~`EventSink` trait を `context` 側に定義する。~~ → ADR-011 の
+   `EventScopeView` に置換。
+2. ~~`impl EventSink for Context` を追加。~~ → `Context::event_filter()` +
+   `EventScopeView::new()` に置換。
+3. `events.rs` の dispatch API のうち、`emit_with` 以外を `&EventRegistry`
+   受け取り版へ追加する（filter 2スコープを必要とする `emit_with` だけ
+   context.rs に残す）。
 4. 既存の `&Context` 受け取り版は adapter として残し、呼び出し元（`typed_event!`
    の生成コードを含む）を無変更にする。
-5. **`emit_with` は `&Context` 版に残す**（下記「R1 修正」参照）。
-   `events.rs` の `Context` import はこれが残るため削除しない。
+5. `emit_with` は ADR-011 の `EventScopeView` 経由で view を組み、
+   registry 所有者と filter スコープを分離する（実装済み）。
 6. `Disposer` の配置は別案件（primitives 整理）として切り出す。
 
 ### R1 修正（実装前レビュー）
@@ -43,10 +49,10 @@ status: proposed
   「**filter 非依存の dispatch API の EventSink 化**」へ縮小。
 - 「events.rs の Context import を落とす」目標は**未達**として明示。
   完全な一方向化には `EventScopeView` などの別抽象が必要で、第2段 ADR に委ねる。
-- 実装フェーズ（R2）は一度着手したが、`EventSink` trait の可視性
-  （`pub(crate)` trait を公開メソッドの引数にできない）と filter 2スコープの
-  設計論点が残るため**停止**。次イテレーションで `EventScopeView` の設計を
-  ADR-011 として先に合意してから実装する。status は proposed を維持。
+- 段1-3（EventScopeView の導入と emit_with の view 化）は ADR-011 として
+  実装完了。段4-5（dispatch API の registry 化と Disposer 共通化）は未着手。
+  範囲が EventScopeView に変更されたため本 ADR は proposed のまま、
+  ADR-011 を accepted として運用する。
 
 ## 根拠
 
@@ -63,17 +69,33 @@ status: proposed
 | 案 | 評価 |
 | --- | --- |
 | (a) `Disposer` / `BoxFuture` を共通 primitives へ移動 | 却下。`EventRegistry` が必要な Context と Context が必要な dispatch API が残り循環が解消しない。ADR-009 の (c) と同型の「効かない案」。primitives 整理として別 ADR に回す。 |
-| (b) `EventSink` ＋ `with_registry` パターンの拡張 | **採用**。既存実績があり adapter 化で後方互換を維持。filter は Context 側に残す境界を明記。 |
+| (b) `EventSink` ＋ `with_registry` パターンの拡張 | **採用（一部完了）**。既存実績があり adapter 化で後方互換を維持。trait object は `'static` 制約で borrow 型にできないため、ADR-011 の concrete `EventScopeView<'a>` に置き換えた。 |
 | (c) 現状維持 | 却下。ADR-009 の一方向化の流れと矛盾。waterfall だけ直した理由を説明できない。 |
 
-## 移行手順
+## 移行手順と進捗（2026-11-21 更新）
 
-1. `context.rs` に `EventSink` trait と `impl EventSink for Context` を追加。
-2. `events.rs` の残り dispatch API を `&dyn EventSink` 受け取り版へ追加。
-3. `&Context` 版を adapter に変更（公開シグネチャ維持）。
-4. `events.rs` の `use crate::context::{Context, Disposer}` を削除。
-5. 既存の全イベントテスト（`emit` / `parallel` / `serial` / `bail` / `waterfall` と
-   scope filter 系）が通ることを確認。
+1. ✅ `context.rs` に concrete `EventScopeView<'a>` と `event_filter()` getter を追加
+   （ADR-011、status accepted）。
+2. ✅ `emit_with` を view 経由に変更（registry 所有者 self と filter スコープ this を分離）。
+3. ✅ `Context::emit` の filter 無視を「upstream thisArg なし dispatch と整合」として明文化。
+4. ⬜ `events.rs` の残り10個の dispatch API（`on_serial` / `serial` / `on_bail` / `bail` /
+   `on_emit` / `emit` / `emit_spawn` / `parallel` / `parallel_errors`）を
+   `&EventRegistry` 受け取り版へ追加し、`&Context` 版を adapter 化。
+   waterfall 系（`on_waterfall` / `waterfall`）は既に `*_with_registry` で完了済み。
+   `emit_detached` は deprecated のため、新 API を足すなら `emit_spawn` に統合する。
+5. ⬜ 残る `Disposer` 依存を共通 primitives へ移動。このとき初めて
+   `events.rs` の `use crate::context::...` が消え、真の循环解消となる。
+6. ✅ 既存の全イベントテスト（`emit` / `parallel` / `serial` / `bail` / `waterfall` と
+   scope filter 系）が通ることを確認（215 tests）。
+
+### R1 再評価（2026-11-21）
+
+EventScopeView は context→events の依存（`this.inner.event_filter` 直接参照）を
+減らしたが、**events→context の依存15箇所はすべて `ctx.event_registry()` 経由で
+残存**。よって (a) Disposer/BoxFuture 共通化だけでは循环は解消せず、ADR の却下理由は
+今も有効。段4（dispatch API の registry 化）を先に進め、段5で Disposer を
+「最後の1本」として共通化するのが段階的経路。BoxFuture は既に events.rs 定義で
+context.rs が import しており、Disposer とは別軸（context→events の向き）。
 
 ## 残る論点
 
