@@ -14,6 +14,8 @@ use crate::{Error, Result};
 pub struct ApprovalRequest {
     pub action: String,
     pub description: String,
+    /// Optional untrusted command text for the answerer to inspect (ADR-012).
+    details: Option<String>,
 }
 
 impl ApprovalRequest {
@@ -21,7 +23,19 @@ impl ApprovalRequest {
         Self {
             action: action.into(),
             description: description.into(),
+            details: None,
         }
+    }
+
+    /// Attach details (e.g. a model-supplied bash command). Builder-style so
+    /// existing `ApprovalRequest::new` callers stay unchanged.
+    pub fn with_details(mut self, details: impl Into<String>) -> Self {
+        self.details = Some(details.into());
+        self
+    }
+
+    pub fn details(&self) -> Option<&str> {
+        self.details.as_deref()
     }
 }
 

@@ -437,10 +437,18 @@ impl ToolPipeline {
                 }
                 if let Some(approval) = approval {
                     use crate::services::approval::{ApprovalDecision, ApprovalRequest};
-                    let request = ApprovalRequest::new(
+                    let mut request = ApprovalRequest::new(
                         format!("tool:{tool_name}"),
                         format!("Execute tool {tool_name} with the supplied arguments"),
                     );
+                    // Surface the model-supplied command to the answerer so it
+                    // can make a real allow/deny decision (ADR-012). Never use
+                    // `args["command"]` (panics on a missing key).
+                    if tool_name == "bash"
+                        && let Some(command) = args.get("command").and_then(|v| v.as_str())
+                    {
+                        request = request.with_details(command.escape_debug().to_string());
+                    }
                     match approval.request(&request) {
                         Ok(outcome) if outcome.decision == ApprovalDecision::Allow => {}
                         Ok(_) => {

@@ -4718,3 +4718,33 @@ async fn provide_scoped_fs_rejects_outside_paths_and_symlink_roots() {
 
     std::fs::remove_dir_all(&base).unwrap();
 }
+
+#[test]
+fn approval_request_details_reach_answerer() {
+    use cordis_rs::core_services::{ApprovalDecision, ApprovalRequest};
+    use std::sync::Arc as StdArc;
+
+    // details is builder-only; existing new() callers stay unchanged (ADR-012).
+    let plain = ApprovalRequest::new("tool:bash", "Execute tool bash");
+    assert_eq!(plain.details(), None);
+    let with =
+        ApprovalRequest::new("tool:bash", "Execute tool bash").with_details("echo 'hello\\nworld'");
+    assert_eq!(with.details(), Some("echo 'hello\\nworld'"));
+
+    // An answerer can inspect the command text to decide.
+    let seen = StdArc::new(std::sync::Mutex::new(String::new()));
+    let seen_clone = seen.clone();
+    let answerer = move |request: &ApprovalRequest| {
+        if let Some(command) = request.details() {
+            *seen_clone.lock().unwrap() = command.to_string();
+            if command.contains("rm -rf") {
+                return Some(ApprovalDecision::Deny);
+            }
+        }
+        Some(ApprovalDecision::Allow)
+    };
+    assert_eq!(answerer(&with), Some(ApprovalDecision::Allow));
+    assert_eq!(seen.lock().unwrap().as_str(), "echo 'hello\\nworld'");
+    let dangerous = ApprovalRequest::new("tool:bash", "s").with_details("rm -rf /");
+    assert_eq!(answerer(&dangerous), Some(ApprovalDecision::Deny));
+}

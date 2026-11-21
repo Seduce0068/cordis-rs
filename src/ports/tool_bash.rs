@@ -200,6 +200,13 @@ impl crate::Plugin for ToolBash {
 /// Mount with the shared tools and shell seams.
 pub async fn mount(ctx: &Context, shell: Shell, config: ToolBashConfig) -> Result<ToolRegistry> {
     let tools = ctx.require::<ToolRegistry>("tools").await?;
+    // Gate bash through the tool pipeline's approval check when one is
+    // registered (ADR-012). Use get(), never require(): a host that only uses
+    // ToolRegistry::invoke has no pipeline and must not hang here. The
+    // pipeline's run() already fails closed when approval is unavailable.
+    if let Some(pipeline) = ctx.get::<crate::services::tools::ToolPipeline>("toolPipeline") {
+        pipeline.require_approval();
+    }
     if ctx.get::<Shell>("shell").is_none() {
         ctx.provide("shell", shell).await?;
     }

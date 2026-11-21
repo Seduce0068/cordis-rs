@@ -10,10 +10,10 @@ tags:
 resource: https://github.com/Seduce0068/cordis-rs
 generated: 2026-11-21T12:57:37+09:00
 verified: 2026-11-21T12:57:37+09:00
-status: proposed
+status: accepted
 ---
 
-## 決定（提案）
+## 決定
 
 model 由来の `bash` コマンドは **shell 層ではなく tool boundary の承認ゲート**で
 制御する。shell.rs は `ctx` を持たない純粋 seam のまま維持し、
@@ -76,7 +76,7 @@ audit pair / allowed-once を実装しておらず、上流との完全整合は
 - **`ToolPipeline::default()` の approval_required = true**: 全 tool に影響し
   既存のOpt-in 契約を壊すため却下。bash tool 限定で十分。
 
-## 実装手順（R2 で実施、未実装）
+## 実装手順（R2 実装済み 2026-11-21）
 
 1. `ApprovalRequest` に private `details` ＋ `with_details()` ＋ getter を追加。
    `with_details()` は `impl Into<String>` を受け取り `new()` と API を揃える。
@@ -86,13 +86,20 @@ audit pair / allowed-once を実装しておらず、上流との完全整合は
    `args.get("command").and_then(|value| value.as_str())` で command を取得し
    details に設定（**`args["command"]` は存在しないキーで panic するため禁止**、
    R4 指摘）。ログ出力時は escape。
-3. tool_bash の mount で `require_approval()` を必須化。
+3. tool_bash の mount で pipeline を **`get`** 取得し、Some なら
+   `require_approval()` を呼ぶ（`require` は service 未登録 host をハング
+   させるため禁止、R1 指摘）。
 4. テスト: (a) answerer が command 本文を読める、(b) deny 時に shell が
    実行されない、(c) approval service 未登録時に Err、(d) 既存 approval テスト
    が通ること。
 
 ## 残る論点
 
+- **既知の制約（R1 指摘）**: pipeline 経由の `run()` だけが approval ゲートされ、
+  `ToolRegistry::invoke()` 直呼びは素通りする。mount 側の `require_approval()` は
+  pipeline が登録されている host にのみ効くため、「fail-closed を実現した」と
+  過大評価してはならない。完全な fail-closed には registry.invoke 自体の
+  ゲート化（別設計判断）が必要。
 - きめ細かい command 危険度判定（runner-level confinement）は phase-2。
 - **第2段課題**: ApprovalService への agent / callId 必須化、audit pair
   （`approval/asked` / `approval/decided`）の turn 内コミット、allowed-once grant、
