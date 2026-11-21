@@ -472,6 +472,24 @@ impl Context {
         Ok(disposer)
     }
 
+    /// Shared removal of the registry entry. Fiber notification stays in
+    /// callers because sync/async contracts differ (swarm review R1-AP).
+    /// `notify_waiters` runs before fiber refresh so `require_untyped`
+    /// waiters wake first.
+    fn drop_service_entry(&self, name: &str) {
+        self.inner
+            .services
+            .write()
+            .expect("service registry poisoned")
+            .remove(name);
+        self.inner
+            .service_generations
+            .write()
+            .expect("service generation registry poisoned")
+            .remove(name);
+        self.inner.service_added.notify_waiters();
+    }
+
     /// Remove a service only when its generation still matches. Returns
     /// whether an entry was actually removed; stale disposers are no-ops.
     async fn remove_service_generation(&self, name: &str, generation: u64) -> Result<()> {
@@ -485,33 +503,17 @@ impl Context {
         if current != Some(generation) {
             return Ok(());
         }
-        self.inner
-            .services
-            .write()
-            .expect("service registry poisoned")
-            .remove(name);
-        self.inner
-            .service_generations
-            .write()
-            .expect("service generation registry poisoned")
-            .remove(name);
-        self.inner.service_added.notify_waiters();
+        self.drop_service_entry(name);
         self.drain_dependent_fibers(name).await;
         Ok(())
     }
 
+    /// Remove a service synchronously. Dependent fibers are refreshed via
+    /// `spawn` without awaiting completion (fire-and-forget). Hosts that need
+    /// teardown to finish before continuing should use `remove_service_async`
+    /// instead (swarm review R1-AP).
     pub fn remove_service(&self, name: &str) -> Result<()> {
-        self.inner
-            .services
-            .write()
-            .expect("service registry poisoned")
-            .remove(name);
-        self.inner
-            .service_generations
-            .write()
-            .expect("service generation registry poisoned")
-            .remove(name);
-        self.inner.service_added.notify_waiters();
+        self.drop_service_entry(name);
         self.notify_fibers();
         Ok(())
     }
@@ -520,17 +522,7 @@ impl Context {
     /// fibers, then drop the remaining value. Prevents teardown races where a
     /// provider service disappears while its dependents are still running.
     pub async fn remove_service_async(&self, name: &str) -> Result<()> {
-        self.inner
-            .services
-            .write()
-            .expect("service registry poisoned")
-            .remove(name);
-        self.inner
-            .service_generations
-            .write()
-            .expect("service generation registry poisoned")
-            .remove(name);
-        self.inner.service_added.notify_waiters();
+        self.drop_service_entry(name);
         self.drain_dependent_fibers(name).await;
         Ok(())
     }

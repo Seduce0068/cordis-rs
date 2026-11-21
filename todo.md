@@ -41,7 +41,7 @@ status: current
 - [x] **型付き Event のディスパッチがスコープフィルタ／global を無視** — 2026-11-21 対応（emit の filter 無視を ADR-011 の意図的契約として明文化、emit_with は view 経由に変更）。
 - [ ] **イベントレジストリがコンテキスト階層を継承せずサービス lookup と非対称** — 根拠 `src/context.rs:206-231,560-584` / R1-AP / 重大度 medium / confirmed
 - [x] **Lifecycle に validation なしの公開 setter があり不正遷移／未知 u8 を Failed に丸める** — 検証せず却下（下記メモ参照）。
-- [ ] **サービス削除 API が3系統存在し副作用とエラー意味が異なる** — 根拠 `src/context.rs:440-501` / R1-AP / 重大度 medium / confirmed
+- [x] **サービス削除 API が3系統存在し副作用とエラー意味が異なる** — 2026-11-21 修正（共通 drop_service_entry ヘルパに集約、fiber 通知は各 API に残し使い分けを明文化、R1 指摘反映）。
 - [x] **キャンセル判定が実行前の1回のみで実行中の変化が伝播しない** — 2026-11-19 修正（共有 cancel_flag を追加し実行後に成功を再分類、retry/user_questions も対応、R4 指摘反映）。
 - [x] **SessionProjectionRegistry::view が read guard 保持中にユーザ fold を呼ぶ** — 2026-11-19 修正（Arc を clone して guard を drop してから fold 実行、R1 指摘反映）。
 - [x] **CheckpointCursor の pending/commit が TOCTOU で二重永続化し固定 tmp 名が競合** — 2026-11-19 修正（pending で cursor lock 内 snapshot、tmp 名に pid+連番、R1 指摘反映）。
