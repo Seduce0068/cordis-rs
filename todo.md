@@ -156,7 +156,7 @@ status: current
 - [x] **McpResourceRegistry::register_scoped の bool が他レジストリと逆意味、unregister が空スロープを残す** — 2026-11-22 修正（新規登録で true、空スコープを remove、回帰テスト追加、R2 指摘反映）。
 - [x] **SessionQueryEngine::index がスナップショット保持で更新が反映されず unindex 手段も無い** — 2026-11-22 検証の結果修正（Session は内部 Arc 共有で実質ライブ参照。remove/refresh を追加し doc コメントを実態に修正、回帰テスト追加、R2 指摘反映）。
 - [x] **production_ports.rs の本番 port カバレッジが3件に留まる（tool_fs/tool_bash/session_persistence_jsonl を追加）** — 2026-11-22 修正（3 port の mount スモークを追加、計6件の本番 port を検証、R3 指摘反映）。
-- [ ] **未生成の error enum バリアントが API サーフェスに残る（UserQuestionError 等）** — 根拠 `src/ports/user_questions.rs:25-35`, `src/ports/tool_exit_plan_mode.rs:17-20` / R2-ER06 / 重大度 low / confirmed
+- [x] **未生成の error enum バリアントが API サーフェスに残る（UserQuestionError 等）** — 2026-11-22 一部修正（user_questions の5バリアントに phase-2 予約コメント＋code() 回帰テスト。NotInPlanMode は既存テストが Ok の "PLAN_NOT_ACTIVE" を期待するため Err 化を見送り、StaleVersion は適用側 comparison 未配線で別 ADR 案件として残す）。
 - [x] **README のテストファイル一覧に tests/production_ports.rs が載っていない** — 2026-11-22 修正（テストファイル一覧に本番 port mount 検証を追加、R3 指摘反映）。
 - [x] **verify.sh がリポジトリ直下を cwd 前提でスクリプト参照表記も混在** — 2026-11-22 修正（先頭で repo root に cd、全スクリプト参照を `bash scripts/...` に統一、別 cwd から全ゲート通過を検証、R3 指摘反映）。
 - [ ] **CodexToolPayload が未使用で hook rewrite 相当が未接続（Claude と同じ ADR で扱う）** — 根拠 `src/ports/hooks_codex.rs:19-25,119-145` / R3-FG04 / 重大度 low / likely

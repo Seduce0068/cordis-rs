@@ -25,11 +25,18 @@ pub const TOOL_NAME: &str = "ask_user_question";
 pub enum UserQuestionError {
     NoProvider,
     AskAborted,
+    /// Reserved for phase-2 `steer()` / timed waits (upstream HarnessError
+    /// code). No construction path yet; kept for public code-set stability
+    /// (swarm review R2-ER06).
     CallerNotLive,
+    /// Reserved for phase-2 delegated-call handling.
     DelegatedCaller,
+    /// Reserved for phase-2 steer intent validation.
     BadIntent,
     EmptyQuestions,
+    /// Reserved for phase-2 answer validation.
     BadAnswer,
+    /// Reserved for phase-2 reply queuing.
     ReplyQueued,
     ProviderError,
 }

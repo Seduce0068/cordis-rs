@@ -5243,3 +5243,26 @@ fn session_query_index_is_a_snapshot_with_refresh_and_remove() {
     assert!(engine.trace("sq1").is_empty());
     assert!(!engine.remove("sq1"));
 }
+
+#[test]
+fn user_question_error_codes_cover_all_reserved_variants() {
+    use cordis_rs::plugin_ports::UserQuestionError;
+
+    // Reserved phase-2 variants must keep their upstream code strings for
+    // public API stability (swarm review R2-ER06).
+    let codes = [
+        UserQuestionError::NoProvider,
+        UserQuestionError::AskAborted,
+        UserQuestionError::CallerNotLive,
+        UserQuestionError::DelegatedCaller,
+        UserQuestionError::BadIntent,
+        UserQuestionError::EmptyQuestions,
+        UserQuestionError::BadAnswer,
+        UserQuestionError::ReplyQueued,
+        UserQuestionError::ProviderError,
+    ]
+    .map(|variant| variant.code());
+    assert_eq!(codes.len(), 9);
+    assert!(codes.iter().all(|code| !code.is_empty()));
+    assert!(codes.iter().all(|code| *code == code.trim()));
+}
