@@ -143,7 +143,7 @@ status: current
 - [ ] **FileSystem::scoped の symlink TOCTOU 残存** — 根拠 `README.md:82`, `src/services/fs.rs:83-125` / R2-FG08 / 重大度 medium / confirmed
 - [x] **session-query port が SQLite/FTS5 ではなく決定的インメモリ検索の差分が README に無い** — 2026-11-21 修正（安定性マトリクスに phase-1 行と FTS5 未実装を明記、R2-FG09 反映）。
 - [x] **v1.0.0 での旧名 alias 削除が未トラック（deprecated 7個）** — 2026-11-21 修正（ADR-005 に v1.0.0 削除チェックリストと検証手順を追加、R2-FG10 反映）。
-- [ ] **クレート版数とリリースタグの記述が Cargo.toml / PROGRESS / ADR-001 で食い違う** — 根拠 `Cargo.toml:3`, `docs/PROGRESS.md:24`, `docs/ADR-001-cordis-runtime-reimplementation.md:44` / R1-CF03 / 重大度 low / confirmed
+- [x] **クレート版数とリリースタグの記述が Cargo.toml / PROGRESS / ADR-001 で食い違う** — 2026-11-21 修正（PROGRESS/ADR-001 のタグ範囲を v0.261.0 に最新化、README に crate version 0.1.0 固定・タグは時系列マーカー方針を明記、R1-CF03 反映）。
 
 ## 完了
 

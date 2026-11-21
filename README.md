@@ -169,6 +169,13 @@ danger-full-access は allow）。
 6 エントリのうち port が存在するものだけを fiber として起動し、
 failed / skipped を id と理由付きで一覧出力します（診断レポート）。
 
+## 版数方針
+
+`Cargo.toml` の crate version は `0.1.0` 固定で、Git タグ（`v0.261.0` 等）は
+時系列マーカーとして運用する。crate version をタグに追従させないのは、
+deprecated alias の `since` にタグ番号を入れると rustdoc が誤った情報を
+表示するため（ADR-005 参照）。docs.rs の版数表示は 0.1.0 のままになる。
+
 ## ライセンス
 
 `AGPL-3.0-or-later`（[LICENSE](LICENSE) を参照）。上流 Cordis（MIT、
