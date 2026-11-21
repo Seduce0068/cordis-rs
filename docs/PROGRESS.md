@@ -20,7 +20,7 @@ DSH の GPUI 再実装における最大の障壁だった Cordis プラグイ�
 
 - コアサービス 38 個（service 37 module + port 経由の `messageFeedback`）
 - port 63 個（再利用 port。library port は hook-protocol を別枠で管理）
-- テスト 238 件（8 テストファイル）、example 7 個
+- テスト 239 件（8 テストファイル）、example 7 個
 - GitHub タグ `v0.1.0` 〜 `v0.245.0`、commits 331
 - ライセンス: AGPL-3.0-or-later（上流 MIT 通知は THIRD_PARTY_NOTICES.md に保持）
 - 上流 `snapshots/sdk/text-turn/cordis.yml` の 6 エントリすべてを mount

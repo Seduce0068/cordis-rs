@@ -12,6 +12,8 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use crate::{Error, Result};
 
 pub const SESSION_REFERENCE_SCHEME: &str = "dsh-session:";
+/// Maximum encoded payload length accepted by the decoder (R3-IV10).
+pub const MAX_REFERENCE_PAYLOAD_LEN: usize = 4096;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SessionReference {
@@ -29,7 +31,15 @@ pub fn encode_session_reference_uri(session_id: &str) -> String {
 pub fn decode_session_reference_uri(uri: &str) -> std::result::Result<String, Error> {
     let payload = uri
         .strip_prefix(SESSION_REFERENCE_SCHEME)
-        .ok_or_else(|| Error::Other(format!("not a session reference URI: {uri}")))?;
+        .ok_or_else(|| Error::Other("not a session reference URI".to_string()))?;
+    // Bound the input before decoding and never echo the untrusted URI (it may
+    // carry a session id) into the error message (swarm review R3-IV10).
+    if payload.is_empty() || payload.len() > MAX_REFERENCE_PAYLOAD_LEN {
+        return Err(Error::Other(format!(
+            "invalid session reference payload length: {}",
+            payload.len()
+        )));
+    }
     let bytes = URL_SAFE_NO_PAD
         .decode(payload)
         .map_err(|error| Error::Other(format!("invalid session reference payload: {error}")))?;
@@ -50,9 +60,17 @@ pub fn decode_session_reference_uri(uri: &str) -> std::result::Result<String, Er
 
 /// Format a markdown mention for a session reference.
 pub fn format_session_reference_mention(reference: &SessionReference) -> String {
+    let safe_label: String = reference
+        .label
+        .chars()
+        .flat_map(|ch| match ch {
+            '[' | ']' | ')' | '\n' | '\r' => vec!['\\', ch],
+            _ => vec![ch],
+        })
+        .collect();
     format!(
         "@[{}]({})",
-        reference.label.replace(']', "\\]"),
+        safe_label,
         encode_session_reference_uri(&reference.session_id)
     )
 }

@@ -358,7 +358,7 @@ pub mod core_services {
         SessionHit, SessionQueryEngine, provide as provide_session_query,
     };
     pub use crate::services::session_reference::{
-        SESSION_REFERENCE_SCHEME, SessionReference, SessionReferences,
+        MAX_REFERENCE_PAYLOAD_LEN, SESSION_REFERENCE_SCHEME, SessionReference, SessionReferences,
         decode_session_reference_uri, encode_session_reference_uri,
         format_session_reference_mention, provide as provide_session_references,
     };

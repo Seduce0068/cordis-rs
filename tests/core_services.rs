@@ -5071,3 +5071,34 @@ fn event_log_options_reject_zero_values() {
 
     assert!(EventLogOptions::default().validate().is_ok());
 }
+
+#[test]
+fn session_reference_bounds_input_and_escapes_mention() {
+    use cordis_rs::core_services::{
+        MAX_REFERENCE_PAYLOAD_LEN, SessionReference, decode_session_reference_uri,
+        encode_session_reference_uri, format_session_reference_mention,
+    };
+
+    // Round-trip still works.
+    let uri = encode_session_reference_uri("session-1");
+    assert_eq!(decode_session_reference_uri(&uri).unwrap(), "session-1");
+
+    // Oversized payload is rejected before allocation, and the error does not
+    // echo the untrusted URI (R3-IV10).
+    let huge = format!("dsh-session:{}", "A".repeat(MAX_REFERENCE_PAYLOAD_LEN + 1));
+    let error = decode_session_reference_uri(&huge).unwrap_err().to_string();
+    assert!(error.contains("length"));
+    assert!(
+        !error.contains('A'),
+        "URI must not appear in error: {error}"
+    );
+
+    // All markdown-significant characters in the label are escaped.
+    let mention = format_session_reference_mention(&SessionReference {
+        session_id: "s".to_string(),
+        label: "a[b]c)\nd".to_string(),
+    });
+    assert!(mention.contains("a\\[b\\]c\\)"));
+    assert!(mention.contains("\\\n"), "newline must be escaped");
+    assert!(mention.starts_with("@[") && mention.contains("](dsh-session:"));
+}
