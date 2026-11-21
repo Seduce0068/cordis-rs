@@ -115,7 +115,7 @@ status: current
 - [ ] **hooks-claude-code の updatedInput/systemMessage/Ask/SessionStart が未接続** — 根拠 `src/ports/hooks_claude_code.rs:137-142` / R2-FG03 / 重大度 low / confirmed
 - [x] **mount_real_composition が部分失敗を assert で落とし診断レポートとして機能しない** — 2026-11-21 修正（assert を外し skipped/failed を id と理由付きで一覧出力、R5-VU08 反映）。
 - [x] **README が mount_real_composition の動作を 2 箇所で矛盾説明** — 2026-11-21 修正（診断レポート化した実装に合わせ「6 エントリすべてを起動」を「port 存在分のみ起動＋failed/skipped 一覧」に修正、R2-FG04 反映）。
-- [x] **テスト用一時ディレクトリが PID 依存かつ手動削除で失敗時にゴミが残る** — 2026-11-21 修正（残り18箇所を TempDirGuard に横展開、AsRef<Path>/Deref で互換維持、3ファイルでガード定義を同期、R4-TQ09 反映）。
+- [x] **テスト用一時ディレクトリが PID 依存かつ手動削除で失敗時にゴミが残る** — 2026-11-21 修正（残り18箇所を TempDirGuard に横展開、`AsRef<Path>` / Deref で互換維持、3ファイルでガード定義を同期、R4-TQ09 反映）。
 - [x] **GUI README が実装と矛盾する旧パス・旧バージョン記述** — 2026-11-21 修正（状態パスを XDG state home 構成に、同期 tag を v0.255.0 に修正、R5-VU03 反映）。
 
 - [x] **!!js ブロックスカラーの本文が eprintln! で stderr にそのまま出力される** — 2026-11-21 削除（YAML 任意文字列の stderr 生書き／ログ注入リスクも解消）。
