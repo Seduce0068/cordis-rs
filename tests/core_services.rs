@@ -5410,3 +5410,32 @@ fn fs_error_display_includes_stable_code() {
     );
     assert_eq!(FsErrorCode::NotFound.to_string(), "FS_NOT_FOUND");
 }
+
+#[test]
+fn turn_outline_compares_large_turn_numbers_without_i64_wrap() {
+    use cordis_rs::core_services::LoggedSessionEvent as SessionEvent;
+    use cordis_rs::plugin_ports::fold;
+
+    let big = i64::MAX as u64 + 10;
+    let mut state = serde_json::json!({ "turns": [], "draft": "" });
+    for turn in [big - 1, big, big + 1] {
+        let event = SessionEvent {
+            seq: turn,
+            event_type: "turn/start".to_string(),
+            data: serde_json::json!({ "turn": turn }),
+        };
+        state = fold(state, &event);
+    }
+    let turns = state["turns"].as_array().unwrap();
+    assert_eq!(turns.len(), 3, "ascending large turns must all be recorded");
+    assert_eq!(turns[2]["turn"].as_u64(), Some(big + 1));
+
+    // A stale turn must be ignored rather than wrapped into a large positive.
+    let stale = SessionEvent {
+        seq: 0,
+        event_type: "turn/start".to_string(),
+        data: serde_json::json!({ "turn": big - 2 }),
+    };
+    let next = fold(state, &stale);
+    assert_eq!(next["turns"].as_array().unwrap().len(), 3);
+}

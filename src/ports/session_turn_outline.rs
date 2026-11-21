@@ -84,12 +84,12 @@ pub fn fold(
                 .get("turn")
                 .and_then(|value| value.as_u64())
                 .unwrap_or(0);
+            // Compare u64 directly; casting to i64 would wrap values above
+            // i64::MAX and invert the order (swarm review R6-IV08).
             let last_turn = turns
                 .last()
-                .and_then(|entry| entry.get("turn").and_then(|value| value.as_u64()))
-                .map(|value| value as i64)
-                .unwrap_or(-1);
-            if turn as i64 <= last_turn {
+                .and_then(|entry| entry.get("turn").and_then(|value| value.as_u64()));
+            if last_turn.is_some_and(|last| turn <= last) {
                 return state;
             }
             turns.push(serde_json::json!({
