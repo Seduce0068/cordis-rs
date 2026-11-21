@@ -62,7 +62,7 @@ status: current
 - [x] **公式 plugin port テストが本番 port ではなくテスト内再実装を検証** — 2026-11-21 修正（stub ファイルに目的明示、tests/production_ports.rs で本番 mount 3件を検証、R1 指摘反映）。
 - [x] **固定 sleep で非同期状態遷移を待つテストが CI 負荷下でフレーク** — 2026-11-21 修正（wait_for_state ヘルパーと bounded deadline ポーリングに置換、2s/10ms、yield 確保、R1 指摘反映）。
 - [x] **JSONL 系テストの一時ディレクトリが PID のみで後始末されていない** — 2026-11-21 修正（TempDirGuard: PID+nanos＋Drop で削除、`Deref<Target=Path>` で既存コード維持、R1 指摘反映）。
-- [ ] **docs/index.md が ADR-002/003/004/006/007 を索引していない** — 根拠 `docs/index.md:5-17`, `docs/ADR-002-tool-jobs-port-scope.md:9` / R5-DC04 / 重大度 medium / confirmed
+- [x] **docs/index.md が ADR-002/003/004/006/007 を索引していない** — 2026-11-21 修正（ADR-001〜012 の完全索引と status 表記を現状に合わせて再構成、R1 指摘反映）。
 - [ ] **PROGRESS.md が status: current のまま旧スナップショット** — 根拠 `docs/PROGRESS.md:4,11,17,21-26` / R5-DC05 / 重大度 medium / confirmed
 - [ ] **loader.rs が YAML 解析・式評価・検証・composition 構築の4責務（2102行）** — 根拠 `src/loader.rs:1,706,1220,2102` / R1-AR01 / 重大度 medium / confirmed
 - [ ] **23個のドメイン Error enum が Error::Other に平坦化され種別分岐不能** — 根拠 `src/error.rs:4,30,34`, `src/loader.rs:108` / R1-AP02 / 重大度 medium / confirmed
