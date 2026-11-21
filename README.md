@@ -85,9 +85,9 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 | `goal-fold` | phase-1 | 書き込み側との統合 |
 | `ToolPipeline` approval 既定 | fail-open | production では `install_default_controls(hook_effect, policy)` を呼ぶ（fail-closed approval + 実際の hook deny effect + sandbox gate を一括登録） |
 
-根拠: `src/services/llm.rs:110,166,192` / `telemetry.rs:5` /
-`session_persistence_jsonl.rs:238` / `sandbox_policy.rs:1,6` /
-`approval.rs:157` / `hooks_claude_code.rs:139`。
+根拠: `src/services/llm.rs:110,166,192` / `src/services/telemetry.rs:5` /
+`src/ports/session_persistence_jsonl.rs:238` / `src/ports/sandbox_policy.rs:1,6` /
+`src/services/approval.rs:157` / `src/ports/hooks_claude_code.rs:139`。
 
 障害時の切り分け手順は
 [troubleshooting runbook](docs/troubleshooting.md) を参照。**既知の fail-open / stub は「未対応」ではなく現状の制約**。fail-open 行は
