@@ -177,7 +177,7 @@ status: current
 - [x] **examples が固定 /tmp パスを使用し smoke 並列実行で衝突しうる** — 2026-11-22 修正（3 example の固定 /tmp パスを PID+nanos 一意パスに変更、7 examples smoke 通過、R4 指摘反映）。
 - [ ] **Shell の stdout/stderr 読み取りエラーが握り潰され不完全出力が成功として返る** — 根拠 `src/services/shell.rs:215-232` / R4-ER07 / 重大度 low / likely
 
-- [ ] **LlmService の既定 provider を dispose 後も default 名が残り resolve(None) が失敗** — 根拠 `src/services/llm.rs:110-163` / R5-LL01 / 重大度 medium / confirmed
+- [x] **LlmService の既定 provider を dispose 後も default 名が残り resolve(None) が失敗** — 2026-11-22 修正（disposer が既定 provider 削除時に default 名をクリア、回帰テスト追加、R5 指摘反映）。
 - [x] **TimeoutPolicyPlugin の inject("tools") と apply の require("toolPipeline") が不一致** — 2026-11-22 修正（inject を "toolPipeline" に変更、R2-ST02 と同種、回帰テスト追加、R5 指摘反映）。
 - [ ] **CommandRegistry が同名コマンドを先着優先で保持し ToolRegistry と世代ルールが異なる** — 根拠 `src/services/commands.rs:87-149` / R5-AP03 / 重大度 medium / confirmed
 - [ ] **FieldSpec の単発 min/max ビルダーに順序・NaN 検証がなく range() と方針が割れる** — 根拠 `src/config.rs:169-203` / R5-IV04 / 重大度 medium / confirmed

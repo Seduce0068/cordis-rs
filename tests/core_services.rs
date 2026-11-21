@@ -5375,3 +5375,24 @@ fn timeout_policy_inject_matches_apply_dependency() {
     // review R5-ST03).
     assert_eq!(plugin.inject(), &["toolPipeline"]);
 }
+
+#[tokio::test]
+async fn disposing_default_provider_clears_stale_default_name() {
+    use cordis_rs::core_services::{LlmService, echo_provider};
+
+    let service = LlmService::default();
+    let disposer = service.register(echo_provider("primary"));
+    assert!(service.resolve(None).is_some());
+
+    // Disposing the default must not leave a dangling default name
+    // (swarm review R5-LL01).
+    disposer.dispose().await.unwrap();
+    assert!(service.resolve(None).is_none());
+
+    // A newly registered provider becomes the default again.
+    let _second = service.register(echo_provider("secondary"));
+    assert_eq!(
+        service.resolve(None).map(|p| p.name().to_string()),
+        Some("secondary".to_string())
+    );
+}
