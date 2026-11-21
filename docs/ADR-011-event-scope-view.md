@@ -10,10 +10,10 @@ tags:
 resource: https://github.com/Seduce0068/cordis-rs
 generated: 2026-11-21T08:46:32+09:00
 verified: 2026-11-21T08:46:32+09:00
-status: proposed
+status: accepted
 ---
 
-## 決定（提案）
+## 決定
 
 ADR-010 の残課題（`emit_with` の2スコープ問題）を、concrete 型
 `EventScopeView<'a>` で解消する。trait object（`&dyn EventSink`）は
@@ -71,7 +71,7 @@ core-services-research は「上流では子スコープが root の registry �
   （events.rs の `remove` 内の meta.remove(&id)）。R4 レビューで
   「未対応」前提が誤りであることを指摘され修正した。
 
-## 移行手順（実装フェーズ R2 で実施）
+## 移行手順（実装完了 2026-11-21）
 
 1. `Context::event_filter()` getter を追加。
 2. `EventScopeView<'a>` は context.rs に定義する（`EventFilter` は

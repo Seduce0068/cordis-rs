@@ -16,7 +16,7 @@ status: current
 ## 進行中
 
 - [x] context/plugin 依存逆転（ADR-009、R1 design + R2 coding 完了、2026-11-20）
-- [ ] context ↔ events 設計（ADR-010 proposed + ADR-011 EventScopeView proposed、R1/R4 完了、R2 実装は次イテレーション以降）
+- [x] context ↔ events 設計＋EventScopeView 実装（ADR-011 accepted、2026-11-21）
 
 ## 未着手
 
@@ -38,7 +38,7 @@ status: current
 - [x] **check-doc-counts.sh が ports 数を算出するだけでドキュメント検証していない** — 2026-11-19 修正（ports 検証と矛盾行ゼロ条件を追加、陳腐な 20/13 を更新）。
 - [x] **ローカル verify.sh と CI ゲートの clippy 引数・extra_gates が乖離** — 2026-11-19 修正（--locked、ゲート順、audit、check-no-unsafe、check-doc-counts を同期、R4 指摘反映）。
 - [x] **push_with がリスナー公開後に HookMeta を書き global 判定に競合窓** — 2026-11-19 修正（meta.insert を slot 挿入前に移動）。
-- [ ] **型付き Event のディスパッチがスコープフィルタ／global を無視** — 根拠 `src/context.rs:355-387`, `src/events.rs:428-590` / R1-AP / 重大度 medium / confirmed
+- [x] **型付き Event のディスパッチがスコープフィルタ／global を無視** — 2026-11-21 対応（emit の filter 無視を ADR-011 の意図的契約として明文化、emit_with は view 経由に変更）。
 - [ ] **イベントレジストリがコンテキスト階層を継承せずサービス lookup と非対称** — 根拠 `src/context.rs:206-231,560-584` / R1-AP / 重大度 medium / confirmed
 - [x] **Lifecycle に validation なしの公開 setter があり不正遷移／未知 u8 を Failed に丸める** — 検証せず却下（下記メモ参照）。
 - [ ] **サービス削除 API が3系統存在し副作用とエラー意味が異なる** — 根拠 `src/context.rs:440-501` / R1-AP / 重大度 medium / confirmed

@@ -178,6 +178,29 @@ pub struct Context {
 
 type EventFilter = Arc<dyn Fn(&str) -> bool + Send + Sync>;
 
+/// A dispatch view that separates the registry owner from the scope whose
+/// filter decides which listeners are visible (ADR-011). Concrete borrow type:
+/// a trait object would require `'static` and cannot borrow these references.
+pub(crate) struct EventScopeView<'a> {
+    registry: &'a EventRegistry,
+    filter: Option<&'a EventFilter>,
+}
+
+impl<'a> EventScopeView<'a> {
+    pub fn new(registry: &'a EventRegistry, filter: Option<&'a EventFilter>) -> Self {
+        Self { registry, filter }
+    }
+
+    pub fn registry(&self) -> &'a EventRegistry {
+        self.registry
+    }
+
+    /// A listener passes when global or the scope filter allows its name.
+    pub fn allows(&self, id: u64, name: &str) -> bool {
+        self.registry.is_global(id) || self.filter.is_none_or(|f| f(name))
+    }
+}
+
 struct ContextInner {
     name: String,
     parent: Option<Context>,
@@ -262,6 +285,10 @@ impl Context {
 
     pub fn event_registry(&self) -> &EventRegistry {
         &self.inner.events
+    }
+
+    pub(crate) fn event_filter(&self) -> Option<&EventFilter> {
+        self.inner.event_filter.as_ref()
     }
 
     /// Register a named emit listener (upstream-style `ctx.on(name, listener)`).
@@ -351,6 +378,10 @@ impl Context {
     }
 
     /// Emit a named event to all `on`/`once` listeners in registration order.
+    ///
+    /// This deliberately does not apply scope filters: upstream's `emit`
+    /// without a thisArg dispatches unfiltered. Use `emit_with(this, ...)` to
+    /// apply a scope filter (ADR-011).
     pub async fn emit(&self, name: &str, args: serde_json::Value) {
         use crate::events::named_emit_slot;
         let listeners: Vec<crate::events::EmitListener<serde_json::Value>> =
@@ -378,17 +409,13 @@ impl Context {
     /// name is rejected by `this`'s filter are skipped.
     pub async fn emit_with(&self, this: &Context, name: &str, args: serde_json::Value) {
         use crate::events::named_emit_slot;
-        let registry = self.event_registry();
+        // Registry owner (`self`) and filter scope (`this`) are separated in
+        // the view, making the two-scope contract explicit (ADR-011).
+        let view = EventScopeView::new(self.event_registry(), this.event_filter());
         let listeners: Vec<(u64, crate::events::EmitListener<serde_json::Value>)> =
-            registry.snapshot_with_ids(named_emit_slot(name));
+            view.registry().snapshot_with_ids(named_emit_slot(name));
         for (id, listener) in listeners {
-            let allowed = registry.is_global(id)
-                || this
-                    .inner
-                    .event_filter
-                    .as_ref()
-                    .is_none_or(|filter| filter(name));
-            if allowed {
+            if view.allows(id, name) {
                 listener(args.clone()).await;
             }
         }
