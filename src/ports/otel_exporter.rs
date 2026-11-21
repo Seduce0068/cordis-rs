@@ -82,19 +82,45 @@ pub fn redact_record(record: &EventRecord) -> EventRecord {
 /// of the concrete exporter implementation.
 pub struct RedactingExporter {
     inner: Arc<dyn OTelExporter>,
+    /// Count of inner export failures (swarm review R4-OB04). Kept on the
+    /// exporter, not the reporter: export ownership lives here. Atomic so a
+    /// clone shared across threads accumulates one total.
+    failures: Arc<std::sync::atomic::AtomicU64>,
+}
+
+impl Clone for RedactingExporter {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            failures: self.failures.clone(),
+        }
+    }
 }
 
 impl RedactingExporter {
     pub fn new(inner: Arc<dyn OTelExporter>) -> Self {
-        Self { inner }
+        Self {
+            inner,
+            failures: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+        }
+    }
+
+    /// Number of inner export failures observed. The export API itself keeps
+    /// returning Ok so telemetry never fails the host operation (R4-OB04).
+    pub fn failures(&self) -> u64 {
+        self.failures.load(std::sync::atomic::Ordering::Acquire)
     }
 }
 
 impl OTelExporter for RedactingExporter {
     fn export(&self, records: &[EventRecord]) -> Result<(), TelemetryError> {
         let redacted: Vec<EventRecord> = records.iter().map(redact_record).collect();
-        // Telemetry failures must never fail the host operation.
-        let _ = self.inner.export(&redacted);
+        // Telemetry failures must never fail the host operation, but they are
+        // counted so an operator can detect a dead exporter via failures().
+        if self.inner.export(&redacted).is_err() {
+            self.failures
+                .fetch_add(1, std::sync::atomic::Ordering::Release);
+        }
         Ok(())
     }
 }

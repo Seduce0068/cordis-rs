@@ -4916,3 +4916,38 @@ fn otlp_redaction_caps_length_idempotently() {
     assert!(std::str::from_utf8(value.as_bytes()).is_ok());
     assert!(value.chars().count() <= MAX_VALUE_LEN);
 }
+
+#[test]
+fn redacting_exporter_counts_failures_without_failing_host() {
+    use cordis_rs::plugin_ports::{OTelExporter, RedactingExporter};
+    use cordis_rs::services::telemetry::{EventRecord, TelemetryError};
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    struct AlwaysFails;
+    impl OTelExporter for AlwaysFails {
+        fn export(&self, _records: &[EventRecord]) -> Result<(), TelemetryError> {
+            Err(TelemetryError::InvalidName)
+        }
+    }
+
+    let record = EventRecord {
+        name: "evt".to_string(),
+        attributes: HashMap::new(),
+        seq: 1,
+    };
+    let exporter = RedactingExporter::new(Arc::new(AlwaysFails));
+    assert_eq!(exporter.failures(), 0);
+
+    // Host-facing API keeps returning Ok (R4-OB04).
+    assert!(exporter.export(std::slice::from_ref(&record)).is_ok());
+    assert_eq!(exporter.failures(), 1);
+    exporter.export(std::slice::from_ref(&record)).unwrap();
+    assert_eq!(exporter.failures(), 2);
+
+    // Clones share the counter.
+    let clone = exporter.clone();
+    clone.export(&[record]).unwrap();
+    assert_eq!(exporter.failures(), 3);
+    assert_eq!(clone.failures(), 3);
+}
