@@ -689,3 +689,37 @@ async fn dispatch_with_registry_matches_context_adapter() {
         .await;
     assert_eq!(counter.load(Ordering::SeqCst), 2);
 }
+
+#[tokio::test]
+async fn fiber_reloads_via_async_drain_after_dependency_loss() {
+    // R2-BV01: retiring must be cleared when a fiber returns to Pending so
+    // drain_dependent_fibers (async removal path) can reload it.
+    let ctx = Context::root("async-drain");
+    let applied = Arc::new(AtomicBool::new(false));
+    let fiber = cordis_rs::Fiber::mount(
+        &ctx,
+        Box::new(Greeter {
+            applied: applied.clone(),
+        }),
+    )
+    .await
+    .unwrap();
+
+    ctx.provide("config", 1u32).await.unwrap();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    assert_eq!(fiber.state(), Lifecycle::Active);
+
+    // Async removal drains dependents; the fiber retires temporarily.
+    ctx.remove_service_async("config").await.unwrap();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    assert_eq!(fiber.state(), Lifecycle::Pending);
+
+    // Dependency returns: drain must refresh the (no longer retiring) fiber.
+    ctx.provide("config", 1u32).await.unwrap();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    assert_eq!(
+        fiber.state(),
+        Lifecycle::Active,
+        "fiber must reload after async drain, not stay retired"
+    );
+}

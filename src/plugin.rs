@@ -100,6 +100,11 @@ impl FiberInner {
             self.ctx.set_lifecycle(Lifecycle::Unloading);
             self.ctx.dispose_effects().await?;
             *self.state.lock().expect("fiber state poisoned") = Lifecycle::Pending;
+            // Teardown is complete: the fiber is now waiting to reload, not
+            // unloading itself. Clear the re-entry guard so drain_dependent_fibers
+            // no longer skips it (R2-BV01). Explicit unload() keeps it set.
+            self.retiring
+                .store(false, std::sync::atomic::Ordering::SeqCst);
             self.ctx.set_lifecycle(Lifecycle::Pending);
         } else if matches!(state, Lifecycle::Pending | Lifecycle::Failed) && resolved {
             *self.state.lock().expect("fiber state poisoned") = Lifecycle::Loading;

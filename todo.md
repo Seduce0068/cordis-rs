@@ -22,7 +22,7 @@ status: current
 
 ### 優先度: 高
 
-- [ ] **FiberInner.retiring が true のまま戻らず依存 drain から永久除外される** — 根拠 `src/plugin.rs:97-103,208-212` / R2-BV01 / 重大度 high / confirmed
+- [x] **FiberInner.retiring が true のまま戻らず依存 drain から永久除外される** — 2026-11-21 修正（Pending 復帰時に retiring を false へ、明示 unload は true 維持、R1 指摘反映）。
 - [ ] **Shell が model 由来 command を無検証で sh -c に渡す（承認・allowlist なし）** — 根拠 `src/services/shell.rs:99-126`, `src/ports/tool_bash.rs:47-55,102-108` / R3-IV01 / 重大度 high / confirmed
 - [x] **ShellRequest::with_timeout が実行経路で未使用でハングコマンドが無期限ブロック** — 2026-11-21 修正（run_with_timeout を追加し tokio::process + timeout で kill/reap、R1 指摘反映）。
 - [ ] **既定 fs サービスがルート無制限の FileSystem::local()（パス閉じ込め opt-in）** — 根拠 `src/services/fs.rs:61-78,281-284` / R3-DE03 / 重大度 high / confirmed
