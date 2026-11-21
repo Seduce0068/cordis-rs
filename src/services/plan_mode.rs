@@ -22,14 +22,34 @@ struct PlanState {
     next_seq: u64,
 }
 
-#[derive(Default, Clone)]
+/// Default cap on retained plan/mode events per session.
+pub const DEFAULT_MAX_EVENTS: usize = 100;
+
+#[derive(Clone)]
 pub struct PlanMode {
     state: Arc<RwLock<PlanState>>,
+    max_events: usize,
+}
+
+impl Default for PlanMode {
+    fn default() -> Self {
+        Self {
+            state: Arc::new(RwLock::new(PlanState::default())),
+            max_events: DEFAULT_MAX_EVENTS,
+        }
+    }
 }
 
 impl PlanMode {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Override the retained-event cap (builder keeps `new()` unchanged).
+    pub fn with_max_events(mut self, max_events: usize) -> Self {
+        assert!(max_events > 0, "max_events must be positive");
+        self.max_events = max_events;
+        self
     }
 
     /// Append a plan/mode event. Last event wins when folding.
@@ -40,11 +60,12 @@ impl PlanMode {
             seq: guard.next_seq,
             active,
         };
-        guard
-            .logs
-            .entry(session_id.to_string())
-            .or_default()
-            .push(event.clone());
+        let log = guard.logs.entry(session_id.to_string()).or_default();
+        log.push(event.clone());
+        if log.len() > self.max_events {
+            let drop_count = log.len() - self.max_events;
+            log.drain(..drop_count);
+        }
         event
     }
 

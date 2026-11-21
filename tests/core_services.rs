@@ -5206,3 +5206,17 @@ fn credential_provider_set_rejects_unresolvable_names() {
     assert!(!provider.set("BAD-NAME", "secret-value"));
     assert!(!provider.set("API_KEY", ""));
 }
+
+#[test]
+fn plan_mode_log_is_bounded_per_session() {
+    use cordis_rs::core_services::PlanMode;
+
+    let mode = PlanMode::new().with_max_events(3);
+    for _ in 0..5 {
+        mode.set("s1", true);
+    }
+    let log = mode.trace("s1");
+    assert_eq!(log.len(), 3, "log must be capped at max_events");
+    assert_eq!(log.last().map(|event| event.seq), Some(5));
+    assert!(mode.is_active("s1"));
+}
