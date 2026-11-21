@@ -127,6 +127,24 @@ status: current
 - [x] **コメント除去とインデント正規化がブロックスカラー結合前に適用され式本文が変わる** — 2026-11-21 修正（Line.raw を追加し block scalar 本文は元行を参照、R1 指摘反映）。
 - [x] **SkillRegistry::catalog が provider 失敗を空カタログとして握り潰す** — 2026-11-21 修正（SkillCatalog::failures と SkillProviderFailure を追加、PartialEq は skills のみ比較、R1 指摘反映）。
 
+- [ ] **サービス名 "tools" が ToolRegistry と TodoTools で衝突し文字列キー127箇所に散在** — 根拠 `src/services/tools.rs:551`, `src/ports/tool_todo.rs:449` / R1-AR01 / R1 review / 重大度 high / confirmed
+- [ ] **ToolRegistry::invoke 直呼びが approval ゲートを素通り** — 根拠 `docs/ADR-012-shell-command-approval.md:98-102`, `src/services/tools.rs:226` / R2-FG01 / 重大度 high / confirmed（ADR-012 で既知制約として明記済み、完全 fail-closed は未実装）
+- [ ] **job kill が状態反転のみで実プロセスを停止しない** — 根拠 `docs/ADR-002-tool-jobs-port-scope.md:30-31`, `src/services/jobs.rs:275-282` / R2-FG04 / 重大度 medium / confirmed（意図的差分だが停止経路なし）
+- [ ] **provide-if-absent ガードが `get::<T>()` の型不一致を未登録と誤判定（6箇所）** — 根拠 `src/ports/tool_bash.rs:210`, `src/ports/tool_fs.rs:315`, `src/ports/command_goal.rs:117` / R1-AR02 / 重大度 medium / confirmed
+- [ ] **FieldSpec の min/max が f64 のみで Integer(i64) の範囲検証が精度落ち** — 根拠 `src/config.rs:24,127-129,355-373` / R1-AR03 / 重大度 medium / confirmed
+- [ ] **check-doc-counts.sh が src 内 unit test を件数から除外** — 根拠 `scripts/check-doc-counts.sh:2,7`, `src/context.rs:675` / R1-CF01 / 重大度 medium / confirmed
+- [ ] **verify.sh が cargo-audit 未インストール時に警告だけでスキップし全ゲート合格と表示** — 根拠 `scripts/verify.sh:22-27,42` / R1-CF02 / 重大度 medium / confirmed
+- [ ] **ADR-010 の status と進捗記述が index / 本文で矛盾（段4 未着手なのに完了表記）** — 根拠 `docs/index.md:26`, `docs/ADR-010-context-events-boundary.md:81-84` / R1-DR01 / 重大度 medium / confirmed
+- [ ] **ApprovalService に agent/callId/audit pair/allowed-once が無い** — 根拠 `docs/ADR-012-shell-command-approval.md:67-68,104-107`, `src/services/approval.rs:14-19` / R2-FG02 / 重大度 medium / confirmed
+- [ ] **sandbox escalation の共通 helper が無く実行ポイントへ接続されていない** — 根拠 `docs/ADR-012-shell-command-approval.md:108-109`, `src/ports/sandbox_policy.rs:1-6` / R2-FG03 / 重大度 medium / confirmed
+- [ ] **completion notice 配信とモデル cursor 追跡が未実装** — 根拠 `docs/ADR-002-tool-jobs-port-scope.md:16,21-24,28-29` / R2-FG05 / 重大度 medium / confirmed
+- [ ] **job owner が固定ラベル "bash" で sessionId fence が弱い** — 根拠 `docs/ADR-002-tool-jobs-port-scope.md:34-36`, `src/ports/tool_bash.rs:127-129` / R2-FG06 / 重大度 medium / confirmed
+- [ ] **JSONL 永続化が通常 turn へ自動配線されていない** — 根拠 `README.md:85`, `src/ports/session_persistence_jsonl.rs:348-351` / R2-FG07 / 重大度 medium / confirmed
+- [ ] **FileSystem::scoped の symlink TOCTOU 残存** — 根拠 `README.md:82`, `src/services/fs.rs:83-125` / R2-FG08 / 重大度 medium / confirmed
+- [ ] **session-query port が SQLite/FTS5 ではなく決定的インメモリ検索の差分が README に無い** — 根拠 `src/services/session_query.rs:1-7`, `README.md:32` / R2-FG09 / 重大度 low / confirmed
+- [ ] **v1.0.0 での旧名 alias 削除が未トラック（deprecated 7個）** — 根拠 `README.md:48`, `src/lib.rs:64-66` / R2-FG10 / 重大度 low / confirmed
+- [ ] **クレート版数とリリースタグの記述が Cargo.toml / PROGRESS / ADR-001 で食い違う** — 根拠 `Cargo.toml:3`, `docs/PROGRESS.md:24`, `docs/ADR-001-cordis-runtime-reimplementation.md:44` / R1-CF03 / 重大度 low / confirmed
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -154,3 +172,4 @@ status: current
   - **未レビュー**: workflow 出力がハーネス側で切り詰められ `swarm-todo-discovery` の全件（R1-ST〜R5-VU）を取得できなかった。同一情報を再取得しない原則により未調査として記録。次回 goal で該当範囲を代替走査すること。
 
 - **swarm コンボ R6 集約（2026-11-21、round 38）**: `swarm-project-review`（R1-R5: architecture/API/error-handling/boundary/input-validation/deps-exposure/observability/CI/testing/docs/UX）と `swarm-todo-discovery`（R1静的シグナル/R3テスト・依存/R5価値運用）の8エージェントから約60件を取得。重複統合（固定sleep、markdownlint、otlp redaction）、却下2件: (1) 「tokio exact pin を外す」— 前回 R1 で xattr 0.2.3 衝突判断済みのため既存判断維持、(2) 「16箇所の `let _ = mount_retained` がゴーストファイバー」— `src/plugin.rs:174-188` を確認し mount_retained 自体が effect で fiber を保持しておりアンロードは動作（既存却下維持）。ただし `tool_fs.rs:318-321` のコメント（Weak 保持のためハンドル必須）とは内部矛盾するため要判断として記録。**CI ゲートの `let _fiber` パターン不一致は事実**なので gate 改善を high で採用。speculative 1件（services→ports 非対称依存）はメモ留め。
+- **swarm コンボ R6 集約（2026-11-21、round 89）**: `swarm-project-review` R1（AR/CF/DR）と `swarm-todo-discovery` R1（ST/FG）の2エージェントから17件を取得。重複0件、却下0件、17件すべてを根拠 confirmed で `## 未着手` へ追記（子の重大度を reference として親が再判定: high2 / medium12 / low3）。並列2・深度1の制限プロファイル。R2〜R5 は同一情報の重複取得を避けるため省略し、R1 で打ち切る。
