@@ -180,7 +180,7 @@ status: current
 - [x] **LlmService の既定 provider を dispose 後も default 名が残り resolve(None) が失敗** — 2026-11-22 修正（disposer が既定 provider 削除時に default 名をクリア、回帰テスト追加、R5 指摘反映）。
 - [x] **TimeoutPolicyPlugin の inject("tools") と apply の require("toolPipeline") が不一致** — 2026-11-22 修正（inject を "toolPipeline" に変更、R2-ST02 と同種、回帰テスト追加、R5 指摘反映）。
 - [ ] **CommandRegistry が同名コマンドを先着優先で保持し ToolRegistry と世代ルールが異なる** — 根拠 `src/services/commands.rs:87-149` / R5-AP03 / 重大度 medium / confirmed
-- [ ] **FieldSpec の単発 min/max ビルダーに順序・NaN 検証がなく range() と方針が割れる** — 根拠 `src/config.rs:169-203` / R5-IV04 / 重大度 medium / confirmed
+- [x] **FieldSpec の単発 min/max ビルダーに順序・NaN 検証がなく range() と方針が割れる** — 2026-11-22 修正（min()/max() に NaN assert 追加、range() と方針統一、should_panic テスト2件、R5 指摘反映）。
 - [ ] **ValidationReason::OutOfRange が i64 境界を f64 に丸め 2^53 超で診断値が誤る** — 根拠 `src/config.rs:224-228,382-396` / R5-DI03 / 重大度 medium / confirmed
 - [ ] **PluginRegistry::register が同一 id を黙って上書きし MountReport に現れない** — 根拠 `src/loader.rs:612-628` / R5-AP04 / 重大度 medium / confirmed
 - [ ] **FsError の Display に安定コードがなくログから種別を判別できない** — 根拠 `src/ports/fs_errno.rs:9-27,50-54` / R5-OB05 / 重大度 low / confirmed

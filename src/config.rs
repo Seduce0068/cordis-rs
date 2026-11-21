@@ -175,6 +175,7 @@ impl FieldSpec {
     }
 
     pub fn min(mut self, min: f64) -> Self {
+        assert!(!min.is_nan(), "min must not be NaN");
         self.min = Some(min);
         self
     }
@@ -198,6 +199,7 @@ impl FieldSpec {
     }
 
     pub fn max(mut self, max: f64) -> Self {
+        assert!(!max.is_nan(), "max must not be NaN");
         self.max = Some(max);
         self
     }

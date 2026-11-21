@@ -1379,3 +1379,17 @@ fn field_spec_range_int_rejects_inverted_bounds() {
     use cordis_rs::{FieldSpec, FieldType};
     let _ = FieldSpec::new("bad", FieldType::Integer).range_int(10, 1);
 }
+
+#[test]
+#[should_panic(expected = "min must not be NaN")]
+fn field_spec_min_rejects_nan() {
+    use cordis_rs::{FieldSpec, FieldType};
+    let _ = FieldSpec::new("bad", FieldType::Number).min(f64::NAN);
+}
+
+#[test]
+#[should_panic(expected = "max must not be NaN")]
+fn field_spec_max_rejects_nan() {
+    use cordis_rs::{FieldSpec, FieldType};
+    let _ = FieldSpec::new("bad", FieldType::Number).max(f64::NAN);
+}
