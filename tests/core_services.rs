@@ -6293,3 +6293,40 @@ fn observe_all_observer_can_reenter_session_store() {
     rx.recv_timeout(Duration::from_secs(3))
         .expect("append deadlocked after observe_all");
 }
+
+#[test]
+fn message_feedback_observer_can_reenter_service() {
+    use cordis_rs::plugin_ports::{FeedbackItem, MessageFeedback, MessageFeedbackConfig, Rating};
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    let feedback = Arc::new(MessageFeedback::new(MessageFeedbackConfig::default()).unwrap());
+    let session = cordis_rs::core_services::Session::new("fb-reentry", None);
+    feedback.register_session(session.clone());
+
+    let feedback_for_observer = feedback.clone();
+    session.observe(Arc::new(move |_id, _event| {
+        // Re-enter the feedback service from inside an observer; this used to
+        // deadlock while put held the state read guard (swarm review R11-LC02).
+        let _ = feedback_for_observer.put_events("fb-reentry");
+    }));
+
+    let feedback_for_thread = feedback.clone();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let result = feedback_for_thread.put(
+            "fb-reentry",
+            FeedbackItem {
+                message_id: "m1".to_string(),
+                rating: Rating::Positive,
+                note: None,
+                version: "1".to_string(),
+            },
+        );
+        let _ = tx.send(result);
+    });
+    let result = rx
+        .recv_timeout(Duration::from_secs(3))
+        .expect("put deadlocked");
+    assert!(result.is_ok());
+}

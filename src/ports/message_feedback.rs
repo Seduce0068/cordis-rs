@@ -124,11 +124,17 @@ impl MessageFeedback {
                 });
             }
         }
-        let sessions = self.state.read().expect("feedback state poisoned");
-        let session = sessions
-            .sessions
-            .get(session_id)
-            .ok_or_else(|| FeedbackError::SessionNotFound(session_id.to_string()))?;
+        // Clone the Session and drop the state lock before touching it:
+        // append notifies observers which may re-enter this service (swarm
+        // review R11-LC02).
+        let session = {
+            let sessions = self.state.read().expect("feedback state poisoned");
+            sessions
+                .sessions
+                .get(session_id)
+                .cloned()
+                .ok_or_else(|| FeedbackError::SessionNotFound(session_id.to_string()))?
+        };
 
         // Check version monotonicity against existing put events.
         let last_version = session
@@ -172,10 +178,11 @@ impl MessageFeedback {
     }
 
     pub fn put_events(&self, session_id: &str) -> Vec<crate::core_services::LoggedSessionEvent> {
-        let sessions = self.state.read().expect("feedback state poisoned");
-        sessions
-            .sessions
-            .get(session_id)
+        let session = {
+            let sessions = self.state.read().expect("feedback state poisoned");
+            sessions.sessions.get(session_id).cloned()
+        };
+        session
             .map(|session| {
                 session
                     .events()
