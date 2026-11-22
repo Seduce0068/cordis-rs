@@ -196,7 +196,7 @@ status: current
 - [x] **config::validate が未宣言の config キーをサイレントに破棄し警告経路もない** — 2026-11-22 修正（validate_with_warnings 追加で既存 validate() 不変、MountReport.warnings に config: 前缀で集約、to_plugin は adapter 維持、回帰テスト2件、R1 指摘反映。runbook への警告の読み方追記は次案件）。
 - [x] **FieldSpec::with_default が既定値の型・範囲を検証せず不正スキーマを通す** — 2026-11-22 修正（既定値挿入経路で validate_value を通し型違反を Err 化、回帰テスト追加、R7 指摘反映）。
 - [x] **FieldSpec の単発境界 setter に前後関係の検証がなく到達不能レンジを受理** — 2026-11-22 修正（min/max/min_int/max_int が反対側 bound と比較して fail-fast、should_panic 2件追加、R7 指摘反映）。
-- [ ] **check-doc-counts.sh が README のテストファイル一覧を検証していない** — 根拠 `scripts/check-doc-counts.sh:25-32`, `README.md:168-172` / R7-CI05 / 重大度 medium / confirmed（agent-11/12 の重複を統合）
+- [x] **check-doc-counts.sh が README のテストファイル一覧を検証していない** — 2026-11-22 修正（tests/*.rs と README 列挙の双方向照合 gate を追加、片方省略時の fail を実証、R7 指摘反映）。
 - [ ] **doc-count ゲートが実際の cargo test 件数と突き合わせていない** — 根拠 `scripts/check-doc-counts.sh:8-10`, `docs/PROGRESS.md:59` / R7-CI06 / 重大度 medium / confirmed
 - [ ] **todo.md と ADR-010 / docs/index.md で段4（dispatch API registry 化）の完了状態が矛盾** — 根拠 `todo.md:39`, `docs/ADR-010...:53,81-90`, `docs/index.md:26-27` / R7-DC15 / 重大度 medium / confirmed
 - [ ] **「6 エントリすべてを mount」という記述が部分 mount 実装と乖離** — 根拠 `docs/PROGRESS.md:26`, `docs/ADR-001...:57-58`, `examples/mount_real_composition.rs:3-6` / R7-DC16 / 重大度 medium / confirmed

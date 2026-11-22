@@ -55,6 +55,22 @@ for file in README.md docs/PROGRESS.md docs/ADR-001-cordis-runtime-reimplementat
   fi
 done
 
+# Verify the README test-file listing stays in sync with tests/*.rs
+# (swarm review R7-CI05). Both directions are checked: a real file missing
+# from the docs, and a documented file that no longer exists.
+for file in $(find tests -maxdepth 1 -name '*.rs' -printf '%f\n' | sort); do
+  if ! grep -qF "tests/$file" README.md; then
+    echo "docs drift: README does not list tests/$file" >&2
+    fail=1
+  fi
+done
+for file in $(grep -oE 'tests/[A-Za-z0-9_-]+\.rs' README.md | sort -u); do
+  if [ ! -f "$file" ]; then
+    echo "docs drift: README lists missing $file" >&2
+    fail=1
+  fi
+done
+
 if [ "$fail" -ne 0 ]; then
   echo "Actual counts: tests=$tests (integration=$integration unit=$unit) ports=$ports" >&2
   exit 1
