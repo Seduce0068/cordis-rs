@@ -194,7 +194,7 @@ status: current
 
 - [x] **port の effect 解除が disposer エラーを握り潰し ADR-007/004 に違反** — 2026-11-22 修正（実測8箇所の on_dispose を `disposer.dispose().await` の直接伝播に統一、握り潰し箇所ゼロを確認、R7 指摘反映）。
 - [ ] **config::validate が未宣言の config キーをサイレントに破棄し警告経路もない** — 根拠 `src/config.rs:311,338-365`, `src/loader.rs:502-508` / R7-CF09 / 重大度 medium / confirmed
-- [ ] **FieldSpec::with_default が既定値の型・範囲を検証せず不正スキーマを通す** — 根拠 `src/config.rs:162-167,343-345` / R7-IV09 / 重大度 medium / confirmed
+- [x] **FieldSpec::with_default が既定値の型・範囲を検証せず不正スキーマを通す** — 2026-11-22 修正（既定値挿入経路で validate_value を通し型違反を Err 化、回帰テスト追加、R7 指摘反映）。
 - [x] **FieldSpec の単発境界 setter に前後関係の検証がなく到達不能レンジを受理** — 2026-11-22 修正（min/max/min_int/max_int が反対側 bound と比較して fail-fast、should_panic 2件追加、R7 指摘反映）。
 - [ ] **check-doc-counts.sh が README のテストファイル一覧を検証していない** — 根拠 `scripts/check-doc-counts.sh:25-32`, `README.md:168-172` / R7-CI05 / 重大度 medium / confirmed（agent-11/12 の重複を統合）
 - [ ] **doc-count ゲートが実際の cargo test 件数と突き合わせていない** — 根拠 `scripts/check-doc-counts.sh:8-10`, `docs/PROGRESS.md:59` / R7-CI06 / 重大度 medium / confirmed

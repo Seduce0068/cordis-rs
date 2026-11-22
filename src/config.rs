@@ -357,7 +357,15 @@ pub fn validate(
             // YAML `null` and an absent key have the same meaning here.
             None | Some(Value::Null) => {
                 if let Some(default) = &spec.default {
-                    result.insert(spec.name.clone(), default.clone());
+                    // Validate the default too, so an invalid schema cannot
+                    // inject a wrong-typed/out-of-range value (swarm review
+                    // R7-IV09).
+                    match validate_value(spec, default, &path) {
+                        Ok(validated) => {
+                            result.insert(spec.name.clone(), validated);
+                        }
+                        Err(mut found) => errors.append(&mut found),
+                    }
                 } else if spec.required {
                     errors.push(ValidationError {
                         path,

@@ -1414,3 +1414,26 @@ fn field_spec_min_int_then_max_int_rejects_reversed_order() {
         .min_int(10)
         .max_int(5);
 }
+
+#[test]
+fn invalid_default_value_is_rejected_by_validation() {
+    use cordis_rs::{ConfigValue, FieldSpec, FieldType, validate_config};
+
+    // A String default on an Integer field must not silently become the
+    // field's value when the key is absent (swarm review R7-IV09).
+    let schema = vec![
+        FieldSpec::new("count", FieldType::Integer)
+            .with_default(ConfigValue::String("not-an-int".into())),
+    ];
+    let raw = ConfigValue::Object(Default::default());
+    assert!(validate_config(&schema, &raw).is_err());
+
+    // A valid default on a matching field still works.
+    let ok_schema =
+        vec![FieldSpec::new("count", FieldType::Integer).with_default(ConfigValue::Integer(3))];
+    let validated = validate_config(&ok_schema, &raw).unwrap();
+    assert_eq!(
+        validated.as_object().unwrap()["count"],
+        ConfigValue::Integer(3)
+    );
+}
