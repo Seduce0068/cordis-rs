@@ -816,3 +816,11 @@ async fn tool_schedule_declares_its_injected_dependencies() {
     // apply() requires "tools" and "schedule" (swarm review R2-ST02).
     assert!(registry.names().iter().any(|name| name == "schedule_list"));
 }
+
+#[tokio::test]
+async fn provide_rejects_blank_service_names() {
+    let ctx = Context::root("blank-service-name");
+    assert!(ctx.provide("", 1u32).await.is_err());
+    assert!(ctx.provide("   ", 1u32).await.is_err());
+    assert!(ctx.provide("valid", 1u32).await.is_ok());
+}

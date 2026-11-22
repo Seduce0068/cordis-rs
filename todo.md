@@ -230,7 +230,7 @@ status: current
 - [ ] **approval audit pair（approval/asked + approval/decided）が未記録** — 根拠 `src/services/approval.rs:request`, ADR-012 / R9-ST03 / 重大度 medium / confirmed（段階1の agent/callId 保持は済み）
 - [ ] **tool_todo の StaleVersion が適用側 comparison 未配線** — 根拠 `todo.md:159` / R9-ST05 / 重大度 medium / confirmed
 - [ ] **同期 remove_service が generation を検証せず最新登録を消し得る** — 根拠 `src/context.rs:438-442` / R9-DI01 / 重大度 medium / confirmed
-- [ ] **Context::provide がサービス名を検証せず空文字を受理** — 根拠 `src/context.rs:356-395` / R9-DI02 / 重大度 medium / medium
+- [x] **Context::provide がサービス名を検証せず空文字を受理** — 2026-11-22 修正（空／空白のみのサービス名を Err で拒否、回帰テスト追加、R9 指摘反映）。
 - [x] **EventRegistry::remove が存在しない key で空スロットを生成** — 2026-11-22 修正（remove を try_slot ベースに変更し未登録 listener の削除でスロットを作らない、internal 回帰テスト追加、R9 指摘反映）。
 - [ ] **typed_event! の decode error store がプロセスグローバル** — 根拠 `src/events.rs:45-49,69-76` / R9-AP01 / 重大度 medium / confirmed
 - [ ] **is_bail_value が bool のみ対応（一般 R 型で false 相当を判定できない）** — 根拠 `src/events.rs:510-514` / R9-AP02 / 重大度 medium / medium

@@ -358,6 +358,12 @@ impl Context {
         T: Any + Send + Sync,
     {
         let name = name.into();
+        // Reject an empty/blank service name: it would collide with unnamed
+        // event slots and make YAML/service lookups ambiguous (swarm review
+        // R9-DI02).
+        if name.trim().is_empty() {
+            return Err(Error::Other("service name must not be empty".to_string()));
+        }
         let mut services = self
             .inner
             .services
