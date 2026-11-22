@@ -50,7 +50,10 @@ status: proposed
 - 「events.rs の Context import を落とす」目標は**未達**として明示。
   完全な一方向化には `EventScopeView` などの別抽象が必要で、第2段 ADR に委ねる。
 - 段1-3（EventScopeView の導入と emit_with の view 化）は ADR-011 として
-  実装完了。段4-5（dispatch API の registry 化と Disposer 共通化）は未着手。
+  実装完了。段4-5（dispatch API の registry 化と Disposer 共通化）も実装完了
+  （各 dispatch API に `*_with_registry` 版を追加し `&Context` 版を adapter 化、
+  direct import を除去）。型依存は re-export 経由で残存するため「真の cycle
+  解消」ではなく「direct import の除去」と表現するのが正確。
   範囲が EventScopeView に変更されたため本 ADR は proposed のまま、
   ADR-011 を accepted として運用する。
 
@@ -78,11 +81,10 @@ status: proposed
    （ADR-011、status accepted）。
 2. ✅ `emit_with` を view 経由に変更（registry 所有者 self と filter スコープ this を分離）。
 3. ✅ `Context::emit` の filter 無視を「upstream thisArg なし dispatch と整合」として明文化。
-4. ⬜ `events.rs` の残り10個の dispatch API（`on_serial` / `serial` / `on_bail` / `bail` /
-   `on_emit` / `emit` / `emit_spawn` / `parallel` / `parallel_errors`）を
-   `&EventRegistry` 受け取り版へ追加し、`&Context` 版を adapter 化。
-   waterfall 系（`on_waterfall` / `waterfall`）は既に `*_with_registry` で完了済み。
-   `emit_detached` は deprecated のため、新 API を足すなら `emit_spawn` に統合する。
+4. ✅ `events.rs` の残り dispatch API に `*_with_registry` 版を追加し、
+   `&Context` 版を adapter 化（`on_serial` / `on_bail` / `bail` / `on_emit` /
+   `emit_spawn` / `on_emit_fallible` ほか）。waterfall 系は当初から完了済み。
+   `emit_detached` は deprecated のため `emit_spawn` に統合する方針。
 5. ✅ 残る `Disposer` を共通 `primitives` モジュールへ移動し、events.rs の
    `use crate::context::...` を削除（adapter は `crate::Context` 完全修飾）。
    **注記（R1 指摘）**: direct module import は消えたが、`crate::Context` は
