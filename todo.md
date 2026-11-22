@@ -213,7 +213,7 @@ status: current
 - [x] **状態を持つ TimeContext / TmuxContext が Clone で状態共有されない** — 2026-11-22 修正（last を Arc<RwLock<Option<..>>> 化して clone 間で状態共有、mark_injected を &self に、sample_message も &TimeContext に変更、回帰テスト追加、R1 指摘反映）。
 - [x] **StorageHub::write が Object 以外で必須フィールド検証をスキップ** — 2026-11-22 修正（必須フィールド持つドメインは Object 以外を InvalidRecord 拒否、必須なしドメインの scalar は従来どおり許容、回帰アサーション追加、R8 指摘反映）。
 - [x] **SkillRegistry::catalog が read guard 保持中に provider コールバックを実行** — 2026-11-22 修正（guard 内で providers を clone して drop 後にコールバック実行、reentrant デッドロック回帰テスト追加、R8 指摘反映）。
-- [ ] **hooks.json の未知イベント名・不正エントリが警告なしでスキップ** — 根拠 `src/ports/hooks_claude_code.rs:87-120` / R8-CF02 / 重大度 medium / confirmed
+- [x] **hooks.json の未知イベント名・不正エントリが警告なしでスキップ** — 2026-11-22 修正（parse_config_with_warnings 追加で4種のスキップ理由を警告、parse_config は adapter 維持、phase-1 未対応は情報トーン、回帰テスト追加、R1 指摘反映）。
 - [x] **GoalService::clear が commit 失敗を握り潰す** — 2026-11-22 修正（try_clear を追加して commit 結果を伝播、command_goal で失敗を CommandResult::error 化、clear() は adapter 維持、R8 指摘反映）。
 - [x] **MessageFeedback の version が辞書順比較で数値版を誤判定** — 2026-11-22 修正（両者が数値なら u64 比較、他形式は従来の辞書順を維持、9→10 回帰テスト追加、R8 指摘反映）。
 - [x] **validate_with_warnings がネスト Object/Array の未宣言キーを検出しない** — 2026-11-22 修正（validate_inner で warnings を再帰伝播、ネスト Object/Array の未宣言キーも検出、回帰テスト追加、R8 指摘反映）。

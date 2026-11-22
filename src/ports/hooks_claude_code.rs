@@ -65,8 +65,18 @@ impl Default for HooksConfig {
 }
 
 /// Parse the `hooks.json` shape `{ "hooks": { "Event": [{ matcher, hooks: [{command}] }] } }`.
+/// Discards warnings; use `parse_config_with_warnings` to surface skipped
+/// entries (swarm review R8-CF02).
 pub fn parse_config(value: &serde_json::Value) -> std::result::Result<HooksConfig, String> {
+    parse_config_with_warnings(value).map(|(config, _)| config)
+}
+
+/// Like [`parse_config`], additionally reporting entries that were skipped.
+pub fn parse_config_with_warnings(
+    value: &serde_json::Value,
+) -> std::result::Result<(HooksConfig, Vec<String>), String> {
     let mut config = HooksConfig::default();
+    let mut warnings = Vec::new();
     if let Some(timeout) = value.get("defaultTimeoutMs").and_then(|v| v.as_u64()) {
         // Reject zero (immediate timeout) and values that cannot fit usize
         // on this target (swarm review R6-IV07).
@@ -82,13 +92,17 @@ pub fn parse_config(value: &serde_json::Value) -> std::result::Result<HooksConfi
         config.stderr_summary_max_chars = chars as usize;
     }
     let Some(hooks) = value.get("hooks").and_then(|v| v.as_object()) else {
-        return Ok(config);
+        return Ok((config, warnings));
     };
     for (event_name, groups) in hooks {
         let Some(event) = HookEvent::parse(event_name) else {
+            warnings.push(format!(
+                "unsupported hook event: {event_name} (phase-1 supports SessionStart/PreToolUse/PostToolUse)"
+            ));
             continue; // Stop / Subagent hooks are deferred in phase 1.
         };
         let Some(groups) = groups.as_array() else {
+            warnings.push(format!("hook event {event_name}: groups must be an array"));
             continue;
         };
         for group in groups {
@@ -104,6 +118,9 @@ pub fn parse_config(value: &serde_json::Value) -> std::result::Result<HooksConfi
                 return Err(diagnostic);
             }
             let Some(entries) = group.get("hooks").and_then(|v| v.as_array()) else {
+                warnings.push(format!(
+                    "hook event {event_name}: group must contain a hooks array"
+                ));
                 continue;
             };
             for entry in entries {
@@ -116,11 +133,15 @@ pub fn parse_config(value: &serde_json::Value) -> std::result::Result<HooksConfi
                         matcher: matcher.clone(),
                         command: command.to_string(),
                     });
+                } else {
+                    warnings.push(format!(
+                        "hook event {event_name}: entry has no command string"
+                    ));
                 }
             }
         }
     }
-    Ok(config)
+    Ok((config, warnings))
 }
 
 /// Select entries matching an event + tool/query name.

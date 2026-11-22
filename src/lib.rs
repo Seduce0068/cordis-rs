@@ -117,7 +117,7 @@ pub mod plugin_ports {
     pub use crate::ports::hooks_claude_code::{
         AUDIT_INVOKED, AUDIT_RESULT, DEFAULT_TIMEOUT_MS, HookEffect, HookEntry, HookEvent,
         HooksClaudeCodePlugin, HooksConfig, audit_pair, map_outcome,
-        mount as mount_hooks_claude_code, parse_config, select_hooks,
+        mount as mount_hooks_claude_code, parse_config, parse_config_with_warnings, select_hooks,
     };
     pub use crate::ports::hooks_codex::{
         HooksCodex, codex_audit_pair, codex_effect, codex_outcome, load_codex_config,

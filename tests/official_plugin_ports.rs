@@ -3480,3 +3480,49 @@ fn hooks_config_rejects_invalid_numeric_settings() {
         );
     }
 }
+
+#[test]
+fn hooks_parse_config_with_warnings_reports_skipped_entries() {
+    use cordis_rs::plugin_ports::{parse_config, parse_config_with_warnings};
+
+    let raw = serde_json::json!({
+        "hooks": {
+            "Stop": [{ "hooks": [{ "command": "ignored" }] }],
+            "PostToolUse": [
+                { "hooks": [{ "command": "ok" }, { "note": "missing command" }] },
+                { "note": "no hooks array" },
+                "not-an-array-group"
+            ],
+            "SessionStart": { "not": "an array" }
+        }
+    });
+
+    let (config, warnings) = parse_config_with_warnings(&raw).unwrap();
+    assert_eq!(
+        config.hooks.len(),
+        1,
+        "only the valid PreToolUse entry survives"
+    );
+    assert_eq!(config, parse_config(&raw).unwrap(), "adapter must agree");
+    assert!(
+        warnings
+            .iter()
+            .any(|warning| warning.contains("Stop") && warning.contains("phase-1")),
+        "warnings: {warnings:?}"
+    );
+    assert!(
+        warnings
+            .iter()
+            .any(|warning| warning.contains("groups must be an array"))
+    );
+    assert!(
+        warnings
+            .iter()
+            .any(|warning| warning.contains("must contain a hooks array"))
+    );
+    assert!(
+        warnings
+            .iter()
+            .any(|warning| warning.contains("no command string"))
+    );
+}
