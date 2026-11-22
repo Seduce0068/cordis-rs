@@ -261,6 +261,26 @@ status: current
 - [x] **ToolPipeline approval 既定 fail-open の根拠が ADR-004/012 で二重管理** — 2026-11-23 修正（ADR-004 を正本とし、ADR-012 と README を参照化。既存の振る舞いテスト tool_pipeline_require_approval_is_opt_in_fail_closed が fail-open を固定済みのため getter 追加は見送り、R1 指摘反映）。
 - [x] **README の LLM API 一覧に transport seam が欠ける** — 2026-11-23 修正（handler_from_transport / LlmTransport / with_llm_total_timeout を API 一覧に追加、R10 指摘反映）。
 
+- [ ] **GoalRoundDriver::drive が write guard 保持中に session.append を呼ぶ** — 根拠 `src/ports/goal_round_driver.rs:84,100-144` / R11-LC01 / 重大度 high / confirmed
+- [ ] **MessageFeedback::put が read guard 保持中に session.append を呼ぶ** — 根拠 `src/ports/message_feedback.rs:127,162-170` / R11-LC02 / 重大度 medium / confirmed
+- [ ] **SessionStore::observe_all が write guard 保持中に session.observe を呼ぶ** — 根拠 `src/services/sessions.rs:194-200` / R11-LC04 / 重大度 medium / confirmed
+- [ ] **write_with_version が check と increment を別ロックに分け並行書込みが両方通る** — 根拠 `src/ports/tool_todo.rs:302-309` / R11-TX01 / 重大度 medium / confirmed（StaleVersion 配線修正済みとは別の TOCTOU）
+- [ ] **JobRegistry が完了ジョブを削除せず notices も縮小しない** — 根拠 `src/services/jobs.rs:179-234` / R11-RS01 / 重大度 medium / confirmed
+- [ ] **JobHandle::settle と start のロック順序が未明示（AB-BA 窓）** — 根拠 `src/services/jobs.rs:104-120,180-188` / R11-LC03 / 重大度 low / medium
+- [ ] **FakeTransport::send が requests guard 保持中に responses lock を取得** — 根拠 `src/ports/llm_transport.rs:149-161` / R11-RS02 / 重大度 low / medium
+- [ ] **JsonlPersistence::open が exists チェックと insert を別ロックで行う** — 根拠 `src/ports/session_persistence_jsonl.rs:258-283` / R11-RS03 / 重大度 medium / confirmed
+- [ ] **ExecutorSelector が unload 時に古い executor を clear しない** — 根拠 `src/ports/native_tool_executor.rs:38-56,178-188` / R11-RS04 / 重大度 medium / medium
+- [ ] **DeepSeekConfig::validated_endpoint が plugin_ports に re-export 漏れ** — 根拠 `src/ports/llm_deepseek.rs:51`, `src/lib.rs:126-131` / R11-ST01 / 重大度 low / confirmed
+- [ ] **compaction_automation の compaction_count / note_success が未使用公開 API** — 根拠 `src/ports/compaction_automation.rs` / R11-ST02 / 重大度 low / confirmed
+- [ ] **feedback_producer の shared_event が未使用公開 helper** — 根拠 `src/ports/feedback_producer.rs` / R11-ST03 / 重大度 low / confirmed
+- [ ] **command_feedback::execute_command が internal-only の公開 API** — 根拠 `src/ports/command_feedback.rs` / R11-ST04 / 重大度 low / confirmed
+- [ ] **native_tool_executor::with_max_parallel が未使用 builder** — 根拠 `src/ports/native_tool_executor.rs` / R11-ST05 / 重大度 low / medium
+- [ ] **sandbox_policy::WRITE_TOOLS が内部使用のみで公開面に残る** — 根拠 `src/ports/sandbox_policy.rs` / R11-ST06 / 重大度 low / medium
+- [ ] **tool_str_replace_editor の CLIP_MARKER / DEFAULT_MAX_OUTPUT_CHARS がデッド定数** — 根拠 `src/ports/tool_str_replace_editor.rs` / R11-ST07 / 重大度 low / confirmed
+- [ ] **session_log_deepseek::DEFAULT_MAX_BYTES が re-export 漏れ** — 根拠 `src/ports/session_log_deepseek.rs`, `src/lib.rs` / R11-ST08 / 重大度 low / confirmed
+- [ ] **FsErrorCode / AttachmentErrorCode の as_str が re-export 漏れ** — 根拠 `src/ports/fs_errno.rs:19`, `src/ports/attachment_admission.rs:18` / R11-ST09 / 重大度 low / confirmed
+- [ ] **otel_exporter の batches / failures が re-export 漏れ** — 根拠 `src/ports/otel_exporter.rs`, `src/lib.rs` / R11-ST10 / 重大度 low / medium
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -296,3 +316,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-22、round 161）**: `swarm-project-review` R1 と `swarm-todo-discovery` R1 の2エージェントから18件を取得（agent-13 は structured_output が利用不可のため通常メッセージで再送）。root が path:line を Runtime Proof で確認し18件を `## 未着手` へ追記（high1 / medium9 / low8）。
 - **swarm コンボ R6 集約（2026-11-22、round 186）**: specialist 2体（cordis-researcher / plugin-ports）から18件取得。R6 で path:line を Runtime Proof で確認し、修正済み1件（ST01-06 port 名 gate）を除外して17件を追記。
 - **swarm コンボ R6 集約（2026-11-23、round 199）**: specialist 2体（cordis-researcher / plugin-ports）から16件取得。R6 で path:line を Runtime Proof で確認し17件を追記（IV02 は既出メモのタスク化、うち1件は同根で重複カウント）。観点を「入力検証・エラー契約・トランザクション整合性」と「テスト・ドキュメント・ゲート乖離」に絞った再走。
+- **swarm コンボ R6 集約（2026-11-23、round 215）**: specialist 2体（cordis-researcher / plugin-ports）から20件取得。R6 で path:line を Runtime Proof で確認し、1件を誤検知として除外（RS05 は既に guard を drop してから answerer を呼ぶ実装）して19件を追記。観点を「並行処理・所有権・ロック」と「未使用 API・re-export 漏れ」に絞った再走。
