@@ -80,10 +80,16 @@ impl SkillRegistry {
 
     /// Merge all provider catalogs, deduplicating by name with rank priority.
     pub fn catalog(&self) -> SkillCatalog {
-        let providers = self.state.read().expect("skill registry poisoned");
+        // Snapshot providers under the lock and drop it before invoking any
+        // provider callback: a provider may re-enter register_provider and
+        // deadlock if the read guard is held (swarm review R8-AP03).
+        let providers = {
+            let guard = self.state.read().expect("skill registry poisoned");
+            guard.providers.clone()
+        };
         let mut by_name: BTreeMap<String, (i64, Skill)> = BTreeMap::new();
         let mut failures = Vec::new();
-        for (id, rank, provider) in providers.providers.iter() {
+        for (id, rank, provider) in providers.iter() {
             let skills = match provider() {
                 Ok(skills) => skills,
                 Err(message) => {

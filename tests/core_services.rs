@@ -5592,3 +5592,30 @@ async fn llm_retry_rejects_stream_ending_without_done() {
         "partial text must not be reported as a complete response"
     );
 }
+
+#[test]
+fn skill_catalog_provider_may_reenter_registry_without_deadlock() {
+    use cordis_rs::core_services::{Skill, SkillProvider, SkillRegistry};
+    use std::sync::{Arc, Weak};
+
+    let registry = Arc::new(SkillRegistry::default());
+    let weak: Weak<SkillRegistry> = Arc::downgrade(&registry);
+    let reentrant: SkillProvider = Arc::new(move || {
+        if let Some(reg) = weak.upgrade() {
+            // Re-entering the registry while catalog() invokes this callback
+            // used to deadlock on the held read guard (swarm review R8-AP03).
+            let _extra = reg.register_provider(0, Arc::new(|| Ok(vec![])));
+        }
+        Ok(vec![Skill {
+            name: "reentrant".to_string(),
+            description: String::new(),
+            path: String::new(),
+            source: String::new(),
+        }])
+    });
+    registry.register_provider(0, reentrant);
+
+    let catalog = registry.catalog();
+    assert_eq!(catalog.skills.len(), 1);
+    assert_eq!(catalog.skills[0].name, "reentrant");
+}
