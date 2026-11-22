@@ -79,6 +79,22 @@ for file in $(grep -oE 'tests/[A-Za-z0-9_-]+\.rs' README.md | sort -u); do
   fi
 done
 
+# Verify the README example listing stays in sync with examples/*.rs
+# (swarm review R10-ST03). Check both directions like the tests listing.
+for file in $(find examples -maxdepth 1 -name '*.rs' -printf '%f\n' | sort); do
+  name=${file%.rs}
+  if ! grep -qF "cargo run --example $name" README.md; then
+    echo "docs drift: README does not list example $name" >&2
+    fail=1
+  fi
+done
+for name in $(grep -oE 'cargo run --example [A-Za-z0-9_-]+' README.md | awk '{print $4}' | sort -u); do
+  if [ ! -f "examples/$name.rs" ]; then
+    echo "docs drift: README lists missing example $name" >&2
+    fail=1
+  fi
+done
+
 # Verify the README port/service name listings stay in sync with the
 # module declarations (swarm review R8-CI01). Port module names use snake_case
 # and are listed as kebab-case; service names are listed as camelCase.
