@@ -101,6 +101,11 @@ impl JobHandle {
         guard.ring.read(offset)
     }
 
+    /// Settle the job and notify waiters. Lock order contract (swarm review
+    /// R11-LC03): the record write guard is dropped before taking the terminal
+    /// lock and before invoking `on_settle` (which takes the registry write
+    /// lock). `JobRegistry::start` takes the registry lock before reading a
+    /// record, so no path holds both in opposing order.
     pub fn settle(&self, status: JobStatus) {
         let callback = {
             let mut guard = self.record.write().expect("job record poisoned");
