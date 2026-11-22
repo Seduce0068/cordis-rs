@@ -281,6 +281,23 @@ status: current
 - [x] **FsErrorCode / AttachmentErrorCode の as_str が re-export 漏れ** — R6 Runtime Proof で誤検知と判定（impl のメソッドは型 re-export で呼べる、個別 re-export は不要）。
 - [x] **otel_exporter の batches / failures が re-export 漏れ** — R6 Runtime Proof で誤検知と判定（OTelExporter のメソッドは型 re-export で呼べる）。
 
+- [ ] **tool_str_replace_editor::parse_range が符号付き end と 32bit 丸めを無検証** — 根拠 `src/ports/tool_str_replace_editor.rs:54-75,124-129` / R12-IV01 / 重大度 medium / confirmed
+- [ ] **session_stats / tmux_context / time_context の u64 加算が overflow し得る** — 根拠 `src/ports/session_stats.rs:49-52` 等 / R12-IV02 / 重大度 medium / confirmed
+- [ ] **session_turn_outline::outline の limit*2 が unchecked** — 根拠 `src/ports/session_turn_outline.rs:32,37,39` / R12-IV03 / 重大度 low / confirmed
+- [ ] **attachment_admission の max_bytes 境界が 1 文字広い（最大 N+2 バイト許容）** — 根拠 `src/ports/attachment_admission.rs:90-91` / R12-IV04 / 重大度 medium / confirmed
+- [ ] **compaction_image_offload::parse_targets が u64→usize 丸めで巨大 index を受理** — 根拠 `src/ports/compaction_image_offload.rs:117-137` / R12-IV05 / 重大度 low / medium
+- [ ] **ToolError::Execution の文字列エラーと構造化 enum が混在** — 根拠 `src/services/tools.rs`, `src/ports/tool_str_replace_editor.rs:98-141` / R12-IV06 / 重大度 medium / medium
+- [ ] **tool_session_list::resolve_page が offset 上限を検証せず 32bit で丸める** — 根拠 `src/ports/tool_session_list.rs:23-38` / R12-IV07 / 重大度 low / medium
+- [ ] **session_stats が assistant attempt+message で ttftEvents を二重計上** — 根拠 `src/ports/session_stats.rs:75-80,102-104` / R12-IV08 / 重大度 medium / medium
+- [ ] **Duration::from_millis が safe-integer 域を迂回して decompose/render を通す** — 根拠 `src/ports/duration.rs:14-18,49-52` / R12-IV09 / 重大度 low / low
+- [ ] **PruneError::InvalidConfig の文言 'below' が等価許容と矛盾** — 根拠 `src/services/pruner.rs:43,64-66` / R12-ST01 / 重大度 low / confirmed
+- [ ] **JobRegistry::wait の timeout=false 経路がテスト未固定** — 根拠 `src/services/jobs.rs:331-332,350-356` / R12-ST02 / 重大度 medium / confirmed
+- [ ] **ToolExecContext の signal_cancelled と cancel_flag の優先順位が-doc 未明記** — 根拠 `src/services/tools.rs:27-36,516` / R12-ST03 / 重大度 low / confirmed
+- [ ] **EventLogReporter::record の batch boundary が集約カウンタ依存であることを doc 未明記** — 根拠 `src/services/telemetry.rs:116,148-161` / R12-ST04 / 重大度 low / medium
+- [ ] **AgentLoop の module doc が max_steps 到達時の未処理 tool call を説明しない** — 根拠 `src/services/agent_loop.rs:4-6` / R12-ST05 / 重大度 low / medium
+- [ ] **SessionQueryEngine::remove が index のみで SessionStore に触れないことを doc 未明記** — 根拠 `src/services/session_query.rs:54-61` / R12-ST06 / 重大度 low / confirmed
+- [ ] **HookProtocol の matcher 不正時のログ有無が doc／テスト未固定** — 根拠 `src/services/hook_protocol.rs:104-105` / R12-ST07 / 重大度 low / medium
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -317,3 +334,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-22、round 186）**: specialist 2体（cordis-researcher / plugin-ports）から18件取得。R6 で path:line を Runtime Proof で確認し、修正済み1件（ST01-06 port 名 gate）を除外して17件を追記。
 - **swarm コンボ R6 集約（2026-11-23、round 199）**: specialist 2体（cordis-researcher / plugin-ports）から16件取得。R6 で path:line を Runtime Proof で確認し17件を追記（IV02 は既出メモのタスク化、うち1件は同根で重複カウント）。観点を「入力検証・エラー契約・トランザクション整合性」と「テスト・ドキュメント・ゲート乖離」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-23、round 215）**: specialist 2体（cordis-researcher / plugin-ports）から20件取得。R6 で path:line を Runtime Proof で確認し、1件を誤検知として除外（RS05 は既に guard を drop してから answerer を呼ぶ実装）して19件を追記。観点を「並行処理・所有権・ロック」と「未使用 API・re-export 漏れ」に絞った再走。
+- **swarm コンボ R6 集約（2026-11-23、round 228）**: specialist 2体（cordis-researcher / plugin-ports）から17件取得。R6 で path:line を Runtime Proof で確認し、1件を誤検知として除外（IV10 は前ラウンドで acknowledge に clamp 追加済み）して16件を追記。観点を「境界値・冪等性」と「doc comment と実装の乖離」に絞った再走。
