@@ -229,7 +229,7 @@ status: current
 - [x] **OTLP EventRecord に per-event 時刻が無く全イベント同一 timestamp** — 2026-11-22 修正（EventRecord 不変のまま ReporterState が (record, ms) を保持、events_with_timestamps と otlp_payload_with_timestamps を追加、otlp_payload は adapter 維持、回帰テスト、R1 指摘反映）。
 - [ ] **approval audit pair（approval/asked + approval/decided）が未記録** — 根拠 `src/services/approval.rs:request`, ADR-012 / R9-ST03 / 重大度 medium / confirmed（段階1の agent/callId 保持は済み）
 - [ ] **tool_todo の StaleVersion が適用側 comparison 未配線** — 根拠 `todo.md:159` / R9-ST05 / 重大度 medium / confirmed
-- [ ] **同期 remove_service が generation を検証せず最新登録を消し得る** — 根拠 `src/context.rs:438-442` / R9-DI01 / 重大度 medium / confirmed
+- [x] **同期 remove_service が generation を検証せず最新登録を消し得る** — 2026-11-23 修正（remove_service_generation_sync を追加、既存 remove_service は明示的全削除として不変＋doc 明記、stale disposer 回帰テスト、R1 指摘反映）。
 - [x] **Context::provide がサービス名を検証せず空文字を受理** — 2026-11-22 修正（空／空白のみのサービス名を Err で拒否、回帰テスト追加、R9 指摘反映）。
 - [x] **EventRegistry::remove が存在しない key で空スロットを生成** — 2026-11-22 修正（remove を try_slot ベースに変更し未登録 listener の削除でスロットを作らない、internal 回帰テスト追加、R9 指摘反映）。
 - [x] **typed_event! の decode error store がプロセスグローバル** — 2026-11-22 修正（EventRegistry に decode_errors 追加、マクロは registry のみに記録、静的 take_decode_errors は後方互換 shim として残す、Context 分離回帰テスト追加、R1 指摘反映）。
@@ -241,7 +241,7 @@ status: current
 - [x] **hook 監査イベント文字列が Claude/Codex で重複** — R6 Runtime Proof で誤検知と判定（監査定数は hooks_claude_code の1箇所のみ、hooks_codex は既にその audit_pair を再利用。重複なし）。
 - [ ] **hooks updatedInput rewrite が未接続（select_tool_hooks 未使用）** — 根拠 `src/ports/hooks_codex.rs:81`, `todo.md:115,162` / R9-ST04 / 重大度 low / medium
 - [ ] **DeepSeek 実 HTTP が FakeTransport 依存で end-to-end 無い** — 根拠 `src/ports/llm_transport.rs:122`, `README.md:73` / R9-ST09 / 重大度 low / confirmed
-- [ ] **同期 remove_service の generation 迂回（drain 非同期経路のみ修正済み）** — 根拠 `todo.md:46`, `src/context.rs:438-442` / R9-ST08 / 重大度 medium / medium（R9-DI01 と同根だが登録済み経路として記録）
+- [x] **同期 remove_service の generation 迂回（drain 非同期経路のみ修正済み）** — 2026-11-23 R9-DI01 と同時修正（generation sync API 追加）。
 
 ## 完了
 

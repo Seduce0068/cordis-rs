@@ -437,10 +437,31 @@ impl Context {
         Ok(())
     }
 
+    /// Remove a service only when its generation still matches. Synchronous
+    /// counterpart of `remove_service_generation`, for hosts that need the
+    /// stale-disposer guard without an async boundary (swarm review R9-DI01).
+    pub fn remove_service_generation_sync(&self, name: &str, generation: u64) -> Result<()> {
+        let current = self
+            .inner
+            .service_generations
+            .read()
+            .expect("service generation registry poisoned")
+            .get(name)
+            .copied();
+        if current != Some(generation) {
+            return Ok(());
+        }
+        self.drop_service_entry(name);
+        self.notify_fibers();
+        Ok(())
+    }
+
     /// Remove a service synchronously. Dependent fibers are refreshed via
     /// `spawn` without awaiting completion (fire-and-forget). Hosts that need
     /// teardown to finish before continuing should use `remove_service_async`
-    /// instead (swarm review R1-AP).
+    /// instead (swarm review R1-AP). This removes by name regardless of
+    /// generation; use `remove_service_generation_sync` for stale-disposer
+    /// safety (swarm review R9-DI01).
     pub fn remove_service(&self, name: &str) -> Result<()> {
         self.drop_service_entry(name);
         self.notify_fibers();

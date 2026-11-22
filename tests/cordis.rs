@@ -846,3 +846,22 @@ async fn typed_event_decode_errors_are_isolated_per_context() {
         "another Context must not see this decode error (swarm review R9-AP01)"
     );
 }
+
+#[tokio::test]
+async fn stale_generation_sync_removal_keeps_newer_service() {
+    let ctx = Context::root("stale-generation");
+    let old_disposer = ctx.provide("feature", 1u32).await.unwrap();
+    // Remove the current entry by name, then register a newer generation.
+    ctx.remove_service("feature").unwrap();
+    ctx.provide("feature", 2u32).await.unwrap();
+
+    // The stale disposer must not remove the newer generation
+    // (swarm review R9-DI01).
+    old_disposer.dispose().await.unwrap();
+    assert_eq!(ctx.get::<u32>("feature").as_deref().copied(), Some(2));
+
+    // remove_service_generation_sync with a stale generation is a no-op too.
+    ctx.remove_service_generation_sync("feature", u64::MAX)
+        .unwrap();
+    assert_eq!(ctx.get::<u32>("feature").as_deref().copied(), Some(2));
+}
