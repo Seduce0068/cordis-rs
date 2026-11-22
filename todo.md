@@ -219,9 +219,9 @@ status: current
 - [ ] **validate_with_warnings がネスト Object/Array の未宣言キーを検出しない** — 根拠 `src/config.rs:326-343,481-497` / R8-CF03 / 重大度 low / confirmed
 - [x] **WorkspaceRegistry::sessions_in の doc に存在しない cwd 引数の記述** — 2026-11-22 修正（コメントを実際のシグネチャに合わせ「Sessions attached to the workspace.」に修正、R8 指摘反映）。
 - [x] **CommandRegistry::names が HashMap 順で非決定的** — 2026-11-22 修正（names() の結果を sort して人間向け一覧を決定的に、R8 指摘反映）。
-- [ ] **ADR-004 の fail 動作表が現行実装と2点乖離** — 根拠 `docs/ADR-004-fail-semantics.md:18,31-32`, `src/services/tools.rs:285-294,529-539` / R8-DC02 / 重大度 low / confirmed
+- [x] **ADR-004 の fail 動作表が現行実装と2点乖離** — 2026-11-22 修正（approval 既定 fail-open と post-execute 失敗時実行を現行実装に合わせ明記、R8 指摘反映）。
 - [x] **README の「根拠」path:line アンカーが陳腐化** — 2026-11-22 修正（session_persistence_jsonl.rs:348、hooks_claude_code.rs:152,159 にアンカー更新、R8 指摘反映）。
-- [ ] **ADR-008 の「将来利用」棚卸しと alias 削除方針が現状と矛盾** — 根拠 `docs/ADR-008-library-port-policy.md:32-36,50-51` / R8-DC04 / 重大度 low / confirmed
+- [x] **ADR-008 の「将来利用」棚卸しと alias 削除方針が現状と矛盾** — 2026-11-22 修正（sandbox_mode_fold / apply_goal_event を「利用あり」に更新、alias 削除方針の優先文書を明記、R8 指摘反映）。
 - [x] **README が非推奨 alias emit_detached を推奨** — 2026-11-22 修正（推奨 API を emit_spawn に変更、R8 指摘反映）。
 - [ ] **doc-count ゲートが port/service の名前一覧を照合しない** — 根拠 `scripts/check-doc-counts.sh:28-32,66-80`, `README.md:30,32` / R8-CI01 / 重大度 low / confirmed
 

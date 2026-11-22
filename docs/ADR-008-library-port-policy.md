@@ -32,7 +32,7 @@ status: accepted
 semver major ではなく**イベント**で定義する: 旧名の参照が `rg` で0件になった
 コミットで削除する。0.x プロジェクトでは minor が破壊変更に相当するため、
 v1.0.0 を待たず次 minor で削除してよい（ADR-005 の「semver major」は
-永久保留になり得るため、この方針で上書きする）。移行進捗は CI の
+永久保留になり得るため、この方針で上書きする。README の v1.0.0 方針より本 ADR を優先する）。移行進捗は CI の
 `-D warnings`（deprecated 使用で即失敗）で担保する。
 
 ## 棚卸し結果（2026-11-18）
@@ -47,8 +47,7 @@ v1.0.0 を待たず次 minor で削除してよい（ADR-005 の「semver major�
   利用箇所を添えて ADR を更新してから export する。
 - **legacy として残存**: `user_approval::APPROVAL_OUTCOMES` /
   `tool_fs::READ_LIMIT` / `STREAM_MIN_SIZE`（upstream parity 定数として value あり）。
-- **現状維持**: `sandbox_policy::is_valid_path` / `sandbox_mode_fold`（tool 実行前
-  validation で将来利用）、`goal_fold::apply_goal_event`（round 連続性検証で将来利用）、
+- **現状維持（利用あり）**: `sandbox_policy::is_valid_path` / `sandbox_mode_fold`（projection に登録済み）、`goal_fold::apply_goal_event`（`fold_goal` から呼び出し済み、R8-DC04）、
   `compaction_checkpoint::COMPACT_CHECKPOINT_KIND` / `llm_message::CONTEXT_SUMMARY_MAX_CHARS`
   / `harness_dev_context` の prompt 定数（protocol／upstream 文言として価値あり）。
 
