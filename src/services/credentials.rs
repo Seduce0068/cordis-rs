@@ -10,20 +10,26 @@ use std::sync::{Arc, RwLock};
 
 use crate::Result;
 
+/// Validate an environment-variable name: first char must be ASCII uppercase
+/// or `_`, remaining chars may also be digits (swarm review R10-IV04).
+fn is_valid_env_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    matches!(chars.next(), Some(ch) if ch.is_ascii_uppercase() || ch == '_')
+        && chars.all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_')
+}
+
 /// A reference to an environment-variable name (`$NAME`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CredentialRef {
     pub name: String,
 }
 
-/// Parse `$NAME`; valid names are uppercase letters, digits and underscores.
+/// Parse `$NAME`; names start with an ASCII uppercase letter or `_`, then
+/// may contain uppercase letters, digits and underscores (swarm review
+/// R10-IV04).
 pub fn credential_ref(value: &str) -> Option<CredentialRef> {
     let name = value.strip_prefix('$')?;
-    if name.is_empty()
-        || !name
-            .chars()
-            .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_')
-    {
+    if !is_valid_env_name(name) {
         return None;
     }
     Some(CredentialRef {
@@ -81,12 +87,7 @@ impl CredentialProvider {
         // Names must be resolvable via `$NAME` references; reject lowercase
         // or otherwise invalid names so a config typo cannot look successful
         // (swarm review R2-IV01).
-        if value.is_empty()
-            || name.is_empty()
-            || !name
-                .chars()
-                .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_')
-        {
+        if value.is_empty() || !is_valid_env_name(&name) {
             return false;
         }
         self.state

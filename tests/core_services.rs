@@ -6077,3 +6077,18 @@ fn storage_write_error_order_is_config_before_record() {
         Err(StorageError::InvalidRecord { .. })
     ));
 }
+
+#[test]
+fn credential_names_reject_digit_prefix() {
+    use cordis_rs::core_services::{CredentialProvider, credential_ref};
+
+    // Digit-leading references are rejected; digits later in the name are OK
+    // (swarm review R10-IV04).
+    assert!(credential_ref("$1FOO").is_none());
+    assert!(credential_ref("$A1").is_some());
+    assert!(credential_ref("$_FOO").is_some());
+
+    let provider = CredentialProvider::default();
+    assert!(!provider.set("1FOO", "value"));
+    assert!(provider.set("A1", "value"));
+}
