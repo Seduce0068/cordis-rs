@@ -257,13 +257,11 @@ impl JsonlPersistence {
 
     pub fn open(&self, id: &str) -> std::result::Result<JsonlSessionHandle, PersistenceError> {
         validate_session_id(id)?;
-        if let Some(handle) = self
-            .state
-            .read()
-            .expect("persistence state poisoned")
-            .handles
-            .get(id)
-        {
+        // Keep lookup, path check and insert in one critical section so two
+        // concurrent open() calls cannot create separate handles for the same
+        // file (swarm review R11-RS03).
+        let mut guard = self.state.write().expect("persistence state poisoned");
+        if let Some(handle) = guard.handles.get(id) {
             return Ok(handle.clone());
         }
         let path = self.path_for(id);
@@ -274,11 +272,7 @@ impl JsonlPersistence {
             id: id.to_string(),
             path,
         };
-        self.state
-            .write()
-            .expect("persistence state poisoned")
-            .handles
-            .insert(id.to_string(), handle.clone());
+        guard.handles.insert(id.to_string(), handle.clone());
         Ok(handle)
     }
 
