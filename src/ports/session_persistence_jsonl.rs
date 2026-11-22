@@ -325,21 +325,46 @@ impl JsonlPersistence {
         ids.into_iter().collect()
     }
 
-    /// Replay a persisted session into an in-memory Session.
+    /// Replay a persisted session into an in-memory Session. Sequence gaps
+    /// are tolerated by default (a concurrent process may advance the cursor);
+    /// use [`Self::restore_with`] with `strict = true` to reject them.
     pub fn restore(
         &self,
         id: &str,
         cwd: Option<String>,
     ) -> std::result::Result<Session, PersistenceError> {
+        self.restore_with(id, cwd, false)
+    }
+
+    /// Replay with an optional strict sequence-gap check (swarm review
+    /// R10-TX03). Non-monotonic (duplicate/out-of-order) seqs are always
+    /// rejected; strict mode additionally rejects gaps.
+    pub fn restore_with(
+        &self,
+        id: &str,
+        cwd: Option<String>,
+        strict: bool,
+    ) -> std::result::Result<Session, PersistenceError> {
         let handle = self.open(id)?;
         let session = Session::new(id, cwd);
+        let mut expected = 1u64;
         for event in handle.read()? {
+            if strict && event.seq != expected {
+                return Err(PersistenceError::Corrupt {
+                    path: handle.path().to_string_lossy().to_string(),
+                    reason: format!(
+                        "seq gap during restore: expected {expected}, got {}",
+                        event.seq
+                    ),
+                });
+            }
             if !session.append_with_seq(event.seq, event.event_type, event.data) {
                 return Err(PersistenceError::Corrupt {
                     path: handle.path().to_string_lossy().to_string(),
                     reason: format!("non-monotonic persisted seq {} during restore", event.seq),
                 });
             }
+            expected = event.seq + 1;
         }
         Ok(session)
     }

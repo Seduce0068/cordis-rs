@@ -6018,3 +6018,35 @@ fn domain_errors_implement_std_error() {
     assert_std_error::<cordis_rs::core_services::WorkspaceError>();
     assert_std_error::<cordis_rs::core_services::ScheduleError>();
 }
+
+#[test]
+fn jsonl_restore_strict_mode_rejects_seq_gaps() {
+    use cordis_rs::plugin_ports::JsonlPersistence;
+    use std::io::Write;
+
+    let root = TempDirGuard::new("cordis-restore-strict");
+    let _ = std::fs::remove_dir_all(&root);
+    let store = JsonlPersistence::new(&root);
+    let handle = store.create("seq").unwrap();
+
+    {
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .open(handle.path())
+            .unwrap();
+        writeln!(file, "{{\"seq\":1,\"type\":\"a\",\"data\":{{}}}}").unwrap();
+        writeln!(file, "{{\"seq\":3,\"type\":\"b\",\"data\":{{}}}}").unwrap();
+    }
+
+    // Default restore tolerates the gap; strict mode rejects it (R10-TX03).
+    assert!(store.restore("seq", None).is_ok());
+    assert!(store.restore_with("seq", None, true).is_err());
+
+    // A contiguous log passes both modes.
+    std::fs::write(
+        handle.path(),
+        "{\"seq\":1,\"type\":\"a\",\"data\":{}}\n{\"seq\":2,\"type\":\"b\",\"data\":{}}\n",
+    )
+    .unwrap();
+    assert!(store.restore_with("seq", None, true).is_ok());
+}
