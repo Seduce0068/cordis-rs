@@ -285,7 +285,7 @@ status: current
 - [x] **session_stats / tmux_context / time_context の u64 加算が overflow し得る** — 2026-11-23 修正（3箇所の加算を saturating_add に変更、u64::MAX で頭打ちし corrupt state で 0 に巻き戻らない契約を module doc 明記、回帰テスト、R1 指摘反映）。
 - [x] **session_turn_outline::outline の limit*2 が unchecked** — 2026-11-23 修正（preview の3箇所を saturating_mul(2) に、take を saturating_sub(1) に統一し巨大 limit での overflow を防止、R12 指摘反映）。
 - [x] **attachment_admission の max_bytes 境界が 1 文字広い（最大 N+2 バイト許容）** — 2026-11-23 修正（encoded 上限を厳密 ceil(N/3)*4 に、decode 後も bytes.len() > max_bytes をチェック、DoS 事前フィルタ維持、回帰テスト、R1 指摘反映）。
-- [ ] **compaction_image_offload::parse_targets が u64→usize 丸めで巨大 index を受理** — 根拠 `src/ports/compaction_image_offload.rs:117-137` / R12-IV05 / 重大度 low / medium
+- [x] **compaction_image_offload::parse_targets が u64→usize 丸めで巨大 index を受理** — 2026-11-23 修正（image index を usize::try_from で検証し範囲外を拒否、32bit での暗黙丸めを防止、R12 指摘反映）。
 - [ ] **ToolError::Execution の文字列エラーと構造化 enum が混在** — 根拠 `src/services/tools.rs`, `src/ports/tool_str_replace_editor.rs:98-141` / R12-IV06 / 重大度 medium / medium
 - [x] **tool_session_list::resolve_page が offset 上限を検証せず 32bit で丸める** — 2026-11-23 修正（limit / offset とも usize::try_from で Range 検証、32bit での暗黙丸めを拒否、R12 指摘反映）。
 - [x] **session_stats が assistant attempt+message で ttftEvents を二重計上** — 2026-11-23 修正（message 側で attempt 由来の firstTokenSeq がある場合は ttftEvents を increment せず ttftSteps のみ、message 単独の既存挙動は維持、回帰テスト、R1 指摘反映）。

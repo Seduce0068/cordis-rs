@@ -125,10 +125,12 @@ pub fn validate_payload(
         let mut previous: Option<usize> = None;
         let mut parsed = Vec::new();
         for index in indexes {
-            let value = index
-                .as_u64()
-                .ok_or("image index must be a non-negative integer")?
-                as usize;
+            let value = usize::try_from(
+                index
+                    .as_u64()
+                    .ok_or("image index must be a non-negative integer")?,
+            )
+            .map_err(|_| "image index out of range for this platform".to_string())?;
             if previous.is_some_and(|prev| value <= prev) {
                 return Err("imageIndexes must be strictly increasing".to_string());
             }
