@@ -5669,3 +5669,33 @@ fn permission_presets_try_register_rejects_builtin_names() {
     );
     assert!(registry.current().preset.is_none());
 }
+
+#[tokio::test]
+async fn feedback_numeric_versions_compare_numerically() {
+    use cordis_rs::plugin_ports::{
+        FeedbackItem, MessageFeedbackConfig, Rating, mount_message_feedback,
+    };
+
+    let ctx = Context::root("feedback-numeric");
+    let feedback = mount_message_feedback(&ctx, MessageFeedbackConfig::default())
+        .await
+        .unwrap();
+    feedback.register_session(cordis_rs::core_services::Session::new("numeric", None));
+
+    let put = |version: &str| FeedbackItem {
+        message_id: "m1".to_string(),
+        rating: Rating::Positive,
+        note: None,
+        version: version.to_string(),
+    };
+
+    feedback.put("numeric", put("9")).unwrap();
+    assert!(
+        feedback.put("numeric", put("10")).is_ok(),
+        "numeric 10 must be accepted after 9 (swarm review R8-IV03)"
+    );
+    assert!(
+        feedback.put("numeric", put("9")).is_err(),
+        "a lower numeric version must still conflict"
+    );
+}

@@ -141,7 +141,19 @@ impl MessageFeedback {
             })
             .and_then(|event| event.data["version"].as_str().map(str::to_string))
             .unwrap_or_default();
-        if !last_version.is_empty() && item.version <= last_version {
+        // Compare numeric versions numerically so "10" > "9". For any other
+        // format (e.g. upstream "v1"), keep the legacy lexicographic rule
+        // (swarm review R8-IV03).
+        let conflict = if last_version.is_empty() {
+            false
+        } else if let (Ok(current), Ok(previous)) =
+            (item.version.parse::<u64>(), last_version.parse::<u64>())
+        {
+            current <= previous
+        } else {
+            item.version <= last_version
+        };
+        if conflict {
             return Err(FeedbackError::VersionConflict {
                 message_id: item.message_id.clone(),
             });
