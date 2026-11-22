@@ -6422,3 +6422,28 @@ fn session_stats_counters_saturate_at_u64_max() {
     assert_eq!(next["steps"], serde_json::json!(u64::MAX));
     assert_eq!(next["turns"], serde_json::json!(u64::MAX));
 }
+
+#[test]
+fn base64_limited_enforces_decoded_byte_boundary() {
+    use cordis_rs::plugin_ports::{AttachmentErrorCode, decode_canonical_base64_limited};
+
+    let code = AttachmentErrorCode::InvalidFileBase64;
+
+    // max_bytes=3: exactly three decoded bytes are accepted.
+    assert_eq!(
+        decode_canonical_base64_limited("eHh4", true, code, 3).unwrap(),
+        b"xxx"
+    );
+    // Four decoded bytes exceed the limit even though the encoded length fits
+    // the old off-by-one bound (swarm review R12-IV04).
+    let error = decode_canonical_base64_limited("eHh4eA==", true, code, 3).unwrap_err();
+    assert!(error.message.contains("exceeds maximum size"));
+
+    // max_bytes=0 rejects any non-empty input.
+    assert!(decode_canonical_base64_limited("eA==", true, code, 0).is_err());
+    // Padding boundary: one byte fits max_bytes=1.
+    assert_eq!(
+        decode_canonical_base64_limited("eA==", true, code, 1).unwrap(),
+        b"x"
+    );
+}

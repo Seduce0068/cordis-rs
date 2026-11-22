@@ -87,7 +87,12 @@ pub fn decode_canonical_base64_limited(
         return Err(invalid());
     }
     // Check the encoded length first: no decode allocation for huge inputs.
-    let max_encoded = (max_bytes / 3).saturating_mul(4).saturating_add(4);
+    // Strict ceil(max_bytes/3)*4; the previous +4 admitted one extra block
+    // (swarm review R12-IV04).
+    let max_encoded = max_bytes
+        .saturating_add(2)
+        .saturating_div(3)
+        .saturating_mul(4);
     if data.len() > max_encoded {
         let mut error = invalid();
         error.message = match code {
@@ -101,6 +106,20 @@ pub fn decode_canonical_base64_limited(
         return Err(error);
     }
     let bytes = STANDARD.decode(data).map_err(|_| invalid())?;
+    // Encoded-length check is a pre-filter; enforce the decoded-byte contract
+    // as well (swarm review R12-IV04).
+    if bytes.len() > max_bytes {
+        let mut error = invalid();
+        error.message = match code {
+            AttachmentErrorCode::InvalidImageBase64 => {
+                "Image upload exceeds maximum size.".to_string()
+            }
+            AttachmentErrorCode::InvalidFileBase64 => {
+                "File upload exceeds maximum size.".to_string()
+            }
+        };
+        return Err(error);
+    }
     if STANDARD.encode(&bytes) != data {
         return Err(invalid());
     }
