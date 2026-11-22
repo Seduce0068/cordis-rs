@@ -20,7 +20,7 @@ pub struct Page {
     pub offset: usize,
 }
 
-/// Validate page bounds (limit 1..100, offset non-negative).
+/// Validate page bounds (limit 1..100, offset representable as usize).
 pub fn resolve_page(
     limit: Option<u64>,
     offset: Option<u64>,
@@ -32,10 +32,15 @@ pub fn resolve_page(
             "limit must be between 1 and {MAX_PAGE_LIMIT}"
         )));
     }
-    Ok(Page {
-        limit: limit as usize,
-        offset: offset as usize,
-    })
+    // usize::try_from prevents silent truncation on 32-bit hosts (swarm
+    // review R12-IV07).
+    let limit = usize::try_from(limit).map_err(|_| {
+        ToolError::InvalidArgs("limit is out of range for this platform".to_string())
+    })?;
+    let offset = usize::try_from(offset).map_err(|_| {
+        ToolError::InvalidArgs("offset is out of range for this platform".to_string())
+    })?;
+    Ok(Page { limit, offset })
 }
 
 fn paginate<T>(items: Vec<T>, page: &Page) -> Vec<T> {

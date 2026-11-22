@@ -287,7 +287,7 @@ status: current
 - [ ] **attachment_admission の max_bytes 境界が 1 文字広い（最大 N+2 バイト許容）** — 根拠 `src/ports/attachment_admission.rs:90-91` / R12-IV04 / 重大度 medium / confirmed
 - [ ] **compaction_image_offload::parse_targets が u64→usize 丸めで巨大 index を受理** — 根拠 `src/ports/compaction_image_offload.rs:117-137` / R12-IV05 / 重大度 low / medium
 - [ ] **ToolError::Execution の文字列エラーと構造化 enum が混在** — 根拠 `src/services/tools.rs`, `src/ports/tool_str_replace_editor.rs:98-141` / R12-IV06 / 重大度 medium / medium
-- [ ] **tool_session_list::resolve_page が offset 上限を検証せず 32bit で丸める** — 根拠 `src/ports/tool_session_list.rs:23-38` / R12-IV07 / 重大度 low / medium
+- [x] **tool_session_list::resolve_page が offset 上限を検証せず 32bit で丸める** — 2026-11-23 修正（limit / offset とも usize::try_from で Range 検証、32bit での暗黙丸めを拒否、R12 指摘反映）。
 - [x] **session_stats が assistant attempt+message で ttftEvents を二重計上** — 2026-11-23 修正（message 側で attempt 由来の firstTokenSeq がある場合は ttftEvents を increment せず ttftSteps のみ、message 単独の既存挙動は維持、回帰テスト、R1 指摘反映）。
 - [ ] **Duration::from_millis が safe-integer 域を迂回して decompose/render を通す** — 根拠 `src/ports/duration.rs:14-18,49-52` / R12-IV09 / 重大度 low / low
 - [x] **PruneError::InvalidConfig の文言 'below' が等価許容と矛盾** — 2026-11-23 修正（文言を "must not exceed the threshold" に変更、head+tail+marker==threshold が Ok／+1 で Err の境界テスト追加、R12 指摘反映）。
