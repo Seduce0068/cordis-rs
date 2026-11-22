@@ -6330,3 +6330,9 @@ fn message_feedback_observer_can_reenter_service() {
         .expect("put deadlocked");
     assert!(result.is_ok());
 }
+
+#[test]
+fn session_log_default_max_bytes_is_public() {
+    use cordis_rs::plugin_ports::DEFAULT_MAX_BYTES;
+    assert_eq!(DEFAULT_MAX_BYTES, 8 * 1024 * 1024);
+}
