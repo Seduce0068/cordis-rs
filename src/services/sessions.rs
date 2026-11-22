@@ -38,9 +38,13 @@ struct LogState {
     events: Vec<SessionEvent>,
 }
 
+type EventObserver = dyn Fn(&str, &SessionEvent) + Send + Sync;
+
 struct SessionInner {
     header: SessionHeader,
     log: Mutex<LogState>,
+    /// Called after each newly appended event (never during restore replay).
+    observers: Mutex<Vec<Arc<EventObserver>>>,
 }
 
 impl Session {
@@ -52,6 +56,7 @@ impl Session {
                     next_seq: 0,
                     events: Vec::new(),
                 }),
+                observers: Mutex::new(Vec::new()),
             }),
         }
     }
@@ -65,15 +70,39 @@ impl Session {
     }
 
     pub fn append(&self, event_type: impl Into<String>, data: serde_json::Value) -> SessionEvent {
-        let mut log = self.inner.log.lock().expect("session log poisoned");
-        log.next_seq += 1;
-        let event = SessionEvent {
-            seq: log.next_seq,
-            event_type: event_type.into(),
-            data,
+        let event = {
+            let mut log = self.inner.log.lock().expect("session log poisoned");
+            log.next_seq += 1;
+            let event = SessionEvent {
+                seq: log.next_seq,
+                event_type: event_type.into(),
+                data,
+            };
+            log.events.push(event.clone());
+            event
         };
-        log.events.push(event.clone());
+        // Notify after releasing the log lock so an observer that re-enters
+        // the session cannot deadlock (swarm review R2-FG07).
+        let observers = self
+            .inner
+            .observers
+            .lock()
+            .expect("session observers poisoned")
+            .clone();
+        for observer in observers {
+            observer(self.id(), &event);
+        }
         event
+    }
+
+    /// Register an observer called for every newly appended event. Restore
+    /// replay (`append_with_seq`) does not notify observers.
+    pub fn observe(&self, observer: Arc<EventObserver>) {
+        self.inner
+            .observers
+            .lock()
+            .expect("session observers poisoned")
+            .push(observer);
     }
 
     /// Replay a persisted event with its original seq. Used only by JSONL
@@ -121,6 +150,8 @@ impl Session {
 struct StoreState {
     next_id: u64,
     sessions: Vec<Session>,
+    /// Observers installed on every session created from now on.
+    observers: Vec<Arc<EventObserver>>,
 }
 
 /// `ctx.sessions`: owns live sessions by id.
@@ -147,8 +178,20 @@ impl SessionStore {
         }
         guard.next_id += 1;
         let session = Session::new(id, cwd);
+        for observer in &guard.observers {
+            session.observe(observer.clone());
+        }
         guard.sessions.push(session.clone());
         Ok(session)
+    }
+
+    /// Observe events appended to all current and future sessions.
+    pub fn observe_all(&self, observer: Arc<EventObserver>) {
+        let mut guard = self.state.write().expect("session store poisoned");
+        guard.observers.push(observer.clone());
+        for session in &guard.sessions {
+            session.observe(observer.clone());
+        }
     }
 
     pub fn get(&self, id: &str) -> Option<Session> {

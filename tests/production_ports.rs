@@ -186,3 +186,29 @@ async fn production_session_persistence_mount_registers_store() {
     store.create("s1").unwrap();
     assert!(ctx.get_untyped("sessionPersistence").is_some());
 }
+
+#[tokio::test]
+async fn jsonl_mount_wires_session_events_automatically() {
+    use cordis_rs::core_services::{SessionStore, provide_sessions};
+    use cordis_rs::plugin_ports::mount_session_persistence_jsonl;
+
+    let dir = TempDirGuard::new("prod-jsonl-auto");
+    let ctx = Context::root("prod-jsonl-auto");
+    let (sessions, _projections): (SessionStore, _) = provide_sessions(&ctx).await.unwrap();
+    let persistence = mount_session_persistence_jsonl(&ctx, dir.as_ref())
+        .await
+        .unwrap();
+
+    let session = sessions.create(Some("auto".to_string()), None).unwrap();
+    session.append("turn/start", serde_json::json!({"turn": 1}));
+
+    let handle = persistence.open("auto").unwrap();
+    let events = handle.read().unwrap();
+    assert_eq!(
+        events.len(),
+        1,
+        "session event must reach JSONL: {events:?}"
+    );
+    assert_eq!(events[0].event_type, "turn/start");
+    assert_eq!(persistence.failures(), 0);
+}

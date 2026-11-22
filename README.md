@@ -82,7 +82,7 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 | `FileSystem::scoped` root 閉じ込め | beta | symlink 検証後に開くまで TOCTOU 残存（std のみの PoC では openat 相当が不可）。検証済み canonical path を返して軽減 |
 | 組み込み LLM provider (`from_async_text`) | stub | 実 HTTP / timeout / retry の end-to-end 検証 |
 | OTLP (`ctx.otel`) | stub | 実送信の実装（現在 in-memory） |
-| JSONL 永続化 (`mount`) | beta | 通常 turn への自動配線 |
+| JSONL 永続化 (`mount`) | stable | 通常 turn のイベントを自動永続化（`SessionStore` が存在する場合、R2-FG07） |
 | `hooks-claude-code` / `hooks-codex` | phase-1 | Ask / Stop / Subagent の実装と配線 |
 | `user-questions` | phase-1 | timed wait / steer / continued |
 | `sandbox-policy` | phase-1 | 実行ポイント（Shell / FS / Tool）への接続 |
@@ -169,7 +169,7 @@ danger-full-access は allow）。
 `tests/core_services.rs`（コアサービス・port）、`tests/official_plugin_port.rs`
 （`dsh-command-compact`）、`tests/official_plugin_ports.rs`（`command-goal` / `tool-todo` の
 ローカル再現）、`tests/production_ports.rs`（本番 port の mount 検証）に分かれています
-（テスト 291 件（統合 288 ＋ unit 3））。
+（テスト 292 件（統合 289 ＋ unit 3））。
 
 `mount_real_composition` は上流 `snapshots/sdk/text-turn/cordis.yml` の
 6 エントリのうち port が存在するものだけを fiber として起動し、

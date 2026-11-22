@@ -204,6 +204,8 @@ struct StoreState {
 pub struct JsonlPersistence {
     root: PathBuf,
     state: Arc<RwLock<StoreState>>,
+    /// Number of observer writes that failed (swarm review R2-FG07).
+    failures: Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl JsonlPersistence {
@@ -211,6 +213,7 @@ impl JsonlPersistence {
         Self {
             root: root.as_ref().to_path_buf(),
             state: Arc::new(RwLock::new(StoreState::default())),
+            failures: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         }
     }
 
@@ -282,6 +285,11 @@ impl JsonlPersistence {
     /// List known session ids, merging in-memory handles with `.jsonl` files
     /// on disk so a restarted process can see persisted sessions without an
     /// explicit `open()` (swarm review R2-DI).
+    /// Number of failed observer writes.
+    pub fn failures(&self) -> u64 {
+        self.failures.load(std::sync::atomic::Ordering::Acquire)
+    }
+
     pub fn list(&self) -> Vec<String> {
         let mut ids: std::collections::BTreeSet<String> = self
             .state
@@ -347,6 +355,31 @@ impl JsonlPersistence {
 
 pub async fn mount(ctx: &crate::Context, root: impl AsRef<Path>) -> Result<JsonlPersistence> {
     let store = JsonlPersistence::new(root);
+    // Wire session events to JSONL when a SessionStore is present. Use `get`
+    // (not `require`) so hosts without sessions keep working (swarm review
+    // R2-FG07).
+    if let Some(sessions) = ctx.get::<crate::services::sessions::SessionStore>("sessions") {
+        let persistence = store.clone();
+        sessions.observe_all(Arc::new(move |session_id, event| {
+            let result = persistence
+                .open(session_id)
+                .or_else(|_| persistence.create(session_id));
+            match result {
+                Ok(handle) => {
+                    if handle.append(event).is_err() {
+                        persistence
+                            .failures
+                            .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+                    }
+                }
+                Err(_) => {
+                    persistence
+                        .failures
+                        .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+                }
+            }
+        }));
+    }
     ctx.provide("sessionPersistence", store.clone()).await?;
     Ok(store)
 }

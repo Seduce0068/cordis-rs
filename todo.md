@@ -139,7 +139,7 @@ status: current
 - [ ] **sandbox escalation の共通 helper が無く実行ポイントへ接続されていない** — 根拠 `docs/ADR-012-shell-command-approval.md:108-109`, `src/ports/sandbox_policy.rs:1-6` / R2-FG03 / 重大度 medium / confirmed
 - [ ] **completion notice 配信とモデル cursor 追跡が未実装** — 根拠 `docs/ADR-002-tool-jobs-port-scope.md:16,21-24,28-29` / R2-FG05 / 重大度 medium / confirmed
 - [x] **job owner が固定ラベル "bash" で sessionId fence が弱い** — 2026-11-21 修正（background job の owner を exec.session に変更、session 単位の fence テスト追加、ADR-002 更新、R1 指摘反映）。
-- [ ] **JSONL 永続化が通常 turn へ自動配線されていない** — 根拠 `README.md:85`, `src/ports/session_persistence_jsonl.rs:348-351` / R2-FG07 / 重大度 medium / confirmed
+- [x] **JSONL 永続化が通常 turn へ自動配線されていない** — 2026-11-22 修正（Session に observer 追加、SessionStore::observe_all 経由で mount 時に自動登録、restore は observer 非通知で二重追記回避、failures カウンタ追加、回帰テスト、R1 指摘反映）。
 - [ ] **FileSystem::scoped の symlink TOCTOU 残存** — 根拠 `README.md:82`, `src/services/fs.rs:83-125` / R2-FG08 / 重大度 medium / confirmed
 - [x] **session-query port が SQLite/FTS5 ではなく決定的インメモリ検索の差分が README に無い** — 2026-11-21 修正（安定性マトリクスに phase-1 行と FTS5 未実装を明記、R2-FG09 反映）。
 - [x] **v1.0.0 での旧名 alias 削除が未トラック（deprecated 7個）** — 2026-11-21 修正（ADR-005 に v1.0.0 削除チェックリストと検証手順を追加、R2-FG10 反映）。
