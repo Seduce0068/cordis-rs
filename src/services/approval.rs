@@ -117,6 +117,22 @@ struct ApprovalState {
     answerers: Vec<(u64, String, Answerer)>,
     next_id: u64,
     policy: ApprovalMode,
+    /// Optional session for approval audit events (swarm review R9-ST03).
+    session: Option<crate::services::sessions::Session>,
+}
+
+/// Audit event names (log-only, no `user/message`), mirroring hooks audit.
+pub const AUDIT_ASKED: &str = "approval/asked";
+pub const AUDIT_DECIDED: &str = "approval/decided";
+const MAX_AUDIT_TEXT: usize = 256;
+
+fn audit_text(value: &str) -> String {
+    let sanitized: String = value.chars().filter(|ch| !ch.is_control()).collect();
+    if sanitized.chars().count() > MAX_AUDIT_TEXT {
+        sanitized.chars().take(MAX_AUDIT_TEXT).collect()
+    } else {
+        sanitized
+    }
 }
 
 /// The shared approval seam.
@@ -173,26 +189,70 @@ impl ApprovalService {
         // service to call `add_answerer` or `set_policy`. Snapshot everything
         // needed under the read guard, then drop the guard before invoking any
         // callback: holding it would deadlock against those write-lock calls.
-        let (policy, answerers) = {
+        let (policy, answerers, session) = {
             let guard = self.state.read().expect("approval state poisoned");
-            (guard.policy, guard.answerers.clone())
+            (guard.policy, guard.answerers.clone(), guard.session.clone())
         };
 
-        if policy == ApprovalMode::Never {
-            return Ok(ApprovalOutcome {
+        let asked_seq = session.as_ref().map(|session| {
+            session
+                .append(
+                    AUDIT_ASKED,
+                    serde_json::json!({
+                        "action": audit_text(&req.action),
+                        "description": audit_text(&req.description),
+                        "details": req.details.as_deref().map(audit_text),
+                        "agent": req.agent.as_deref().map(audit_text),
+                        "call_id": req.call_id.as_deref().map(audit_text),
+                    }),
+                )
+                .seq
+        });
+
+        let outcome = if policy == ApprovalMode::Never {
+            Ok(ApprovalOutcome {
                 decision: ApprovalDecision::Deny,
                 answerer: Some("policy:never".to_string()),
-            });
-        }
-        for (_, name, answerer) in answerers.iter().rev() {
-            if let Some(decision) = answerer(req) {
-                return Ok(ApprovalOutcome {
-                    decision,
-                    answerer: Some(name.clone()),
-                });
+            })
+        } else {
+            let mut decided = Err(ApprovalError::Unavailable);
+            for (_, name, answerer) in answerers.iter().rev() {
+                if let Some(decision) = answerer(req) {
+                    decided = Ok(ApprovalOutcome {
+                        decision,
+                        answerer: Some(name.clone()),
+                    });
+                    break;
+                }
             }
+            decided
+        };
+
+        if let (Some(session), Some(asked_seq)) = (session.as_ref(), asked_seq) {
+            let (decision, answerer) = match &outcome {
+                Ok(value) => (
+                    format!("{:?}", value.decision),
+                    value.answerer.clone().unwrap_or_default(),
+                ),
+                Err(error) => ("unavailable".to_string(), error.to_string()),
+            };
+            session.append(
+                AUDIT_DECIDED,
+                serde_json::json!({
+                    "action": audit_text(&req.action),
+                    "decision": decision,
+                    "answerer": answerer,
+                    "asked_seq": asked_seq,
+                }),
+            );
         }
-        Err(ApprovalError::Unavailable)
+        outcome
+    }
+
+    /// Attach a session for approval audit events (swarm review R9-ST03).
+    pub fn with_session(self, session: crate::services::sessions::Session) -> Self {
+        self.state.write().expect("approval state poisoned").session = Some(session);
+        self
     }
 
     pub fn answerer_names(&self) -> Vec<String> {
@@ -208,6 +268,17 @@ impl ApprovalService {
 
 pub async fn provide(ctx: &crate::Context) -> Result<ApprovalService> {
     let service = ApprovalService::new();
+    ctx.provide("approval", service.clone()).await?;
+    Ok(service)
+}
+
+/// Provide an ApprovalService wired to a session for audit events. Existing
+/// `provide` hosts keep the no-audit behaviour (swarm review R9-ST03).
+pub async fn provide_with_session(
+    ctx: &crate::Context,
+    session: crate::services::sessions::Session,
+) -> Result<ApprovalService> {
+    let service = ApprovalService::new().with_session(session);
     ctx.provide("approval", service.clone()).await?;
     Ok(service)
 }

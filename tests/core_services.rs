@@ -5898,3 +5898,40 @@ async fn llm_total_timeout_fires_even_with_regular_chunks() {
             .is_some_and(|c| matches!(c, StreamChunk::Error(_)))
     );
 }
+
+#[tokio::test]
+async fn approval_with_session_records_audit_pair() {
+    use cordis_rs::core_services::{ApprovalDecision, ApprovalRequest, ApprovalService, Session};
+
+    let session = Session::new("approval-audit", None);
+    let approval = ApprovalService::new().with_session(session.clone());
+    let _answerer = approval.add_answerer(
+        "tester",
+        std::sync::Arc::new(|_req: &ApprovalRequest| Some(ApprovalDecision::Allow)),
+    );
+
+    let outcome = approval.request(&ApprovalRequest::new("run", "allow command?"));
+    assert!(outcome.is_ok());
+
+    let events = session.events();
+    let asked = events
+        .iter()
+        .find(|event| event.event_type == "approval/asked")
+        .expect("asked audit event");
+    let decided = events
+        .iter()
+        .find(|event| event.event_type == "approval/decided")
+        .expect("decided audit event");
+    assert_eq!(decided.data["asked_seq"], asked.seq);
+
+    // Hosts using the plain service still get no audit (backward compat).
+    let plain = ApprovalService::new();
+    let _plain_answerer = plain.add_answerer(
+        "tester",
+        std::sync::Arc::new(|_req: &ApprovalRequest| Some(ApprovalDecision::Allow)),
+    );
+    plain
+        .request(&ApprovalRequest::new("run", "no audit"))
+        .unwrap();
+    // No session attached means no audit path; request still succeeds.
+}

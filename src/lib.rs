@@ -295,7 +295,8 @@ pub mod core_services {
     };
     pub use crate::services::approval::{
         Answerer, ApprovalDecision, ApprovalError, ApprovalMode, ApprovalOutcome, ApprovalRequest,
-        ApprovalService, provide as provide_approval, require_approval,
+        ApprovalService, provide as provide_approval,
+        provide_with_session as provide_approval_with_session, require_approval,
     };
     pub use crate::services::commands::{
         CommandDefinition, CommandHandler, CommandInvocation, CommandRegistry, CommandResult,
