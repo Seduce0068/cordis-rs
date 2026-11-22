@@ -5,8 +5,6 @@
 //! parser/matcher design derives from OpenAI Codex rust-v0.158.0 apply-patch
 //! (Apache-2.0, Copyright 2025 OpenAI); see THIRD_PARTY_NOTICES.md.
 
-use crate::Result;
-
 const BEGIN: &str = "*** Begin Patch";
 const END: &str = "*** End Patch";
 const EOF_MARKER: &str = "*** End of File";
@@ -486,8 +484,4 @@ impl FsPatchLibrary {
     pub fn name() -> &'static str {
         "fs-patch"
     }
-}
-
-pub fn provide(_ctx: &crate::Context) -> Result<()> {
-    Ok(())
 }
