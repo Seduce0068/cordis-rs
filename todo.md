@@ -258,7 +258,7 @@ status: current
 - [x] **check-doc-counts.sh が examples/ のファイル一覧を検証しない** — 2026-11-23 修正（examples/*.rs と README の cargo run --example 一覧の双方向チェックを追加、故意の drift でゲート失敗することを確認、R10 指摘反映）。
 - [x] **check-markdown.sh のグロブが target/ と .git/ を含む可能性** — 2026-11-23 修正（markdownlint-cli2 に !**/target/** と !**/.git/** の除外 glob を追加、PROGRESS の件数固定表記を動的表記に変更、R10 指摘反映）。
 - [x] **lib.rs の deprecated alias 6個に since が欠ける** — 2026-11-23 修正（ADR-005 の方針「since は意図的に省略」に合わせ、唯一 since が付いていた1件を外して7件すべて統一、R10 指摘反映）。
-- [ ] **ToolPipeline approval 既定 fail-open の根拠が ADR-004/012 で二重管理** — 根拠 `docs/ADR-004...:18`, `docs/ADR-012...:46` / R10-ST06 / 重大度 low / medium
+- [x] **ToolPipeline approval 既定 fail-open の根拠が ADR-004/012 で二重管理** — 2026-11-23 修正（ADR-004 を正本とし、ADR-012 と README を参照化。既存の振る舞いテスト tool_pipeline_require_approval_is_opt_in_fail_closed が fail-open を固定済みのため getter 追加は見送り、R1 指摘反映）。
 - [x] **README の LLM API 一覧に transport seam が欠ける** — 2026-11-23 修正（handler_from_transport / LlmTransport / with_llm_total_timeout を API 一覧に追加、R10 指摘反映）。
 
 ## 完了

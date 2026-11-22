@@ -43,9 +43,9 @@ model 由来の `bash` コマンドは **shell 層ではなく tool boundary の
 - approval gate（tools.rs:439-441）は `ApprovalRequest::new(format!("tool:{name}"), ...)`
   で tool 名しか渡さず command 本文を渡さないため、answerer が実質的な判断を
   できない。details 追加により command 本文を読めるようにする。
-- `install_default_controls` は opt-in で呼び出し元が少なく、呼ばなければ何も
-  効かない。tool_bash mount で require_approval を必須化することで
-  「fail-closed」を達成する。
+- approval の既定 fail-open は [ADR-004](ADR-004-fail-semantics.md) を正本とする。
+  ここでは tool_bash 側の配線のみを述べる: tool_bash mount で
+  require_approval を必須化し、fail-closed を達成する。
 
 ## 上流契約との照合（R1: core-services-research）
 
