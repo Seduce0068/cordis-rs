@@ -192,7 +192,7 @@ impl SandboxPolicyService {
 
 /// Tool names that mutate the filesystem or execute commands. A `ReadOnly`
 /// policy blocks these at the pre-execute point.
-pub const WRITE_TOOLS: [&str; 6] = [
+const WRITE_TOOLS: [&str; 6] = [
     "bash",
     "fs",
     "str_replace_editor",

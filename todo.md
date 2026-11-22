@@ -275,7 +275,7 @@ status: current
 - [x] **feedback_producer の shared_event が未使用公開 helper** — 2026-11-23 修正（未使用の shared_event と未使用 Arc import を削除、R11 指摘反映）。
 - [x] **command_feedback::execute_command が internal-only の公開 API** — 2026-11-23 修正（モジュール内 handler からのみ呼ばれるため pub を外し private 化、R11 指摘反映）。
 - [ ] **native_tool_executor::with_max_parallel が未使用 builder** — 根拠 `src/ports/native_tool_executor.rs` / R11-ST05 / 重大度 low / medium
-- [ ] **sandbox_policy::WRITE_TOOLS が内部使用のみで公開面に残る** — 根拠 `src/ports/sandbox_policy.rs` / R11-ST06 / 重大度 low / medium
+- [x] **sandbox_policy::WRITE_TOOLS が内部使用のみで公開面に残る** — 2026-11-23 修正（is_write_tool 実装のみで使用され re-export もされていない定数を private 化、R11 指摘反映）。
 - [x] **tool_str_replace_editor の CLIP_MARKER / DEFAULT_MAX_OUTPUT_CHARS がデッド定数** — R6 Runtime Proof で誤検知と判定（clip 処理 :24-28 で実際に参照されている）。
 - [x] **session_log_deepseek::DEFAULT_MAX_BYTES が re-export 漏れ** — 2026-11-23 修正（plugin_ports に re-export、回帰テスト追加、R11 指摘反映）。
 - [x] **FsErrorCode / AttachmentErrorCode の as_str が re-export 漏れ** — R6 Runtime Proof で誤検知と判定（impl のメソッドは型 re-export で呼べる、個別 re-export は不要）。
