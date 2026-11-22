@@ -137,13 +137,18 @@ impl CommandRegistry {
     }
 
     pub fn names(&self) -> Vec<String> {
-        self.state
+        let mut names: Vec<String> = self
+            .state
             .read()
             .expect("command registry poisoned")
             .commands
             .values()
             .map(|(_, definition)| definition.name().to_string())
-            .collect()
+            .collect();
+        // HashMap iteration order is not stable; keep the human-facing list
+        // deterministic (swarm review R8-AP04).
+        names.sort();
+        names
     }
 
     pub fn description(&self, name: &str) -> Option<String> {

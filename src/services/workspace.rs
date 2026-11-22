@@ -120,7 +120,7 @@ impl WorkspaceRegistry {
         Ok(record.clone())
     }
 
-    /// Sessions attached to a workspace that also carry the given cwd.
+    /// Sessions attached to the workspace.
     pub fn sessions_in(&self, workspace_id: &str) -> Vec<String> {
         self.get(workspace_id)
             .map(|record| record.session_ids)
