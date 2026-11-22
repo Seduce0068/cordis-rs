@@ -16,6 +16,10 @@ pub struct ApprovalRequest {
     pub description: String,
     /// Optional untrusted command text for the answerer to inspect (ADR-012).
     details: Option<String>,
+    /// Optional upstream agent/callId for audit correlation (swarm review
+    /// R2-FG02, phase 1: carry the information only).
+    agent: Option<String>,
+    call_id: Option<String>,
 }
 
 impl ApprovalRequest {
@@ -24,6 +28,8 @@ impl ApprovalRequest {
             action: action.into(),
             description: description.into(),
             details: None,
+            agent: None,
+            call_id: None,
         }
     }
 
@@ -36,6 +42,24 @@ impl ApprovalRequest {
 
     pub fn details(&self) -> Option<&str> {
         self.details.as_deref()
+    }
+
+    pub fn with_agent(mut self, agent: impl Into<String>) -> Self {
+        self.agent = Some(agent.into());
+        self
+    }
+
+    pub fn with_call_id(mut self, call_id: impl Into<String>) -> Self {
+        self.call_id = Some(call_id.into());
+        self
+    }
+
+    pub fn agent(&self) -> Option<&str> {
+        self.agent.as_deref()
+    }
+
+    pub fn call_id(&self) -> Option<&str> {
+        self.call_id.as_deref()
     }
 }
 

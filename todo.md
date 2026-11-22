@@ -135,7 +135,7 @@ status: current
 - [x] **check-doc-counts.sh が src 内 unit test を件数から除外** — 2026-11-21 修正（src+tests の総数 247 に統一し内訳明記、stale test count チェック追加、cargo test --list と一致、R1 指摘反映）。
 - [x] **verify.sh が cargo-audit 未インストール時に警告だけでスキップし全ゲート合格と表示** — 2026-11-21 修正（未インストール時は AUDIT_SKIP=1 の明示 opt-out を要求、なければ fail、README に記載、R1 指摘反映）。
 - [x] **ADR-010 の status と進捗記述が index / 本文で矛盾（段4 未着手なのに完了表記）** — 2026-11-21 修正（index を「段5-6 完了・段4 未着手・真の cycle 解消未達」に修正、R1 指摘反映）。
-- [ ] **ApprovalService に agent/callId/audit pair/allowed-once が無い** — 根拠 `docs/ADR-012-shell-command-approval.md:67-68,104-107`, `src/services/approval.rs:14-19` / R2-FG02 / 重大度 medium / confirmed
+- [x] **ApprovalService に agent/callId/audit pair/allowed-once が無い** — 2026-11-22 段階1修正（ApprovalRequest に with_agent/with_call_id builder と getter 追加、既存 new/request シグネチャ不変、回帰テスト、R1 指摘反映。audit pair と allowed-once は ADR-012 の第2段として残す）。
 - [ ] **sandbox escalation の共通 helper が無く実行ポイントへ接続されていない** — 根拠 `docs/ADR-012-shell-command-approval.md:108-109`, `src/ports/sandbox_policy.rs:1-6` / R2-FG03 / 重大度 medium / confirmed
 - [x] **completion notice 配信とモデル cursor 追跡が未実装** — 2026-11-22 修正（JobRecord に settle callback、RegistryState に notices/cursor、pending_notices/acknowledge 追加、job_output で回収、ADR-002 更新、回帰テスト、R1 指摘反映。モデル cursor の外部可視化は残り）。
 - [x] **job owner が固定ラベル "bash" で sessionId fence が弱い** — 2026-11-21 修正（background job の owner を exec.session に変更、session 単位の fence テスト追加、ADR-002 更新、R1 指摘反映）。

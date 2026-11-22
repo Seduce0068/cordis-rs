@@ -64,8 +64,8 @@ model 由来の `bash` コマンドは **shell 層ではなく tool boundary の
 
 **本 ADR の concrete `details` 案は上流の「tool 内に allowlist を入れない」
 方針と整合する**（command 本文を answerer に見せるだけで tool は判定しない）。
-ただし現行 Rust `ApprovalService`（approval.rs:13-16,65-90）は agent / callId /
-audit pair / allowed-once を実装しておらず、上流との完全整合は第2段課題とする。
+段階1として `ApprovalRequest::with_agent()` / `with_call_id()` で agent / callId を
+運べるようにした（R2-FG02）。audit pair / allowed-once は第2段課題として残す。
 
 ## 却下した案
 

@@ -5749,3 +5749,20 @@ fn job_registry_tracks_completion_notices_and_cursor() {
     registry.acknowledge(notices.len());
     assert!(registry.pending_notices().is_empty());
 }
+
+#[test]
+fn approval_request_carries_agent_and_call_id_without_changing_defaults() {
+    use cordis_rs::core_services::ApprovalRequest;
+
+    let plain = ApprovalRequest::new("run", "description");
+    assert!(plain.agent().is_none());
+    assert!(plain.call_id().is_none());
+
+    let correlated = ApprovalRequest::new("run", "description")
+        .with_details("ls -la")
+        .with_agent("agent-1")
+        .with_call_id("call-42");
+    assert_eq!(correlated.agent(), Some("agent-1"));
+    assert_eq!(correlated.call_id(), Some("call-42"));
+    assert_eq!(correlated.details(), Some("ls -la"));
+}
