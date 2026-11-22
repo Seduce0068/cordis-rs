@@ -618,9 +618,12 @@ async fn typed_event_macro_shares_named_slot_and_records_decode_errors() {
     // Malformed payload is recorded, never silently defaulted.
     ctx.emit(TypedTestEvent::NAME, serde_json::json!({ "bad": 1 }))
         .await;
-    let errors = TypedTestEvent::take_decode_errors();
+    // Errors live on the Context's registry, not a process-global static
+    // (swarm review R9-AP01).
+    let errors = ctx.event_registry().take_decode_errors();
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].event, "typed-test");
+    assert!(TypedTestEvent::take_decode_errors().is_empty());
 
     // Typed emit also flows through the same named slot.
     TypedTestEvent::emit(
@@ -823,4 +826,23 @@ async fn provide_rejects_blank_service_names() {
     assert!(ctx.provide("", 1u32).await.is_err());
     assert!(ctx.provide("   ", 1u32).await.is_err());
     assert!(ctx.provide("valid", 1u32).await.is_ok());
+}
+
+#[tokio::test]
+async fn typed_event_decode_errors_are_isolated_per_context() {
+    let ctx_a = Context::root("typed-iso-a");
+    let ctx_b = Context::root("typed-iso-b");
+
+    let _a = TypedTestEvent::on(&ctx_a, |_payload: TypedPayload| Box::pin(async {}));
+    let _b = TypedTestEvent::on(&ctx_b, |_payload: TypedPayload| Box::pin(async {}));
+
+    ctx_a
+        .emit(TypedTestEvent::NAME, serde_json::json!({ "bad": 1 }))
+        .await;
+
+    assert_eq!(ctx_a.event_registry().take_decode_errors().len(), 1);
+    assert!(
+        ctx_b.event_registry().take_decode_errors().is_empty(),
+        "another Context must not see this decode error (swarm review R9-AP01)"
+    );
 }

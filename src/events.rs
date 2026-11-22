@@ -60,20 +60,22 @@ macro_rules! typed_event {
                 F: Fn($payload) -> $crate::events::BoxFuture<'static, ()> + Send + Sync + 'static,
             {
                 let listener = std::sync::Arc::new(listener);
+                let registry = ctx.event_registry().clone();
                 ctx.on(Self::NAME, move |value: serde_json::Value| {
                     let listener = listener.clone();
+                    let registry = registry.clone();
                     Box::pin(async move {
                         match serde_json::from_value::<$payload>(value) {
                             Ok(typed) => listener(typed).await,
                             Err(error) => {
-                                let store =
-                                    $store.get_or_init(|| std::sync::Mutex::new(Vec::new()));
-                                store.lock().expect("decode error store poisoned").push(
-                                    $crate::EventDecodeError {
-                                        event: Self::NAME,
-                                        reason: error.to_string(),
-                                    },
-                                );
+                                let decode_error = $crate::EventDecodeError {
+                                    event: Self::NAME,
+                                    reason: error.to_string(),
+                                };
+                                // Record only per-registry: a process-global
+                                // static would leak errors across Contexts
+                                // (swarm review R9-AP01).
+                                registry.record_decode_error(decode_error);
                             }
                         }
                     })
@@ -190,6 +192,9 @@ pub struct EventRegistry {
     slots: Arc<RwLock<HashMap<SlotKey, ErasedListeners>>>,
     next_id: Arc<AtomicU64>,
     meta: Arc<RwLock<HashMap<u64, HookMeta>>>,
+    /// Per-registry decode errors so one Context cannot observe another's
+    /// malformed payloads (swarm review R9-AP01).
+    decode_errors: Arc<RwLock<Vec<EventDecodeError>>>,
 }
 
 impl EventRegistry {
@@ -333,6 +338,25 @@ impl EventRegistry {
         // long-running hosts even after every listener is unloaded.
         self.meta.write().expect("event meta poisoned").remove(&id);
         Ok(())
+    }
+
+    /// Record a typed payload decode error for this registry (swarm review
+    /// R9-AP01).
+    pub fn record_decode_error(&self, error: EventDecodeError) {
+        self.decode_errors
+            .write()
+            .expect("decode error store poisoned")
+            .push(error);
+    }
+
+    /// Take all decode errors recorded for this registry.
+    pub fn take_decode_errors(&self) -> Vec<EventDecodeError> {
+        std::mem::take(
+            &mut *self
+                .decode_errors
+                .write()
+                .expect("decode error store poisoned"),
+        )
     }
 
     /// Number of live hook metadata entries (test/observability accessor).
