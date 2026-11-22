@@ -91,8 +91,14 @@ pub fn with_llm_retry(handler: StreamHandler, policy: RetryPolicy) -> StreamHand
                             }
                         }
                     }
-                    if done || failed.is_none() {
+                    if done {
                         break;
+                    }
+                    if failed.is_none() {
+                        // The inner stream ended without Done or Error. Treat
+                        // it as a failure so a truncated response is not
+                        // reported as complete (swarm review R8-ST01).
+                        return StreamChunk::Error("LLM stream ended without Done".to_string());
                     }
                     let reason = failed.unwrap_or_default();
                     if policy.should_retry_message(&reason, attempt)

@@ -3950,14 +3950,19 @@ async fn llm_resilience_timeout_yields_retryable_error_chunk() {
     let counter = attempts.clone();
     let flaky: cordis_rs::services::llm::StreamHandler = Arc::new(move |_request| {
         let counter = counter.clone();
-        Box::pin(futures::stream::once(async move {
-            let n = counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            if n < 2 {
-                StreamChunk::Error("HTTP 504 gateway timeout".to_string())
-            } else {
-                StreamChunk::Text("ok".to_string())
-            }
-        }))
+        let n = counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if n < 2 {
+            Box::pin(futures::stream::iter(vec![StreamChunk::Error(
+                "HTTP 504 gateway timeout".to_string(),
+            )]))
+        } else {
+            // A well-formed provider yields Done after its text
+            // (swarm review R8-ST01).
+            Box::pin(futures::stream::iter(vec![
+                StreamChunk::Text("ok".to_string()),
+                StreamChunk::Done,
+            ]))
+        }
     });
     let policy = RetryPolicy {
         max_retries: 3,
@@ -5536,4 +5541,38 @@ fn timeout_cleanup_failure_display_keeps_timeout_fact_without_ms_digits() {
         ShellError::TimedOutCleanupFailed { timeout_ms, .. } => assert_eq!(timeout_ms, 500),
         other => panic!("unexpected variant: {other}"),
     }
+}
+
+#[tokio::test]
+async fn llm_retry_rejects_stream_ending_without_done() {
+    use cordis_rs::core_services::{LlmRequest, RetryPolicy, StreamChunk};
+    use cordis_rs::plugin_ports::with_llm_retry;
+    use futures::StreamExt;
+
+    // A provider that yields only Text and then ends (no Done).
+    let truncated: cordis_rs::services::llm::StreamHandler = Arc::new(|_request| {
+        Box::pin(futures::stream::iter(vec![StreamChunk::Text(
+            "partial".to_string(),
+        )]))
+    });
+    let retried = with_llm_retry(truncated, RetryPolicy::default());
+    let chunks: Vec<_> = retried(LlmRequest {
+        model: "m".to_string(),
+        messages: Vec::new(),
+    })
+    .collect()
+    .await;
+
+    assert!(
+        chunks.iter().any(
+            |chunk| matches!(chunk, StreamChunk::Error(reason) if reason.contains("without Done"))
+        ),
+        "truncated stream must fail closed, got {chunks:?}"
+    );
+    assert!(
+        !chunks
+            .iter()
+            .any(|chunk| matches!(chunk, StreamChunk::Text(text) if text == "partial")),
+        "partial text must not be reported as a complete response"
+    );
 }

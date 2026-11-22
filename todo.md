@@ -206,7 +206,7 @@ status: current
 - [x] **PROGRESS.md が status: current のまま 100 ラウンド・20 件の旧スナップショット** — 2026-11-22 修正（159 ラウンド・14 件・日付明記に更新、未着手数は todo.md を正とする記述に統一、R7 指摘反映）。
 - [x] **runbook に中国語混在の誤記（列举）** — 2026-11-22 修正（「列举」を「列挙」に修正、R7 指摘反映）。
 
-- [ ] **with_llm_retry が Done を合成し枯渇ストリームを成功として返す** — 根拠 `src/ports/llm_resilience.rs:88-112`, `src/services/llm.rs:206-215` / R8-ST01 / 重大度 high / confirmed
+- [x] **with_llm_retry が Done を合成し枯渇ストリームを成功として返す** — 2026-11-22 修正（Done/Error 無しの枯渇時に Error を返し fail-closed、chain(Done) は LlmService::stream が Error で先に return するため維持、flaky テストに Done 追加＋回帰テスト、R1 指摘反映）。
 - [ ] **PermissionPresets::register が組み込み preset 名を黙って上書きできる** — 根拠 `src/services/permission_presets.rs:114-132,191-197` / R8-AP01 / 重大度 medium / confirmed
 - [ ] **RetryPolicy の遅延フィールドに下限がなく 0 で busy retry になる** — 根拠 `src/services/retry.rs:12-28,104-119` / R8-CF01 / 重大度 medium / confirmed
 - [ ] **公開ヘルパが UTF-8 境界を無視したバイトスライスで panic しうる** — 根拠 `src/services/time_context.rs:26-52`, `src/services/file_reference.rs:49-50` / R8-IV01 / 重大度 medium / confirmed
