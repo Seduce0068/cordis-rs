@@ -36,11 +36,11 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 
 - JS Proxy による `ctx.foo` アクセスは、Rust では明示的な `ctx.get::<T>()` / `require()` に置換。
 - `serial` / `bail` の戻り値は `Option<R>`。`Some(0)` / `Some(String::new())` は bail。
-  upstream の `false` だけは非 bail という差がある。
+  `Some(false)` も非 bail として upstream と同一（差は `Option<R>` 表現のみ）。
 - Schemastery の完全な DSL とファイル監視 HMR は対象外（Config 検証と YAML Loader は独自実装済み）。
 - `llm` / `tools` / `agentLoop` は retry policy に対応（`StreamChunk::Error` → bounded backoff）。
 - `!!js` は変数参照・補間・比較（`===` 含む）・算術・論理・三項・member access・文字列メソッド（`includes` / `startsWith` / `endsWith`）・配列／オブジェクト／テンプレートリテラル・`process.env`・`dshHomePath` をサポート。任意の JavaScript は評価しない。
-- `emit` は試験の決定性のため await する（`emit_spawn` で fire-and-forget も提供）。
+- `emit` はリスナーを順に await する（決定性重視）。upstream 準拠の fire-and-forget は `emit_spawn` を使う。
 
 ## 推奨エントリポイント（ドメイン別）
 

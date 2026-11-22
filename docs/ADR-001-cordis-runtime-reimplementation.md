@@ -36,7 +36,7 @@ DSH を GPUI で再実装するにあたり、最大の障壁はプラグイン�
 ## 意図的な差分
 
 - JS Proxy による `ctx.foo` アクセスは `ctx.get::<T>()` / `require()` に置換。
-- `serial` / `bail` は `Option<R>` 戻り値。`Some(false)` のみ upstream と異なる。
+- `serial` / `bail` は `Option<R>` 戻り値。`Some(false)` も非 bail で upstream と同一（差は表現のみ）。
 - Schemastery の完全な DSL とファイル監視 HMR は対象外。Config 検証と
   YAML Loader は独自実装し、`!!js` は変数・補間・比較・算術・論理・三項・
   member access・配列／オブジェクト／テンプレートリテラルをサポート
