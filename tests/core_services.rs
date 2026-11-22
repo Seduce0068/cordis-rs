@@ -5626,3 +5626,18 @@ fn skill_catalog_provider_may_reenter_registry_without_deadlock() {
     assert_eq!(catalog.skills.len(), 1);
     assert_eq!(catalog.skills[0].name, "reentrant");
 }
+
+#[test]
+fn utf8_boundary_helpers_do_not_panic_on_multibyte_input() {
+    use cordis_rs::core_services::{active_at_token, has_utc_offset};
+
+    // A trailing offset slice must land on a char boundary.
+    assert!(!has_utc_offset("あいうえおX"));
+    assert!(has_utc_offset("2026-11-22T10:00:00+09:00"));
+
+    // A cursor column must be converted to a valid byte offset.
+    let line = "あいうえお @file";
+    let token = active_at_token(line, 11);
+    assert!(token.is_some(), "line: {line}");
+    assert_eq!(token.unwrap().raw, "file");
+}

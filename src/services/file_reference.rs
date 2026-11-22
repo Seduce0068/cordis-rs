@@ -47,7 +47,14 @@ pub fn format_file_mention(
 
 /// Detect an active mention token at a cursor position in a line.
 pub fn active_at_token(line: &str, cursor_col: usize) -> Option<ActiveAtToken> {
-    let before = &line[..cursor_col.min(line.len())];
+    // `cursor_col` is a character column; convert it to a byte offset at a
+    // valid UTF-8 boundary (swarm review R8-IV01).
+    let byte_end = line
+        .char_indices()
+        .nth(cursor_col)
+        .map(|(byte, _)| byte)
+        .unwrap_or(line.len());
+    let before = &line[..byte_end];
     if let Some(index) = before.rfind("@\"") {
         let raw = &before[index + 2..];
         if !raw.contains('"') {

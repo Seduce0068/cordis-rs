@@ -44,7 +44,11 @@ pub fn has_utc_offset(value: &str) -> bool {
     if bytes.len() < 6 {
         return false;
     }
-    let offset = &value[bytes.len() - 6..];
+    // `get` returns None when the offset lands inside a multi-byte char
+    // (swarm review R8-IV01).
+    let Some(offset) = value.get(bytes.len() - 6..) else {
+        return false;
+    };
     matches!(bytes[bytes.len() - 6], b'+' | b'-')
         && offset.as_bytes()[3] == b':'
         && offset[1..3].chars().all(|ch| ch.is_ascii_digit())
