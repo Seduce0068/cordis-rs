@@ -23,7 +23,7 @@ DSH の GPUI 再実装における最大の障壁だった Cordis プラグイ�
 - テスト 283 件（統合 280 ＋ unit 3）、example 7 個
 - GitHub タグ `v0.1.0` 〜 `v0.261.0`、commits 366
 - ライセンス: AGPL-3.0-or-later（上流 MIT 通知は THIRD_PARTY_NOTICES.md に保持）
-- 上流 `snapshots/sdk/text-turn/cordis.yml` の 6 エントリすべてを mount
+- 上流 `snapshots/sdk/text-turn/cordis.yml` は port 存在分のみ mount し、`failed` / `skipped_unknown` をレポート（部分 mount）
 - 直近の堅牢化: tool_todo サービス名分離（"todoTools"）、background job の
   session fence、Integer 範囲の i64 精確比較、bounded-wait API、
   gitleaks / markdownlint / doc-count / audit の CI ゲート整備

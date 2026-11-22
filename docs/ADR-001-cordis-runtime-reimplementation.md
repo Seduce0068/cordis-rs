@@ -54,8 +54,9 @@ DSH を GPUI で再実装するにあたり、最大の障壁はプラグイン�
   skill-filesystem / message-feedback / session-persistence-jsonl /
   llm-deepseek / feedback-producer / command-compact / session-title-all-prompts-llm / tool-schedule / tool-exit-plan-mode / agent-instructions / harness-dev-context / tool-goal / fs-observation-policy / tool-session-list / tool-str-replace-editor / time-context / tmux-context / tool-jobs / timeout-policy / compaction-* / fs-patch / mcp-resources / hooks-claude-code / session-turn-outline / deepseek-llm-api-extensions / session-stats / session-log-deepseek / native-tool-executor / command-builtins / command-parse / mcp-templates / hooks-codex / duration / tool-pairing / text-search ほか）。
 - library port として `hook-protocol`（matcher / outcome merge）を追加。
-- 上流 `snapshots/sdk/text-turn/cordis.yml` の 6 エントリすべてを
-  Rust ランタイムで読み込み・mount する経路を確立。
+- 上流 `snapshots/sdk/text-turn/cordis.yml` を Rust ランタイムで読み込み、
+  port 存在分のみ mount し `failed` / `skipped_unknown` をレポートする部分 mount
+  経路を確立（6 エントリすべての mount ではない、swarm review R7-DC16）。
 - GPUI 側で todo / fs / agent / prompt / 実 composition / plugin トグル /
   ACP ストリームを描画。
 

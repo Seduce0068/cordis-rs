@@ -199,7 +199,7 @@ status: current
 - [x] **check-doc-counts.sh が README のテストファイル一覧を検証していない** — 2026-11-22 修正（tests/*.rs と README 列挙の双方向照合 gate を追加、片方省略時の fail を実証、R7 指摘反映）。
 - [x] **doc-count ゲートが実際の cargo test 件数と突き合わせていない** — 2026-11-22 修正（check-doc-counts.sh に cargo test --all-targets -- --list の実登録件数照合を追加、静的283件と一致を確認、R7 指摘反映）。
 - [ ] **todo.md と ADR-010 / docs/index.md で段4（dispatch API registry 化）の完了状態が矛盾** — 根拠 `todo.md:39`, `docs/ADR-010...:53,81-90`, `docs/index.md:26-27` / R7-DC15 / 重大度 medium / confirmed
-- [ ] **「6 エントリすべてを mount」という記述が部分 mount 実装と乖離** — 根拠 `docs/PROGRESS.md:26`, `docs/ADR-001...:57-58`, `examples/mount_real_composition.rs:3-6` / R7-DC16 / 重大度 medium / confirmed
+- [x] **「6 エントリすべてを mount」という記述が部分 mount 実装と乖離** — 2026-11-22 修正（PROGRESS / ADR-001 を「port 存在分のみ mount＋failed/skipped レポート」に修正、example ヘッダーは既に正確、R7 指摘反映）。
 - [x] **production_ports.rs だけ TempDirGuard 規約を回避** — 2026-11-22 修正（Drop で削除する TempDirGuard を導入、手組み一時パスと手動 remove_dir_all を削除、他3テストファイルと規約統一、R7 指摘反映）。
 - [x] **timeout 経路の child.kill/wait エラーが破棄され後始末失敗が観測不能** — 2026-11-22 修正（TimedOutCleanupFailed バリアント追加、kill/wait 失敗を構造的に保持、既存 TimedOut と Display は不変、R1 指摘反映）。
 - [x] **Cargo.toml の tokio features 説明コメントが actual feature 一覧と乖離** — 2026-11-22 修正（library 側 process/io-util を含む実 feature を反映、同期要旨を明記、R7 指摘反映）。
