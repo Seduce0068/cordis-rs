@@ -86,6 +86,13 @@ pub enum ShellError {
     InvalidCommand(String),
     Spawn(String),
     TimedOut(u64),
+    /// A timeout fired but kill/reap of the child failed. The timeout fact is
+    /// preserved structurally; `cleanup` names the failing step (swarm review
+    /// R7-ER09).
+    TimedOutCleanupFailed {
+        timeout_ms: u64,
+        cleanup: String,
+    },
 }
 
 impl std::fmt::Display for ShellError {
@@ -94,6 +101,10 @@ impl std::fmt::Display for ShellError {
             Self::InvalidCommand(message) => write!(f, "invalid command: {message}"),
             Self::Spawn(message) => write!(f, "failed to spawn: {message}"),
             Self::TimedOut(_ms) => write!(f, "command timed out"),
+            Self::TimedOutCleanupFailed { cleanup, .. } => {
+                // Do not embed the 3-digit ms value (retry misdetection).
+                write!(f, "command timed out; cleanup failed: {cleanup}")
+            }
         }
     }
 }
@@ -241,9 +252,23 @@ impl Shell {
             Ok(Err(error)) => Err(ShellError::Spawn(error.to_string())),
             Err(_elapsed) => {
                 // Fail closed: drop partial output, kill then reap the child.
-                let _ = child.kill().await;
-                let _ = child.wait().await;
-                Err(ShellError::TimedOut(timeout_ms))
+                let kill_result = child.kill().await;
+                let wait_result = child.wait().await;
+                let mut cleanup = Vec::new();
+                if let Err(error) = kill_result {
+                    cleanup.push(format!("kill: {error}"));
+                }
+                if let Err(error) = wait_result {
+                    cleanup.push(format!("wait: {error}"));
+                }
+                if cleanup.is_empty() {
+                    Err(ShellError::TimedOut(timeout_ms))
+                } else {
+                    Err(ShellError::TimedOutCleanupFailed {
+                        timeout_ms,
+                        cleanup: cleanup.join("; "),
+                    })
+                }
             }
         }
     }

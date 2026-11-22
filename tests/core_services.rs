@@ -5518,3 +5518,22 @@ async fn command_registry_last_registration_wins_with_generation_fencing() {
     new.dispose().await.unwrap();
     assert!(commands.names().is_empty());
 }
+
+#[test]
+fn timeout_cleanup_failure_display_keeps_timeout_fact_without_ms_digits() {
+    use cordis_rs::core_services::ShellError;
+
+    let error = ShellError::TimedOutCleanupFailed {
+        timeout_ms: 500,
+        cleanup: "kill: no such process".to_string(),
+    };
+    let rendered = error.to_string();
+    assert!(rendered.contains("cleanup failed: kill: no such process"));
+    // The 3-digit ms value must not appear (retry misdetection, R3-IV03).
+    assert!(!rendered.contains("500"), "rendered: {rendered}");
+
+    match error {
+        ShellError::TimedOutCleanupFailed { timeout_ms, .. } => assert_eq!(timeout_ms, 500),
+        other => panic!("unexpected variant: {other}"),
+    }
+}
