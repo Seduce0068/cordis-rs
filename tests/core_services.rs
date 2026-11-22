@@ -6092,3 +6092,54 @@ fn credential_names_reject_digit_prefix() {
     assert!(!provider.set("1FOO", "value"));
     assert!(provider.set("A1", "value"));
 }
+
+#[test]
+fn storage_try_registration_validates_names_and_duplicates() {
+    use cordis_rs::core_services::{DomainSpec, MemoryBackend, StorageError, StorageHub};
+
+    let hub = StorageHub::new();
+
+    // Empty names and empty required_fields are rejected by the validating
+    // APIs (swarm review R10-IV01).
+    assert!(matches!(
+        hub.try_define_domain(DomainSpec::new("", vec![])),
+        Err(StorageError::InvalidDomain { .. })
+    ));
+    assert!(matches!(
+        hub.try_define_domain(DomainSpec::new("prefs", vec![])),
+        Err(StorageError::InvalidDomain { .. })
+    ));
+    assert!(matches!(
+        hub.try_register_backend("", MemoryBackend::new()),
+        Err(StorageError::InvalidBackend { .. })
+    ));
+
+    // Valid registration succeeds; a duplicate is rejected.
+    assert!(
+        hub.try_define_domain(DomainSpec::new("prefs", vec!["theme".to_string()]))
+            .is_ok()
+    );
+    assert!(matches!(
+        hub.try_define_domain(DomainSpec::new("prefs", vec!["theme".to_string()])),
+        Err(StorageError::InvalidDomain { .. })
+    ));
+    assert!(
+        hub.try_register_backend("mem", MemoryBackend::new())
+            .is_ok()
+    );
+    assert!(matches!(
+        hub.try_register_backend("mem", MemoryBackend::new()),
+        Err(StorageError::InvalidBackend { .. })
+    ));
+
+    // The legacy adapters keep their overwrite behaviour: define_domain
+    // with an empty spec still replaces the existing domain (no validation).
+    hub.define_domain(DomainSpec::new("prefs", vec![]));
+    assert!(
+        matches!(
+            hub.write("prefs", "mem", "k", serde_json::json!("scalar")),
+            Ok(())
+        ),
+        "overwritten domain with no required fields accepts scalars"
+    );
+}

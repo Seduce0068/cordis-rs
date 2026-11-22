@@ -246,7 +246,7 @@ status: current
 - [x] **SessionStore::create が自動 ID 生成で next_id を二重インクリメント** — 2026-11-23 修正（auto ID 分岐のインクリメントを1回のみに、明示 id 指定時は従来どおり cursor 前進、連番の回帰テスト追加、R10 指摘反映）。
 - [x] **ScheduleService が Cancelled レコードを resume で復活させる** — 2026-11-23 修正（set_status に Cancelled 終端ガード、cancel→cancel は冪等として維持、ScheduleError::Cancelled が生成されるように、回帰テスト、R1 指摘反映）。
 - [ ] **Subagent/Agent registry が世代 fencing 無しで古い disposer が新登録を消す** — 根拠 `src/services/subagents.rs:57-77`, `src/services/agents.rs:57-77` / R10-IV03 / 重大度 medium / confirmed
-- [ ] **StorageHub::define_domain が空名・空 required_fields・重複を許す** — 根拠 `src/services/storage.rs:126-132` / R10-IV01 / 重大度 medium / confirmed
+- [x] **StorageHub::define_domain が空名・空 required_fields・重複を許す** — 2026-11-23 修正（try_define_domain / try_register_backend を追加して検証付き API を提供、StorageError に InvalidDomain / InvalidBackend 追加、既存 API は無条件上書きの旧挙動を維持、回帰テスト、R1 指摘反映）。
 - [x] **StorageHub::write が domain/backend 未設定でエラー優先順が不安定** — 2026-11-23 修正（domain → backend → record の順に解決、backend 解決を1箇所に集約、設定エラーが入力エラーより優先、回帰テスト、R1 指摘反映）。
 - [x] **PlanMode::set が空 session_id を受理** — 2026-11-23 修正（try_set/try_enter/try_exit と PlanModeError を追加して fail-closed に、set は try_set の expect adapter、seq を消費せず拒否、回帰テスト、R1 指摘反映）。
 - [x] **CredentialProvider が数字始まりの参照名を受理** — 2026-11-23 修正（共通ヘルパー is_valid_env_name で先頭を大文字または `_` に制限、credential_ref と set の両方に適用し重複ロジックも解消、回帰テスト、R1 指摘反映）。

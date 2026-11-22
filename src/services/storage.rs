@@ -29,8 +29,21 @@ impl DomainSpec {
 pub enum StorageError {
     UnknownBackend(String),
     UnknownDomain(String),
-    InvalidRecord { domain: String, missing: String },
+    InvalidRecord {
+        domain: String,
+        missing: String,
+    },
     NotFound(String),
+    /// Invalid domain registration (swarm review R10-IV01).
+    InvalidDomain {
+        domain: String,
+        reason: String,
+    },
+    /// Invalid backend registration (swarm review R10-IV01).
+    InvalidBackend {
+        backend: String,
+        reason: String,
+    },
 }
 
 impl std::fmt::Display for StorageError {
@@ -42,6 +55,12 @@ impl std::fmt::Display for StorageError {
                 write!(f, "record for {domain} is missing field {missing}")
             }
             Self::NotFound(key) => write!(f, "storage key not found: {key}"),
+            Self::InvalidDomain { domain, reason } => {
+                write!(f, "invalid storage domain `{domain}`: {reason}")
+            }
+            Self::InvalidBackend { backend, reason } => {
+                write!(f, "invalid storage backend `{backend}`: {reason}")
+            }
         }
     }
 }
@@ -109,11 +128,38 @@ impl StorageHub {
     }
 
     pub fn register_backend(&self, name: impl Into<String>, backend: MemoryBackend) {
+        // Legacy adapter: unconditional overwrite (kept for backward compat;
+        // use try_register_backend for validation, swarm review R10-IV01).
         self.state
             .write()
             .expect("storage hub poisoned")
             .backends
             .insert(name.into(), backend);
+    }
+
+    /// Validating variant of [`Self::register_backend`]: rejects empty or
+    /// duplicate backend names (swarm review R10-IV01).
+    pub fn try_register_backend(
+        &self,
+        name: impl Into<String>,
+        backend: MemoryBackend,
+    ) -> std::result::Result<(), StorageError> {
+        let name = name.into();
+        if name.is_empty() {
+            return Err(StorageError::InvalidBackend {
+                backend: name,
+                reason: "name must not be empty".to_string(),
+            });
+        }
+        let mut guard = self.state.write().expect("storage hub poisoned");
+        if guard.backends.contains_key(&name) {
+            return Err(StorageError::InvalidBackend {
+                backend: name,
+                reason: "backend already registered".to_string(),
+            });
+        }
+        guard.backends.insert(name, backend);
+        Ok(())
     }
 
     pub fn backend(&self, name: &str) -> Option<MemoryBackend> {
@@ -126,11 +172,39 @@ impl StorageHub {
     }
 
     pub fn define_domain(&self, spec: DomainSpec) {
+        // Legacy adapter: unconditional overwrite (kept for backward compat;
+        // use try_define_domain for validation, swarm review R10-IV01).
         self.state
             .write()
             .expect("storage hub poisoned")
             .domains
             .insert(spec.name.clone(), spec);
+    }
+
+    /// Validating variant of [`Self::define_domain`]: rejects empty names,
+    /// empty `required_fields`, and duplicate domains (swarm review R10-IV01).
+    pub fn try_define_domain(&self, spec: DomainSpec) -> std::result::Result<(), StorageError> {
+        if spec.name.is_empty() {
+            return Err(StorageError::InvalidDomain {
+                domain: spec.name,
+                reason: "name must not be empty".to_string(),
+            });
+        }
+        if spec.required_fields.is_empty() {
+            return Err(StorageError::InvalidDomain {
+                domain: spec.name,
+                reason: "required_fields must not be empty".to_string(),
+            });
+        }
+        let mut guard = self.state.write().expect("storage hub poisoned");
+        if guard.domains.contains_key(&spec.name) {
+            return Err(StorageError::InvalidDomain {
+                domain: spec.name,
+                reason: "domain already defined".to_string(),
+            });
+        }
+        guard.domains.insert(spec.name.clone(), spec);
+        Ok(())
     }
 
     pub fn write(
