@@ -200,6 +200,9 @@ impl Context {
         Lifecycle::from(self.inner.lifecycle.load(Ordering::Acquire))
     }
 
+    /// Set the context lifecycle directly. This does not update a Fiber's own
+    /// state; prefer `Fiber::refresh` / `Fiber::unload` so both stay in sync
+    /// (swarm review R9-CY01). Kept public for hosts that gate visibility.
     pub fn set_lifecycle(&self, lifecycle: Lifecycle) {
         self.inner
             .lifecycle

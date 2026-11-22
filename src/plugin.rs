@@ -78,6 +78,14 @@ pub struct FiberInner {
 }
 
 impl FiberInner {
+    /// Keep the Fiber's own state and the context lifecycle in sync (swarm
+    /// review R9-CY01). Both represent the same Lifecycle; callers must not
+    /// update one without the other.
+    fn set_both(&self, lifecycle: Lifecycle) {
+        *self.state.lock().expect("fiber state poisoned") = lifecycle;
+        self.ctx.set_lifecycle(lifecycle);
+    }
+
     pub(crate) fn is_retiring(&self) -> bool {
         self.retiring.load(std::sync::atomic::Ordering::SeqCst)
     }
@@ -99,20 +107,17 @@ impl FiberInner {
                 .store(true, std::sync::atomic::Ordering::SeqCst);
             self.ctx.set_lifecycle(Lifecycle::Unloading);
             self.ctx.dispose_effects().await?;
-            *self.state.lock().expect("fiber state poisoned") = Lifecycle::Pending;
             // Teardown is complete: the fiber is now waiting to reload, not
             // unloading itself. Clear the re-entry guard so drain_dependent_fibers
             // no longer skips it (R2-BV01). Explicit unload() keeps it set.
             self.retiring
                 .store(false, std::sync::atomic::Ordering::SeqCst);
-            self.ctx.set_lifecycle(Lifecycle::Pending);
+            self.set_both(Lifecycle::Pending);
         } else if matches!(state, Lifecycle::Pending | Lifecycle::Failed) && resolved {
-            *self.state.lock().expect("fiber state poisoned") = Lifecycle::Loading;
-            self.ctx.set_lifecycle(Lifecycle::Loading);
+            self.set_both(Lifecycle::Loading);
             match self.plugin.apply(&self.ctx).await {
                 Ok(()) => {
-                    *self.state.lock().expect("fiber state poisoned") = Lifecycle::Active;
-                    self.ctx.set_lifecycle(Lifecycle::Active);
+                    self.set_both(Lifecycle::Active);
                 }
                 Err(error) => {
                     // Clean up any effects the failed apply already registered.
@@ -220,11 +225,9 @@ impl Fiber {
         if self.state() == Lifecycle::Unloaded {
             return Ok(());
         }
-        self.0.ctx.set_lifecycle(Lifecycle::Unloading);
-        *self.0.state.lock().expect("fiber state poisoned") = Lifecycle::Unloading;
+        self.0.set_both(Lifecycle::Unloading);
         self.0.ctx.dispose_effects().await?;
-        *self.0.state.lock().expect("fiber state poisoned") = Lifecycle::Unloaded;
-        self.0.ctx.set_lifecycle(Lifecycle::Unloaded);
+        self.0.set_both(Lifecycle::Unloaded);
         Ok(())
     }
 }

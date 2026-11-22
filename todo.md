@@ -234,7 +234,7 @@ status: current
 - [x] **EventRegistry::remove が存在しない key で空スロットを生成** — 2026-11-22 修正（remove を try_slot ベースに変更し未登録 listener の削除でスロットを作らない、internal 回帰テスト追加、R9 指摘反映）。
 - [x] **typed_event! の decode error store がプロセスグローバル** — 2026-11-22 修正（EventRegistry に decode_errors 追加、マクロは registry のみに記録、静的 take_decode_errors は後方互換 shim として残す、Context 分離回帰テスト追加、R1 指摘反映）。
 - [x] **is_bail_value が bool のみ対応（一般 R 型で false 相当を判定できない）** — 2026-11-23 修正（R = bool のみ false を非 bail と認識する制限を doc 明記。false 相当 newtype の一般化は設計判断として残す、R9 指摘反映）。
-- [ ] **Context::set_lifecycle が Fiber 状態と無関係に公開され二重状態** — 根拠 `src/context.rs:203-210`, `src/plugin.rs:73` / R9-CY01 / 重大度 medium / medium
+- [x] **Context::set_lifecycle が Fiber 状態と無関係に公開され二重状態** — 2026-11-23 段階1修正（plugin.rs の二重更新を set_both ヘルパーに集約、set_lifecycle の pub API は維持し doc で Fiber::refresh/unload 推奨を明記、R1 指摘反映）。段階2（ctx.lifecycle への単一情報源化）は ADR 化して別案件。2026-11-19 却下の「単調性検証」とは観点が異なる。
 - [x] **Fiber::mount が inject 未充足でも Pending で返す契約を doc 明記** — 2026-11-22 修正（await が load 完了を待たず Pending で返る旨を doc に明記、state()/Active 待ちを案内、R9 指摘反映）。
 - [x] **README/ADR-001 が Some(false) を upstream と異なると誤記** — 2026-11-22 修正（Some(false) は非 bail で upstream 同一と明記、R9 指摘反映）。
 - [x] **README に emit の await 版／emit_spawn の使い分け表が無い** — 2026-11-22 修正（emit は await、upstream 準拠の fire-and-forget は emit_spawn と明記、R9 指摘反映）。
