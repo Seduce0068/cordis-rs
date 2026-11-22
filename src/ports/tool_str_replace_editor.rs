@@ -53,10 +53,11 @@ fn parse_range(
             "view_range needs two elements".to_string(),
         ));
     }
-    let start = array[0]
+    let start_raw = array[0]
         .as_u64()
-        .ok_or_else(|| ToolError::InvalidArgs("invalid view_range".to_string()))?
-        as usize;
+        .ok_or_else(|| ToolError::InvalidArgs("invalid view_range".to_string()))?;
+    let start = usize::try_from(start_raw)
+        .map_err(|_| ToolError::InvalidArgs("view_range start out of bounds".to_string()))?;
     let end_raw = array[1]
         .as_i64()
         .ok_or_else(|| ToolError::InvalidArgs("invalid view_range".to_string()))?;
@@ -65,10 +66,16 @@ fn parse_range(
             "view_range start out of bounds".to_string(),
         ));
     }
+    if end_raw < -1 {
+        return Err(ToolError::InvalidArgs(
+            "view_range end out of bounds".to_string(),
+        ));
+    }
     let end = if end_raw == -1 {
         line_count
     } else {
-        end_raw as usize
+        usize::try_from(end_raw as u64)
+            .map_err(|_| ToolError::InvalidArgs("view_range end out of bounds".to_string()))?
     };
     if end < start || end > line_count {
         return Err(ToolError::InvalidArgs(
@@ -121,12 +128,15 @@ fn handler(fs: FileSystem) -> ToolHandler {
                 }
                 "insert" => {
                     let text_to_insert = arg(&args, "new_str")?;
-                    let line = args
+                    let line_raw = args
                         .get("insert_line")
                         .and_then(|value| value.as_u64())
                         .ok_or_else(|| {
                             ToolError::InvalidArgs("insert_line must be a number".to_string())
-                        })? as usize;
+                        })?;
+                    let line = usize::try_from(line_raw).map_err(|_| {
+                        ToolError::InvalidArgs("insert_line out of bounds".to_string())
+                    })?;
                     let text = fs
                         .read_text(path)
                         .map_err(|e| ToolError::Execution(e.to_string()))?;

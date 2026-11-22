@@ -3688,3 +3688,54 @@ async fn session_stats_attempt_then_message_counts_ttft_once() {
     );
     assert_eq!(stats["ttftSteps"], 1);
 }
+
+#[tokio::test]
+async fn str_replace_editor_view_range_rejects_negative_end() {
+    use cordis_rs::core_services::{ToolExecContext, provide_fs, provide_tools};
+    use cordis_rs::plugin_ports::mount_tool_str_replace_editor;
+
+    let ctx = Context::root("editor-range-validation");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    provide_fs(&ctx).await.unwrap();
+    mount_tool_str_replace_editor(&ctx).await.unwrap();
+
+    let dir = TempDirGuard::new("editor-range");
+    let _ = std::fs::create_dir_all(&dir);
+    let path = dir.join("sample.txt");
+    let _ = std::fs::remove_file(&path);
+    let path_str = path.to_string_lossy().to_string();
+    let exec = || ToolExecContext::agent("a");
+
+    tools
+        .invoke(
+            "str_replace_editor",
+            serde_json::json!({ "command": "create", "path": path_str, "file_text": "a\nb\nc" }),
+            exec(),
+        )
+        .await
+        .unwrap();
+
+    // -1 still means "to end of file".
+    assert!(
+        tools
+            .invoke(
+                "str_replace_editor",
+                serde_json::json!({ "command": "view", "path": path_str, "view_range": [1, -1] }),
+                exec(),
+            )
+            .await
+            .is_ok()
+    );
+
+    // -2 and below are explicitly rejected (swarm review R12-IV01).
+    assert!(
+        tools
+            .invoke(
+                "str_replace_editor",
+                serde_json::json!({ "command": "view", "path": path_str, "view_range": [1, -2] }),
+                exec(),
+            )
+            .await
+            .is_err()
+    );
+}
