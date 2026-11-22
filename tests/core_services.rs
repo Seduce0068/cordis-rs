@@ -5641,3 +5641,31 @@ fn utf8_boundary_helpers_do_not_panic_on_multibyte_input() {
     assert!(token.is_some(), "line: {line}");
     assert_eq!(token.unwrap().raw, "file");
 }
+
+#[test]
+fn permission_presets_try_register_rejects_builtin_names() {
+    use cordis_rs::core_services::{ApprovalPolicy, PermissionPresets, PresetSpec, SandboxMode};
+
+    let registry = PermissionPresets::default();
+    let spec = PresetSpec {
+        sandbox: SandboxMode::DangerFullAccess,
+        approval: ApprovalPolicy::Never,
+        label: None,
+        description: None,
+    };
+
+    assert!(registry.try_register("read-only", spec.clone()).is_err());
+    assert!(registry.try_register("auto", spec).is_ok());
+
+    // Legacy register still overwrites (backward compatibility).
+    registry.register(
+        "read-only",
+        PresetSpec {
+            sandbox: SandboxMode::DangerFullAccess,
+            approval: ApprovalPolicy::Never,
+            label: None,
+            description: None,
+        },
+    );
+    assert!(registry.current().preset.is_none());
+}

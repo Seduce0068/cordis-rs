@@ -187,13 +187,34 @@ impl PermissionPresets {
         Ok(snapshot)
     }
 
-    /// Register a custom preset (e.g. the Auto review preset).
+    /// Register a custom preset (e.g. the Auto review preset). Keeps its
+    /// legacy last-write-wins behaviour; use `try_register` to reject a
+    /// built-in name (swarm review R8-AP01).
     pub fn register(&self, name: impl Into<String>, spec: PresetSpec) {
         self.state
             .write()
             .expect("permission presets poisoned")
             .presets
             .insert(name.into(), spec);
+    }
+
+    /// Register a custom preset, rejecting a built-in name so a caller cannot
+    /// silently change the meaning of `read-only` etc. (swarm review R8-AP01).
+    pub fn try_register(
+        &self,
+        name: impl Into<String>,
+        spec: PresetSpec,
+    ) -> std::result::Result<(), String> {
+        let name = name.into();
+        if Preset::parse(&name).is_some() {
+            return Err(format!("cannot override built-in preset: {name}"));
+        }
+        self.state
+            .write()
+            .expect("permission presets poisoned")
+            .presets
+            .insert(name, spec);
+        Ok(())
     }
 
     pub fn current(&self) -> PermissionState {
