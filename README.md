@@ -40,7 +40,7 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 - Schemastery の完全な DSL とファイル監視 HMR は対象外（Config 検証と YAML Loader は独自実装済み）。
 - `llm` / `tools` / `agentLoop` は retry policy に対応（`StreamChunk::Error` → bounded backoff）。
 - `!!js` は変数参照・補間・比較（`===` 含む）・算術・論理・三項・member access・文字列メソッド（`includes` / `startsWith` / `endsWith`）・配列／オブジェクト／テンプレートリテラル・`process.env`・`dshHomePath` をサポート。任意の JavaScript は評価しない。
-- `emit` は試験の決定性のため await する（`emit_detached` で fire-and-forget も提供）。
+- `emit` は試験の決定性のため await する（`emit_spawn` で fire-and-forget も提供）。
 
 ## 推奨エントリポイント（ドメイン別）
 
@@ -92,8 +92,8 @@ Cordis（`vendor/cordis`、upstream `cordiverse/cordis` v4.0.0-rc.12）の
 | `ToolPipeline` approval 既定 | fail-open | production では `install_default_controls(hook_effect, policy)` を呼ぶ（fail-closed approval + 実際の hook deny effect + sandbox gate を一括登録） |
 
 根拠: `src/services/llm.rs:110,166,192` / `src/services/telemetry.rs:5` /
-`src/ports/session_persistence_jsonl.rs:238` / `src/ports/sandbox_policy.rs:1,6` /
-`src/services/approval.rs:157` / `src/ports/hooks_claude_code.rs:139`。
+`src/ports/session_persistence_jsonl.rs:348` / `src/ports/sandbox_policy.rs:1,6` /
+`src/services/approval.rs:157` / `src/ports/hooks_claude_code.rs:152,159`。
 
 障害時の切り分け手順は
 [troubleshooting runbook](docs/troubleshooting.md) を参照。**既知の fail-open / stub は「未対応」ではなく現状の制約**。fail-open 行は
