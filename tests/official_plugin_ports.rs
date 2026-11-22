@@ -3658,3 +3658,33 @@ async fn native_executor_clear_if_is_owner_scoped() {
     assert!(holder.clear_generation(generation));
     assert!(holder.current().is_none());
 }
+
+#[tokio::test]
+async fn session_stats_attempt_then_message_counts_ttft_once() {
+    use cordis_rs::core_services::{provide_agents, provide_sessions};
+    use cordis_rs::plugin_ports::{mount_session_stats, session_stats_view};
+
+    let ctx = Context::root("session-stats-ttft");
+    provide_agents(&ctx).await.unwrap();
+    let (sessions, projections) = provide_sessions(&ctx).await.unwrap();
+    mount_session_stats(&ctx).await.unwrap();
+    let session = sessions.create(Some("ttft-1".to_string()), None).unwrap();
+
+    session.append("step/start", serde_json::json!({ "turn": 1, "step": 1 }));
+    session.append(
+        "assistant/attempt",
+        serde_json::json!({ "turn": 1, "step": 1 }),
+    );
+    session.append(
+        "assistant/message",
+        serde_json::json!({ "turn": 1, "step": 1, "text": "hi" }),
+    );
+
+    let state = projections.view("sessionStats", &session).unwrap();
+    let stats = session_stats_view(&state);
+    assert_eq!(
+        stats["ttftEvents"], 1,
+        "first token counted once (R12-IV08)"
+    );
+    assert_eq!(stats["ttftSteps"], 1);
+}

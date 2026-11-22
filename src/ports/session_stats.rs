@@ -95,12 +95,14 @@ pub fn fold(
                 .get("startSeq")
                 .and_then(|v| v.as_u64())
                 .unwrap_or(event.seq);
-            let first_token = open
-                .get("firstTokenSeq")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(event.seq);
-            if first_token >= start_seq {
-                inc(&mut s, "ttftEvents", 1);
+            let first_token = open.get("firstTokenSeq").and_then(|v| v.as_u64());
+            if first_token.unwrap_or(event.seq) >= start_seq {
+                // attempt already counted the first token; only count it here
+                // when there was no attempt (message-only streams)
+                // (swarm review R12-IV08).
+                if first_token.is_none() {
+                    inc(&mut s, "ttftEvents", 1);
+                }
                 inc(&mut s, "ttftSteps", 1);
                 if let Some(tokens) = data
                     .get("usage")
