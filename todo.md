@@ -244,7 +244,7 @@ status: current
 - [x] **同期 remove_service の generation 迂回（drain 非同期経路のみ修正済み）** — 2026-11-23 R9-DI01 と同時修正（generation sync API 追加）。
 
 - [ ] **SessionStore::create が自動 ID 生成で next_id を二重インクリメント** — 根拠 `src/services/sessions.rs:167-179` / R10-TX01 / 重大度 medium / confirmed
-- [ ] **ScheduleService が Cancelled レコードを resume で復活させる** — 根拠 `src/services/schedule.rs:109-141`, `ScheduleError::Cancelled` / R10-IV02 / 重大度 high / confirmed（todo.md:254 メモ既出だが未タスク化）
+- [x] **ScheduleService が Cancelled レコードを resume で復活させる** — 2026-11-23 修正（set_status に Cancelled 終端ガード、cancel→cancel は冪等として維持、ScheduleError::Cancelled が生成されるように、回帰テスト、R1 指摘反映）。
 - [ ] **Subagent/Agent registry が世代 fencing 無しで古い disposer が新登録を消す** — 根拠 `src/services/subagents.rs:57-77`, `src/services/agents.rs:57-77` / R10-IV03 / 重大度 medium / confirmed
 - [ ] **StorageHub::define_domain が空名・空 required_fields・重複を許す** — 根拠 `src/services/storage.rs:126-132` / R10-IV01 / 重大度 medium / confirmed
 - [ ] **StorageHub::write が domain/backend 未設定でエラー優先順が不安定** — 根拠 `src/services/storage.rs:141-158` / R10-EC02 / 重大度 low / medium

@@ -5935,3 +5935,41 @@ async fn approval_with_session_records_audit_pair() {
         .unwrap();
     // No session attached means no audit path; request still succeeds.
 }
+
+#[tokio::test]
+async fn cancelled_schedule_is_terminal_but_cancel_is_idempotent() {
+    use cordis_rs::core_services::{ScheduleError, ScheduleStatus, provide_schedule};
+
+    let ctx = Context::root("schedule-cancelled");
+    let service = provide_schedule(&ctx).await.unwrap();
+    let record = service.create("task", "work", 1000);
+
+    service.cancel(&record.id).unwrap();
+    assert_eq!(
+        service.get(&record.id).unwrap().status,
+        ScheduleStatus::Cancelled
+    );
+
+    // Cancelling again is idempotent.
+    assert!(service.cancel(&record.id).is_ok());
+
+    // No transition back to Active/Paused is allowed (R10-IV02).
+    assert!(matches!(
+        service.resume(&record.id),
+        Err(ScheduleError::Cancelled(_))
+    ));
+    assert!(matches!(
+        service.pause(&record.id),
+        Err(ScheduleError::Cancelled(_))
+    ));
+    assert!(matches!(
+        service.set_status_public(&record.id, ScheduleStatus::Active),
+        Err(ScheduleError::Cancelled(_))
+    ));
+    assert!(
+        service
+            .due(u64::MAX)
+            .iter()
+            .all(|item| item.id != record.id)
+    );
+}

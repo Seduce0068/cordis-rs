@@ -116,6 +116,12 @@ impl ScheduleService {
             .records
             .get_mut(id)
             .ok_or_else(|| ScheduleError::NotFound(id.to_string()))?;
+        // Cancelled is terminal: no transition back to Active/Paused is
+        // allowed, while cancelling again stays idempotent (swarm review
+        // R10-IV02).
+        if record.status == ScheduleStatus::Cancelled && status != ScheduleStatus::Cancelled {
+            return Err(ScheduleError::Cancelled(id.to_string()));
+        }
         record.status = status;
         Ok(record.clone())
     }
