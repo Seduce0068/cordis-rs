@@ -20,7 +20,7 @@ use std::fmt;
 use std::future::Future;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use crate::config::{FieldSpec, ValidationError, Value, validate};
+use crate::config::{FieldSpec, ValidationError, Value, validate_with_warnings};
 use crate::context::Context;
 use crate::error::Error;
 use crate::events::BoxFuture;
@@ -461,13 +461,21 @@ impl Composition {
     ) -> Result<MountReport, LoaderError> {
         let mut report = MountReport::default();
         for entry in self.enabled_with(state) {
-            match entry.to_plugin(registry) {
-                Ok(plugin) => match Fiber::mount(ctx, Box::new(plugin)).await {
-                    Ok(fiber) => report.mounted.push(fiber),
-                    Err(error) => report
-                        .failed
-                        .push((entry.id.clone(), format!("mount: {error}"))),
-                },
+            match entry.to_plugin_with_warnings(registry) {
+                Ok((plugin, warnings)) => {
+                    for warning in warnings {
+                        report.warnings.push(CompositionWarning {
+                            entry: entry.id.clone(),
+                            key: format!("config:{warning}"),
+                        });
+                    }
+                    match Fiber::mount(ctx, Box::new(plugin)).await {
+                        Ok(fiber) => report.mounted.push(fiber),
+                        Err(error) => report
+                            .failed
+                            .push((entry.id.clone(), format!("mount: {error}"))),
+                    }
+                }
                 Err(LoaderError::UnknownPlugin { plugin, .. }) => {
                     report.skipped_unknown.push((entry.id.clone(), plugin));
                 }
@@ -486,6 +494,8 @@ pub struct MountReport {
     pub skipped_unknown: Vec<(String, String)>,
     /// Entries that had a factory but failed validation or mounting.
     pub failed: Vec<(String, String)>,
+    /// Config-key warnings collected while mounting (swarm review R7-CF09).
+    pub warnings: Vec<CompositionWarning>,
 }
 
 impl Entry {
@@ -493,6 +503,16 @@ impl Entry {
     /// accepts directly. Config is validated here, before `apply` can run.
     /// Dependency names from YAML and from the factory are merged (deduplicated).
     pub fn to_plugin(&self, registry: &PluginRegistry) -> Result<FunctionPlugin, LoaderError> {
+        self.to_plugin_with_warnings(registry)
+            .map(|(plugin, _)| plugin)
+    }
+
+    /// Like [`Entry::to_plugin`], additionally returning config-key warnings
+    /// (swarm review R7-CF09).
+    pub fn to_plugin_with_warnings(
+        &self,
+        registry: &PluginRegistry,
+    ) -> Result<(FunctionPlugin, Vec<String>), LoaderError> {
         let factory = registry
             .get(&self.plugin)
             .ok_or_else(|| LoaderError::UnknownPlugin {
@@ -501,10 +521,11 @@ impl Entry {
             })?;
         // A plugin without a declared schema receives its config verbatim;
         // a plugin with one receives only validated/declared fields + defaults.
-        let config = if factory.fields.is_empty() {
-            self.config.clone()
+        let (config, warnings) = if factory.fields.is_empty() {
+            (self.config.clone(), Vec::new())
         } else {
-            validate(&factory.fields, &self.config).map_err(LoaderError::Validation)?
+            validate_with_warnings(&factory.fields, &self.config)
+                .map_err(LoaderError::Validation)?
         };
         let mut inject = factory.inject.clone();
         for name in &self.inject {
@@ -520,7 +541,7 @@ impl Entry {
             let config = config.clone();
             apply(ctx, &config)
         });
-        Ok(plugin.with_inject(inject))
+        Ok((plugin.with_inject(inject), warnings))
     }
 }
 

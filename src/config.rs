@@ -323,6 +323,25 @@ impl From<ValidationErrors> for crate::Error {
     }
 }
 
+/// Validate like [`validate`], additionally reporting keys present in `raw`
+/// that are not declared in `fields`. The existing `validate()` behaviour and
+/// signature are unchanged (swarm review R7-CF09).
+pub fn validate_with_warnings(
+    fields: &[FieldSpec],
+    raw: &Value,
+) -> std::result::Result<(Value, Vec<String>), Vec<ValidationError>> {
+    let validated = validate(fields, raw)?;
+    let mut warnings = Vec::new();
+    if let Value::Object(map) = raw {
+        for key in map.keys() {
+            if !fields.iter().any(|spec| spec.name == *key) {
+                warnings.push(format!("undeclared config key: {key}"));
+            }
+        }
+    }
+    Ok((validated, warnings))
+}
+
 /// Validate `raw` against `fields`, applying defaults for absent optional
 /// fields. On success returns the complete, declared-fields-only object.
 /// On failure every [`ValidationError::path`] includes the field name.

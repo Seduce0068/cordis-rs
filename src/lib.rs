@@ -17,7 +17,7 @@ pub mod services;
 
 pub use config::{
     FieldSpec, FieldType, ValidationError, ValidationErrors, ValidationReason,
-    Value as ConfigValue, validate as validate_config,
+    Value as ConfigValue, validate as validate_config, validate_with_warnings,
 };
 pub use context::{Context, EffectScope, Lifecycle};
 pub use error::{Error, Result};

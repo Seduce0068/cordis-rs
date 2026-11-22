@@ -1437,3 +1437,56 @@ fn invalid_default_value_is_rejected_by_validation() {
         ConfigValue::Integer(3)
     );
 }
+
+#[test]
+fn validate_with_warnings_reports_undeclared_keys() {
+    use cordis_rs::{ConfigValue, FieldSpec, FieldType, validate_with_warnings};
+
+    let schema = vec![
+        FieldSpec::new("known", FieldType::String).with_default(ConfigValue::String("ok".into())),
+    ];
+    let raw = ConfigValue::Object(
+        [
+            ("known".to_string(), ConfigValue::String("v".into())),
+            ("typo".to_string(), ConfigValue::Integer(1)),
+        ]
+        .into_iter()
+        .collect(),
+    );
+
+    let (validated, warnings) = validate_with_warnings(&schema, &raw).unwrap();
+    assert_eq!(
+        validated.as_object().unwrap()["known"],
+        ConfigValue::String("v".into())
+    );
+    assert_eq!(warnings, vec!["undeclared config key: typo"]);
+}
+
+#[tokio::test]
+async fn mount_report_collects_undeclared_config_key_warnings() {
+    use cordis_rs::config::{FieldSpec, FieldType};
+    use cordis_rs::{Composition, Context, PluginFactory, PluginRegistry};
+
+    let yaml = r#"
+entries:
+  - id: a
+    plugin: demo/schema
+    config:
+      known: ok
+      typo: 1
+"#;
+    let composition = Composition::parse(yaml).unwrap();
+    let mut registry = PluginRegistry::new();
+    registry.register(
+        "demo/schema",
+        PluginFactory::new(|_ctx, _cfg| async { Ok(()) })
+            .with_schema(vec![FieldSpec::new("known", FieldType::String)]),
+    );
+
+    let ctx = Context::root("mount-warnings");
+    let report = composition.mount_available(&ctx, &registry).await.unwrap();
+    assert_eq!(report.mounted.len(), 1);
+    assert_eq!(report.warnings.len(), 1, "warnings: {:?}", report.warnings);
+    assert_eq!(report.warnings[0].entry, "a");
+    assert_eq!(report.warnings[0].key, "config:undeclared config key: typo");
+}
