@@ -206,6 +206,25 @@ status: current
 - [x] **PROGRESS.md が status: current のまま 100 ラウンド・20 件の旧スナップショット** — 2026-11-22 修正（159 ラウンド・14 件・日付明記に更新、未着手数は todo.md を正とする記述に統一、R7 指摘反映）。
 - [x] **runbook に中国語混在の誤記（列举）** — 2026-11-22 修正（「列举」を「列挙」に修正、R7 指摘反映）。
 
+- [ ] **with_llm_retry が Done を合成し枯渇ストリームを成功として返す** — 根拠 `src/ports/llm_resilience.rs:88-112`, `src/services/llm.rs:206-215` / R8-ST01 / 重大度 high / confirmed
+- [ ] **PermissionPresets::register が組み込み preset 名を黙って上書きできる** — 根拠 `src/services/permission_presets.rs:114-132,191-197` / R8-AP01 / 重大度 medium / confirmed
+- [ ] **RetryPolicy の遅延フィールドに下限がなく 0 で busy retry になる** — 根拠 `src/services/retry.rs:12-28,104-119` / R8-CF01 / 重大度 medium / confirmed
+- [ ] **公開ヘルパが UTF-8 境界を無視したバイトスライスで panic しうる** — 根拠 `src/services/time_context.rs:26-52`, `src/services/file_reference.rs:49-50` / R8-IV01 / 重大度 medium / confirmed
+- [ ] **状態を持つ TimeContext / TmuxContext が Clone で状態共有されない** — 根拠 `src/services/time_context.rs:54-87`, `src/services/tmux_context.rs:65-87` / R8-AP02 / 重大度 medium / confirmed
+- [ ] **StorageHub::write が Object 以外で必須フィールド検証をスキップ** — 根拠 `src/services/storage.rs:149-162` / R8-IV02 / 重大度 medium / confirmed
+- [ ] **SkillRegistry::catalog が read guard 保持中に provider コールバックを実行** — 根拠 `src/services/skills.rs:82-89` / R8-AP03 / 重大度 medium / confirmed
+- [ ] **hooks.json の未知イベント名・不正エントリが警告なしでスキップ** — 根拠 `src/ports/hooks_claude_code.rs:87-120` / R8-CF02 / 重大度 medium / confirmed
+- [ ] **GoalService::clear が commit 失敗を握り潰す** — 根拠 `src/services/goals.rs:183-188,231-233` / R8-ER01 / 重大度 medium / confirmed
+- [ ] **MessageFeedback の version が辞書順比較で数値版を誤判定** — 根拠 `src/ports/message_feedback.rs:37,133-148` / R8-IV03 / 重大度 medium / likely
+- [ ] **validate_with_warnings がネスト Object/Array の未宣言キーを検出しない** — 根拠 `src/config.rs:326-343,481-497` / R8-CF03 / 重大度 low / confirmed
+- [ ] **WorkspaceRegistry::sessions_in の doc に存在しない cwd 引数の記述** — 根拠 `src/services/workspace.rs:123-128` / R8-DC01 / 重大度 low / confirmed
+- [ ] **CommandRegistry::names が HashMap 順で非決定的** — 根拠 `src/services/commands.rs:139-147` / R8-AP04 / 重大度 low / confirmed
+- [ ] **ADR-004 の fail 動作表が現行実装と2点乖離** — 根拠 `docs/ADR-004-fail-semantics.md:18,31-32`, `src/services/tools.rs:285-294,529-539` / R8-DC02 / 重大度 low / confirmed
+- [ ] **README の「根拠」path:line アンカーが陳腐化** — 根拠 `README.md:94-96` / R8-DC03 / 重大度 low / confirmed
+- [ ] **ADR-008 の「将来利用」棚卸しと alias 削除方針が現状と矛盾** — 根拠 `docs/ADR-008-library-port-policy.md:32-36,50-51` / R8-DC04 / 重大度 low / confirmed
+- [ ] **README が非推奨 alias emit_detached を推奨** — 根拠 `README.md:43`, `src/events.rs:640-642` / R8-DC05 / 重大度 low / confirmed
+- [ ] **doc-count ゲートが port/service の名前一覧を照合しない** — 根拠 `scripts/check-doc-counts.sh:28-32,66-80`, `README.md:30,32` / R8-CI01 / 重大度 low / confirmed
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -238,3 +257,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-22、round 119）**: `swarm-project-review` R1（AR/CF/AP/DC）と `swarm-todo-discovery` R1（ST/TQ/DC）の2エージェントから14件を取得。root が path:line を Runtime Proof で確認し14件を `## 未着手` へ追記（high1 / medium2 / low11）。R2〜R5 は同一情報の重複取得を避け省略。
 - **swarm コンボ R6 集約（2026-11-22、round 132）**: `swarm-project-review` R1（AR/CF/AP/DC）と `swarm-todo-discovery` R1（ST/TQ/DC）の2エージェントから14件を取得。root が path:line を Runtime Proof で確認し14件を `## 未着手` へ追記（medium9 / low5）。R2〜R5 は同一情報の重複取得を避け省略。
 - **swarm コンボ R6 集約（2026-11-22、round 148）**: `swarm-project-review` R1 と `swarm-todo-discovery` R1 の2エージェントから15件を取得。root が path:line を Runtime Proof で確認し、重複2件を統合して13件を `## 未着手` へ追記（high1 / medium9 / low3）。agent-12 の disposer「10箇所」は実測8箇所に修正。
+- **swarm コンボ R6 集約（2026-11-22、round 161）**: `swarm-project-review` R1 と `swarm-todo-discovery` R1 の2エージェントから18件を取得（agent-13 は structured_output が利用不可のため通常メッセージで再送）。root が path:line を Runtime Proof で確認し18件を `## 未着手` へ追記（high1 / medium9 / low8）。
