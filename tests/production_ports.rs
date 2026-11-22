@@ -7,6 +7,34 @@
 
 use cordis_rs::Context;
 
+/// Unique temp directory with Drop-based cleanup, matching the convention in
+/// the other integration test files (swarm review R7-TQ01).
+struct TempDirGuard(std::path::PathBuf);
+
+impl TempDirGuard {
+    fn new(prefix: &str) -> Self {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let path = std::env::temp_dir().join(format!("{prefix}-{}-{nanos}", std::process::id()));
+        let _ = std::fs::create_dir_all(&path);
+        Self(path)
+    }
+}
+
+impl Drop for TempDirGuard {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+impl AsRef<std::path::Path> for TempDirGuard {
+    fn as_ref(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
 #[tokio::test]
 async fn production_command_goal_mount_registers_goal_store() {
     use cordis_rs::plugin_ports::mount_command_goal;
@@ -150,17 +178,11 @@ async fn production_tool_bash_mount_registers_command() {
 async fn production_session_persistence_mount_registers_store() {
     use cordis_rs::plugin_ports::mount_session_persistence_jsonl;
 
-    let base = std::env::temp_dir().join(format!(
-        "prod-session-persistence-{}-{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0)
-    ));
+    let base = TempDirGuard::new("prod-session-persistence");
     let ctx = Context::root("prod-session-persistence");
-    let store = mount_session_persistence_jsonl(&ctx, &base).await.unwrap();
+    let store = mount_session_persistence_jsonl(&ctx, base.as_ref())
+        .await
+        .unwrap();
     store.create("s1").unwrap();
     assert!(ctx.get_untyped("sessionPersistence").is_some());
-    let _ = std::fs::remove_dir_all(&base);
 }

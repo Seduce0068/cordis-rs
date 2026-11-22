@@ -200,7 +200,7 @@ status: current
 - [ ] **doc-count ゲートが実際の cargo test 件数と突き合わせていない** — 根拠 `scripts/check-doc-counts.sh:8-10`, `docs/PROGRESS.md:59` / R7-CI06 / 重大度 medium / confirmed
 - [ ] **todo.md と ADR-010 / docs/index.md で段4（dispatch API registry 化）の完了状態が矛盾** — 根拠 `todo.md:39`, `docs/ADR-010...:53,81-90`, `docs/index.md:26-27` / R7-DC15 / 重大度 medium / confirmed
 - [ ] **「6 エントリすべてを mount」という記述が部分 mount 実装と乖離** — 根拠 `docs/PROGRESS.md:26`, `docs/ADR-001...:57-58`, `examples/mount_real_composition.rs:3-6` / R7-DC16 / 重大度 medium / confirmed
-- [ ] **production_ports.rs だけ TempDirGuard 規約を回避** — 根拠 `tests/production_ports.rs:153-165` / R7-TQ01 / 重大度 medium / confirmed
+- [x] **production_ports.rs だけ TempDirGuard 規約を回避** — 2026-11-22 修正（Drop で削除する TempDirGuard を導入、手組み一時パスと手動 remove_dir_all を削除、他3テストファイルと規約統一、R7 指摘反映）。
 - [ ] **timeout 経路の child.kill/wait エラーが破棄され後始末失敗が観測不能** — 根拠 `src/services/shell.rs:242-247` / R7-ER09 / 重大度 medium / likely
 - [x] **Cargo.toml の tokio features 説明コメントが actual feature 一覧と乖離** — 2026-11-22 修正（library 側 process/io-util を含む実 feature を反映、同期要旨を明記、R7 指摘反映）。
 - [ ] **PROGRESS.md が status: current のまま 100 ラウンド・20 件の旧スナップショット** — 根拠 `docs/PROGRESS.md:4,17,63` / R7-DC18 / 重大度 low / confirmed（agent-11/12 の重複を統合）
