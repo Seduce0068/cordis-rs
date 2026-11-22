@@ -46,6 +46,8 @@ impl std::fmt::Display for StorageError {
     }
 }
 
+impl std::error::Error for StorageError {}
+
 #[derive(Default)]
 struct BackendState {
     kv: BTreeMap<String, serde_json::Value>,

@@ -252,7 +252,7 @@ status: current
 - [ ] **CredentialProvider が数字始まりの参照名を受理** — 根拠 `src/services/credentials.rs:19-32,78-98` / R10-IV04 / 重大度 low / medium
 - [ ] **WorkspaceRegistry::create が archive 済み id の再利用を拒否** — 根拠 `src/services/workspace.rs:55-81,130-138` / R10-TX02 / 重大度 low / medium
 - [ ] **Session::append_with_seq が seq の飛びを許容** — 根拠 `src/services/sessions.rs:112-129` / R10-TX03 / 重大度 low / low
-- [ ] **ドメイン Error enum の多くが std::error::Error を実装しない** — 根拠 `impl std::error::Error` は3件のみ / R10-EC01 / 重大度 medium / confirmed
+- [x] **ドメイン Error enum の多くが std::error::Error を実装しない** — 2026-11-23 修正（Storage/Goal/Agent/Subagent/Workspace/Schedule の6 enum に impl std::error::Error を追加、回帰テスト、R10 指摘反映）。
 - [ ] **verify.sh の cargo audit が extra_gates より前で「同順」記述と矛盾** — 根拠 `scripts/verify.sh:27`, `README.md:133`, `.github/workflows/ci.yml:21-29` / R10-ST01 / 重大度 low / confirmed
 - [ ] **README.md:118 の clippy 例が CI の追加フラグを欠く** — 根拠 `README.md:118`, `scripts/verify.sh:20`, `.github/workflows/ci.yml:23` / R10-ST02 / 重大度 low / confirmed
 - [ ] **check-doc-counts.sh が examples/ のファイル一覧を検証しない** — 根拠 `scripts/check-doc-counts.sh:66-77`, `README.md:120-127` / R10-ST03 / 重大度 low / confirmed

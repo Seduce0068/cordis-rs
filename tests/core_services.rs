@@ -6006,3 +6006,15 @@ fn plan_mode_try_set_rejects_empty_session_id() {
     assert!(plan.is_active("s1"));
     assert_eq!(plan.trace("s1").len(), 1);
 }
+
+#[test]
+fn domain_errors_implement_std_error() {
+    fn assert_std_error<T: std::error::Error>() {}
+
+    assert_std_error::<cordis_rs::core_services::StorageError>();
+    assert_std_error::<cordis_rs::core_services::GoalError>();
+    assert_std_error::<cordis_rs::core_services::AgentError>();
+    assert_std_error::<cordis_rs::core_services::SubagentError>();
+    assert_std_error::<cordis_rs::core_services::WorkspaceError>();
+    assert_std_error::<cordis_rs::core_services::ScheduleError>();
+}

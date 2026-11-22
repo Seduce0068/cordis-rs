@@ -43,6 +43,8 @@ impl std::fmt::Display for SubagentError {
     }
 }
 
+impl std::error::Error for SubagentError {}
+
 #[derive(Default)]
 struct RegistryState {
     providers: BTreeMap<String, SubagentHandler>,

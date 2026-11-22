@@ -52,6 +52,8 @@ impl std::fmt::Display for ScheduleError {
     }
 }
 
+impl std::error::Error for ScheduleError {}
+
 #[derive(Default)]
 struct ScheduleState {
     records: BTreeMap<String, ScheduleRecord>,

@@ -56,6 +56,8 @@ impl std::fmt::Display for GoalError {
     }
 }
 
+impl std::error::Error for GoalError {}
+
 #[derive(Debug, Clone)]
 enum GoalEvent {
     Set {

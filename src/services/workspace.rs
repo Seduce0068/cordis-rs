@@ -36,6 +36,8 @@ impl std::fmt::Display for WorkspaceError {
     }
 }
 
+impl std::error::Error for WorkspaceError {}
+
 #[derive(Default)]
 struct RegistryState {
     records: BTreeMap<String, WorkspaceRecord>,

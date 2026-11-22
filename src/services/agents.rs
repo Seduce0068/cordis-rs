@@ -35,6 +35,8 @@ impl std::fmt::Display for AgentError {
     }
 }
 
+impl std::error::Error for AgentError {}
+
 pub type AgentFactory = Arc<dyn Fn(&str) -> std::result::Result<AgentRecord, Error> + Send + Sync>;
 
 #[derive(Default)]
