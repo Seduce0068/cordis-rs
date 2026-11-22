@@ -28,6 +28,7 @@ pub struct ToolSchema {
 #[derive(Clone, Default)]
 pub struct ExecutorSelector {
     current: Arc<std::sync::Mutex<Option<NativeToolExecutor>>>,
+    next_id: Arc<std::sync::atomic::AtomicU64>,
 }
 
 impl ExecutorSelector {
@@ -36,11 +37,34 @@ impl ExecutorSelector {
     }
 
     pub fn register(&self, executor: NativeToolExecutor) -> bool {
+        self.register_with_id(executor).is_some()
+    }
+
+    /// Register and return the generation id assigned to the executor. The id
+    /// is what an owner uses to clear only its own registration (swarm review
+    /// R11-RS04).
+    pub fn register_with_id(&self, executor: NativeToolExecutor) -> Option<u64> {
         let mut guard = self.current.lock().expect("executor selector poisoned");
         if guard.is_some() {
+            return None;
+        }
+        let mut executor = executor;
+        let id = self
+            .next_id
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+            + 1;
+        executor.id = id;
+        *guard = Some(executor);
+        Some(id)
+    }
+
+    /// Clear the current executor only when its generation matches `id`.
+    pub fn clear_generation(&self, id: u64) -> bool {
+        let mut guard = self.current.lock().expect("executor selector poisoned");
+        if guard.as_ref().map(|current| current.id) != Some(id) {
             return false;
         }
-        *guard = Some(executor);
+        *guard = None;
         true
     }
 
@@ -74,6 +98,8 @@ pub struct NativeToolExecutor {
     registry: ToolRegistry,
     pipeline: ToolPipeline,
     max_parallel: usize,
+    /// Identity assigned at registration (swarm review R11-RS04).
+    id: u64,
 }
 
 impl NativeToolExecutor {
@@ -82,6 +108,7 @@ impl NativeToolExecutor {
             registry,
             pipeline,
             max_parallel: DEFAULT_MAX_PARALLEL,
+            id: 0,
         }
     }
 
@@ -184,14 +211,23 @@ pub async fn mount(ctx: &Context, max_parallel: usize) -> Result<NativeToolExecu
     }
     let executor =
         NativeToolExecutor::new((*tools).clone(), pipeline).with_max_parallel(max_parallel);
-    holder.register(executor.clone());
+    let generation = holder.register_with_id(executor.clone());
+    debug_assert!(
+        generation.is_some(),
+        "native tool executor already registered"
+    );
     ctx.provide(SERVICE_NAME, executor.clone()).await?;
     let fiber = crate::Fiber::mount_retained(ctx, Box::new(NativeToolExecutorPlugin)).await?;
+    let holder_for_dispose = holder.clone();
+    let generation_for_dispose = generation.unwrap_or(0);
     ctx.effect(move |scope| {
         let fiber = fiber.clone();
         async move {
             scope.on_dispose(move || async move {
                 fiber.unload().await?;
+                // Only clear our own registration: the holder may be shared
+                // with another context (swarm review R11-RS04).
+                holder_for_dispose.clear_generation(generation_for_dispose);
                 Ok(())
             });
             Ok(())

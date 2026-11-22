@@ -269,7 +269,7 @@ status: current
 - [ ] **JobHandle::settle と start のロック順序が未明示（AB-BA 窓）** — 根拠 `src/services/jobs.rs:104-120,180-188` / R11-LC03 / 重大度 low / medium
 - [x] **FakeTransport::send が requests guard 保持中に responses lock を取得** — 2026-11-23 修正（requests push の guard をブロックスコープで明示的に drop してから responses lock を取得、R11 指摘反映）。
 - [x] **JsonlPersistence::open が exists チェックと insert を別ロックで行う** — 2026-11-23 修正（handle 検索・path 存在確認・insert を単一 write guard 内で原子的に実行、並行 open での重複 handle 生成を防止、R11 指摘反映）。
-- [ ] **ExecutorSelector が unload 時に古い executor を clear しない** — 根拠 `src/ports/native_tool_executor.rs:38-56,178-188` / R11-RS04 / 重大度 medium / medium
+- [x] **ExecutorSelector が unload 時に古い executor を clear しない** — 2026-11-23 修正（register_with_id と clear_generation を追加し所有付きクリア、mount の disposer で fiber.unload 後に自生成分のみクリア、共有 holder の他人を 보호、回帰テスト、R1 指摘反映）。
 - [x] **DeepSeekConfig::validated_endpoint が plugin_ports に re-export 漏れ** — R6 Runtime Proof で誤検知と判定（impl DeepSeekConfig のメソッドは型 re-export で呼べる、tests も既に plugin_ports::DeepSeekConfig 経由で成功）。
 - [x] **compaction_automation の compaction_count / note_success が未使用公開 API** — 2026-11-23 修正（完全に未使用の2メソッドと doc コメントを削除、R11 指摘反映）。
 - [x] **feedback_producer の shared_event が未使用公開 helper** — 2026-11-23 修正（未使用の shared_event と未使用 Arc import を削除、R11 指摘反映）。

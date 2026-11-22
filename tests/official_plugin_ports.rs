@@ -3631,3 +3631,30 @@ async fn todo_write_version_reservation_rejects_concurrent_writers() {
             .is_ok()
     );
 }
+
+#[tokio::test]
+async fn native_executor_clear_if_is_owner_scoped() {
+    use cordis_rs::core_services::{ToolPipeline, provide_tools};
+    use cordis_rs::plugin_ports::{ExecutorSelector, NativeToolExecutor};
+
+    let ctx = cordis_rs::Context::root("executor-clear-if");
+    provide_tools(&ctx).await.unwrap();
+
+    let holder = ExecutorSelector::new();
+    let registry = (*ctx
+        .get::<cordis_rs::core_services::ToolRegistry>("tools")
+        .unwrap())
+    .clone();
+    let pipeline = ToolPipeline::default();
+    let first = NativeToolExecutor::new(registry.clone(), pipeline.clone());
+    let second = NativeToolExecutor::new(registry, pipeline);
+
+    let generation = holder.register_with_id(first).unwrap();
+    // A stale generation cannot clear the current registration.
+    assert!(!holder.clear_generation(generation + 100));
+    assert!(holder.current().is_some());
+    let _ = second;
+    // The owning generation clears its own entry.
+    assert!(holder.clear_generation(generation));
+    assert!(holder.current().is_none());
+}
