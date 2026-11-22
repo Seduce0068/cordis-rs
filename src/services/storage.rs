@@ -146,14 +146,28 @@ impl StorageHub {
             .get(domain)
             .cloned()
             .ok_or_else(|| StorageError::UnknownDomain(domain.to_string()))?;
-        if let Some(map) = record.as_object() {
-            for field in &spec.required_fields {
-                if !map.contains_key(field) {
-                    return Err(StorageError::InvalidRecord {
-                        domain: domain.to_string(),
-                        missing: field.clone(),
-                    });
-                }
+        // A domain with required fields must receive an object; otherwise a
+        // scalar record would silently skip schema validation (swarm review
+        // R8-IV02). Domains without required fields keep accepting scalars.
+        if spec.required_fields.is_empty() {
+            let backend = self
+                .backend(backend)
+                .ok_or_else(|| StorageError::UnknownBackend(backend.to_string()))?;
+            backend.put(key, record);
+            return Ok(());
+        }
+        let map = record
+            .as_object()
+            .ok_or_else(|| StorageError::InvalidRecord {
+                domain: domain.to_string(),
+                missing: spec.required_fields[0].clone(),
+            })?;
+        for field in &spec.required_fields {
+            if !map.contains_key(field) {
+                return Err(StorageError::InvalidRecord {
+                    domain: domain.to_string(),
+                    missing: field.clone(),
+                });
             }
         }
         let backend = self

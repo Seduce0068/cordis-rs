@@ -1666,6 +1666,13 @@ async fn storage_hub_validates_domains_and_routes_backends() {
         Err(StorageError::NotFound(_))
     ));
 
+    // A scalar record must not skip required-field validation
+    // (swarm review R8-IV02).
+    assert!(matches!(
+        hub.write("prefs", "mem", "user-3", serde_json::json!("not-an-object")),
+        Err(StorageError::InvalidRecord { .. })
+    ));
+
     assert!(matches!(
         hub.read("unknown", "mem", "k"),
         Err(StorageError::UnknownDomain(_))
