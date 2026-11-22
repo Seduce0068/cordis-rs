@@ -162,9 +162,9 @@ pub mod plugin_ports {
         OTelExporter, RedactingExporter, otlp_payload, redact_record,
     };
     pub use crate::ports::sandbox_policy::{
-        PROJECTION_KEY as SANDBOX_PROJECTION_KEY, ResolvedPolicy, SANDBOX_INVALID_ROOT,
-        SandboxPolicyConfig, SandboxPolicyService, is_valid_path, is_write_tool,
-        mount as mount_sandbox_policy, render_policy_context, sandbox_mode_fold,
+        EscalationDenial, PROJECTION_KEY as SANDBOX_PROJECTION_KEY, ResolvedPolicy,
+        SANDBOX_INVALID_ROOT, SandboxPolicyConfig, SandboxPolicyService, escalate, is_valid_path,
+        is_write_tool, mount as mount_sandbox_policy, render_policy_context, sandbox_mode_fold,
         sandbox_policy_middleware,
     };
     pub use crate::ports::session_filename::{

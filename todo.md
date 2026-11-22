@@ -136,7 +136,7 @@ status: current
 - [x] **verify.sh が cargo-audit 未インストール時に警告だけでスキップし全ゲート合格と表示** — 2026-11-21 修正（未インストール時は AUDIT_SKIP=1 の明示 opt-out を要求、なければ fail、README に記載、R1 指摘反映）。
 - [x] **ADR-010 の status と進捗記述が index / 本文で矛盾（段4 未着手なのに完了表記）** — 2026-11-21 修正（index を「段5-6 完了・段4 未着手・真の cycle 解消未達」に修正、R1 指摘反映）。
 - [x] **ApprovalService に agent/callId/audit pair/allowed-once が無い** — 2026-11-22 段階1修正（ApprovalRequest に with_agent/with_call_id builder と getter 追加、既存 new/request シグネチャ不変、回帰テスト、R1 指摘反映。audit pair と allowed-once は ADR-012 の第2段として残す）。
-- [ ] **sandbox escalation の共通 helper が無く実行ポイントへ接続されていない** — 根拠 `docs/ADR-012-shell-command-approval.md:108-109`, `src/ports/sandbox_policy.rs:1-6` / R2-FG03 / 重大度 medium / confirmed
+- [x] **sandbox escalation の共通 helper が無く実行ポイントへ接続されていない** — 2026-11-22 修正（pure な escalate() と EscalationDenial を追加、private rank で strictly-wider 判定、SandboxMode の Ord 変更なし、denial 文言に3桁コードなし、回帰テスト、R1 指摘反映。tool_bash への配線は次段）。
 - [x] **completion notice 配信とモデル cursor 追跡が未実装** — 2026-11-22 修正（JobRecord に settle callback、RegistryState に notices/cursor、pending_notices/acknowledge 追加、job_output で回収、ADR-002 更新、回帰テスト、R1 指摘反映。モデル cursor の外部可視化は残り）。
 - [x] **job owner が固定ラベル "bash" で sessionId fence が弱い** — 2026-11-21 修正（background job の owner を exec.session に変更、session 単位の fence テスト追加、ADR-002 更新、R1 指摘反映）。
 - [x] **JSONL 永続化が通常 turn へ自動配線されていない** — 2026-11-22 修正（Session に observer 追加、SessionStore::observe_all 経由で mount 時に自動登録、restore は observer 非通知で二重追記回避、failures カウンタ追加、回帰テスト、R1 指摘反映）。

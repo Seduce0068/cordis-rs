@@ -5766,3 +5766,43 @@ fn approval_request_carries_agent_and_call_id_without_changing_defaults() {
     assert_eq!(correlated.call_id(), Some("call-42"));
     assert_eq!(correlated.details(), Some("ls -la"));
 }
+
+#[test]
+fn sandbox_escalation_helper_enforces_strictly_wider_and_justification() {
+    use cordis_rs::core_services::SandboxMode;
+    use cordis_rs::plugin_ports::{EscalationDenial, escalate};
+
+    assert_eq!(
+        escalate(
+            SandboxMode::ReadOnly,
+            SandboxMode::WorkspaceWrite,
+            "needs repo edits"
+        ),
+        Ok(SandboxMode::WorkspaceWrite)
+    );
+    assert_eq!(
+        escalate(SandboxMode::ReadOnly, SandboxMode::ReadOnly, "same level"),
+        Err(EscalationDenial::NotWider {
+            current: SandboxMode::ReadOnly,
+            requested: SandboxMode::ReadOnly,
+        })
+    );
+    assert_eq!(
+        escalate(
+            SandboxMode::DangerFullAccess,
+            SandboxMode::ReadOnly,
+            "narrower"
+        ),
+        Err(EscalationDenial::NotWider {
+            current: SandboxMode::DangerFullAccess,
+            requested: SandboxMode::ReadOnly,
+        })
+    );
+    assert_eq!(
+        escalate(SandboxMode::ReadOnly, SandboxMode::DangerFullAccess, "   "),
+        Err(EscalationDenial::NoJustification)
+    );
+    let denial = EscalationDenial::NoJustification.to_string();
+    assert!(denial.starts_with("SANDBOX_ESCALATION_DENIED:"));
+    assert!(!denial.chars().any(|c| c.is_ascii_digit()));
+}

@@ -105,8 +105,8 @@ model 由来の `bash` コマンドは **shell 層ではなく tool boundary の
   （`approval/asked` / `approval/decided`）の turn 内コミット、allowed-once grant、
   exception/不正戻りの拒否正規化（上流 user-approval 契約）。現行の
   `Option<Answerer>` 相当の構造を単純化してはならない。
-- **第2段課題**: sandbox escalation（sandbox_permissions ＋ justification ペア、
-  strictly-wider 判定、拒否時の denial marker）の共通 helper 化。
+- sandbox escalation: `escalate()` / `EscalationDenial` の pure helper を追加（R2-FG03）。
+  tool_bash への配線と grant 管理は第2段として残す。
 
 ## 関連
 

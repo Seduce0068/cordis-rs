@@ -10,6 +10,57 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::services::permission_presets::SandboxMode;
+
+/// Why a sandbox escalation was denied (swarm review R2-FG03).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EscalationDenial {
+    NotWider {
+        current: SandboxMode,
+        requested: SandboxMode,
+    },
+    NoJustification,
+}
+
+impl std::fmt::Display for EscalationDenial {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotWider { current, requested } => write!(
+                f,
+                "SANDBOX_ESCALATION_DENIED: not wider than current {current:?} (requested {requested:?})"
+            ),
+            Self::NoJustification => {
+                f.write_str("SANDBOX_ESCALATION_DENIED: justification required")
+            }
+        }
+    }
+}
+
+/// Rank used for strictly-wider checks. Kept private so `SandboxMode`'s public
+/// comparison contract is unchanged (no `Ord` derive).
+fn rank(mode: SandboxMode) -> u8 {
+    match mode {
+        SandboxMode::ReadOnly => 0,
+        SandboxMode::WorkspaceWrite => 1,
+        SandboxMode::DangerFullAccess => 2,
+    }
+}
+
+/// Validate a `sandbox_permissions` + `justification` escalation pair. Pure:
+/// returns the requested mode on success with no side effects (swarm review
+/// R2-FG03).
+pub fn escalate(
+    current: SandboxMode,
+    requested: SandboxMode,
+    justification: &str,
+) -> std::result::Result<SandboxMode, EscalationDenial> {
+    if justification.trim().is_empty() {
+        return Err(EscalationDenial::NoJustification);
+    }
+    if rank(requested) <= rank(current) {
+        return Err(EscalationDenial::NotWider { current, requested });
+    }
+    Ok(requested)
+}
 use crate::services::sessions::{Session, SessionEvent, SessionProjectionRegistry};
 use crate::{Context, Disposer, Error, Result};
 
