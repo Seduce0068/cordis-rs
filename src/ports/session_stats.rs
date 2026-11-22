@@ -7,6 +7,9 @@
 //! Local `SessionEvent` has no wall-clock timestamp, so time-like figures are
 //! reported as *event counts* (`llmEvents`, `ttftEvents`) rather than
 //! fabricated milliseconds. Wall times remain zero with `approximate: true`.
+//! All counters saturate at `u64::MAX` instead of wrapping, so corrupt external
+//! state cannot reset them to zero (swarm review R12-IV02); the other counter
+//! folds follow the same policy.
 
 use std::sync::Arc;
 
@@ -48,7 +51,7 @@ pub fn fold(
     let get_u = |key: &str| as_u64(data.get(key));
     let inc = |s: &mut serde_json::Value, key: &str, by: u64| {
         let current = s.get(key).and_then(|v| v.as_u64()).unwrap_or(0);
-        s[key] = serde_json::json!(current + by);
+        s[key] = serde_json::json!(current.saturating_add(by));
     };
 
     match event.event_type.as_str() {

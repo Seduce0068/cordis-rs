@@ -6401,3 +6401,24 @@ fn job_wait_returns_false_on_timeout() {
     handle.settle(JobStatus::Succeeded);
     assert!(registry.wait(handle.id(), Some("agent"), 1).unwrap());
 }
+
+#[test]
+fn session_stats_counters_saturate_at_u64_max() {
+    use cordis_rs::plugin_ports::session_stats_fold;
+    use cordis_rs::services::sessions::SessionEvent;
+
+    let state = serde_json::json!({
+        "steps": u64::MAX,
+        "turns": u64::MAX,
+    });
+    let event = SessionEvent {
+        seq: 1,
+        event_type: "step/end".to_string(),
+        data: serde_json::json!({ "turn": 1 }),
+    };
+    // A corrupt external state must not panic (debug) or wrap to zero
+    // (release) (swarm review R12-IV02).
+    let next = session_stats_fold(state, &event);
+    assert_eq!(next["steps"], serde_json::json!(u64::MAX));
+    assert_eq!(next["turns"], serde_json::json!(u64::MAX));
+}

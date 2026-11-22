@@ -84,8 +84,11 @@ impl crate::Plugin for TmuxContextPlugin {
                             .and_then(|kind| kind.as_str())
                             == Some("tmux-context")
                     {
-                        let samples =
-                            value.get("samples").and_then(|v| v.as_u64()).unwrap_or(0) + 1;
+                        let samples = value
+                            .get("samples")
+                            .and_then(|v| v.as_u64())
+                            .unwrap_or(0)
+                            .saturating_add(1);
                         value["samples"] = serde_json::json!(samples);
                     }
                     value

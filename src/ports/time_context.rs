@@ -93,13 +93,19 @@ impl crate::Plugin for TimeContextPlugin {
                     };
                     match event.event_type.as_str() {
                         "turn/start" => {
-                            let turns =
-                                value.get("turns").and_then(|v| v.as_u64()).unwrap_or(0) + 1;
+                            let turns = value
+                                .get("turns")
+                                .and_then(|v| v.as_u64())
+                                .unwrap_or(0)
+                                .saturating_add(1);
                             value["turns"] = serde_json::json!(turns);
                         }
                         "user/message" | "assistant/message" => {
-                            let messages =
-                                value.get("messages").and_then(|v| v.as_u64()).unwrap_or(0) + 1;
+                            let messages = value
+                                .get("messages")
+                                .and_then(|v| v.as_u64())
+                                .unwrap_or(0)
+                                .saturating_add(1);
                             value["messages"] = serde_json::json!(messages);
                         }
                         _ => {}
