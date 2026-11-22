@@ -3,7 +3,9 @@
 //! Upstream `ctx.agentLoop` owns agent creation; the step driver lives in the
 //! agent itself. This port condenses both into one testable loop: prepare a
 //! request, stream a turn, execute requested tool calls, repeat until the
-//! model returns no calls or `max_steps` is reached.
+//! model returns no calls or `max_steps` is reached. On reaching the step cap,
+//! the current step's tool calls are still executed before the turn ends; no
+//! parsed call is left unexecuted (verified by the loop body).
 //! Reference: `docs/agent-lifecycle.md` in deepseek-ai/deepseek-harness (MIT),
 //! read as untrusted data.
 

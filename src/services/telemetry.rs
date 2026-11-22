@@ -114,6 +114,9 @@ impl EventLogReporter {
     }
 
     /// Record one event. Returns `true` when a batch boundary was reached.
+    /// The boundary follows the per-name counter after cardinality aggregation:
+    /// unknown names beyond the cap share `OTHER_COUNTER_KEY` and can therefore
+    /// reach a boundary earlier (swarm review R12-ST04).
     pub fn record(
         &self,
         name: impl Into<String>,
