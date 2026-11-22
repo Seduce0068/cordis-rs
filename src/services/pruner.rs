@@ -40,7 +40,7 @@ pub enum PruneError {
 impl std::fmt::Display for PruneError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InvalidConfig => write!(f, "head + marker + tail must be below the threshold"),
+            Self::InvalidConfig => write!(f, "head + marker + tail must not exceed the threshold"),
             Self::RemovalNotFound => write!(f, "failed to locate the removed text span"),
         }
     }

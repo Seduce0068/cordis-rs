@@ -6355,3 +6355,32 @@ fn job_notices_after_acknowledge_are_not_shadowed() {
     let notices = registry.pending_notices();
     assert_eq!(notices, vec![(second.id(), JobStatus::Failed)]);
 }
+
+#[test]
+fn pruner_config_boundary_is_inclusive() {
+    use cordis_rs::core_services::{PruneError, PrunerConfig, ToolResultPruner};
+
+    let base = PrunerConfig {
+        head_chars: 8,
+        tail_chars: 8,
+        threshold_chars: 40,
+    };
+    let marker_len = "\n\n[... tool result middle pruned ...]\n\n"
+        .chars()
+        .count();
+    // head + tail + marker == threshold is accepted.
+    let exact = PrunerConfig {
+        threshold_chars: base.head_chars + base.tail_chars + marker_len,
+        ..base
+    };
+    assert!(ToolResultPruner::new(exact).is_ok());
+
+    // One below is rejected with the corrected message.
+    let too_small = PrunerConfig {
+        threshold_chars: base.head_chars + base.tail_chars + marker_len - 1,
+        ..base
+    };
+    let error = ToolResultPruner::new(too_small).unwrap_err();
+    assert!(error.to_string().contains("must not exceed the threshold"));
+    assert_eq!(error, PruneError::InvalidConfig);
+}

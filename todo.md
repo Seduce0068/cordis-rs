@@ -290,7 +290,7 @@ status: current
 - [ ] **tool_session_list::resolve_page が offset 上限を検証せず 32bit で丸める** — 根拠 `src/ports/tool_session_list.rs:23-38` / R12-IV07 / 重大度 low / medium
 - [ ] **session_stats が assistant attempt+message で ttftEvents を二重計上** — 根拠 `src/ports/session_stats.rs:75-80,102-104` / R12-IV08 / 重大度 medium / medium
 - [ ] **Duration::from_millis が safe-integer 域を迂回して decompose/render を通す** — 根拠 `src/ports/duration.rs:14-18,49-52` / R12-IV09 / 重大度 low / low
-- [ ] **PruneError::InvalidConfig の文言 'below' が等価許容と矛盾** — 根拠 `src/services/pruner.rs:43,64-66` / R12-ST01 / 重大度 low / confirmed
+- [x] **PruneError::InvalidConfig の文言 'below' が等価許容と矛盾** — 2026-11-23 修正（文言を "must not exceed the threshold" に変更、head+tail+marker==threshold が Ok／+1 で Err の境界テスト追加、R12 指摘反映）。
 - [ ] **JobRegistry::wait の timeout=false 経路がテスト未固定** — 根拠 `src/services/jobs.rs:331-332,350-356` / R12-ST02 / 重大度 medium / confirmed
 - [ ] **ToolExecContext の signal_cancelled と cancel_flag の優先順位が-doc 未明記** — 根拠 `src/services/tools.rs:27-36,516` / R12-ST03 / 重大度 low / confirmed
 - [ ] **EventLogReporter::record の batch boundary が集約カウンタ依存であることを doc 未明記** — 根拠 `src/services/telemetry.rs:116,148-161` / R12-ST04 / 重大度 low / medium
