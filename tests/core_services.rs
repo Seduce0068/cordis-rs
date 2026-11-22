@@ -6447,3 +6447,17 @@ fn base64_limited_enforces_decoded_byte_boundary() {
         b"x"
     );
 }
+
+#[test]
+fn duration_decompose_keeps_from_millis_range_policy() {
+    use cordis_rs::plugin_ports::Duration;
+
+    // from_millis accepts the full i64 range and decompose does not re-check
+    // the safe-integer ceiling (swarm review R12-IV09).
+    let safe_max = 9_007_199_254_740_991i64;
+    assert!(Duration::try_from_millis(safe_max).is_ok());
+    assert!(Duration::try_from_millis(safe_max + 1).is_err());
+    let wide = Duration::from_millis(safe_max + 1);
+    assert!(wide.decompose().is_ok());
+    assert!(wide.render().is_ok());
+}

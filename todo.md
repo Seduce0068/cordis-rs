@@ -289,7 +289,7 @@ status: current
 - [ ] **ToolError::Execution の文字列エラーと構造化 enum が混在** — 根拠 `src/services/tools.rs`, `src/ports/tool_str_replace_editor.rs:98-141` / R12-IV06 / 重大度 medium / medium
 - [x] **tool_session_list::resolve_page が offset 上限を検証せず 32bit で丸める** — 2026-11-23 修正（limit / offset とも usize::try_from で Range 検証、32bit での暗黙丸めを拒否、R12 指摘反映）。
 - [x] **session_stats が assistant attempt+message で ttftEvents を二重計上** — 2026-11-23 修正（message 側で attempt 由来の firstTokenSeq がある場合は ttftEvents を increment せず ttftSteps のみ、message 単独の既存挙動は維持、回帰テスト、R1 指摘反映）。
-- [ ] **Duration::from_millis が safe-integer 域を迂回して decompose/render を通す** — 根拠 `src/ports/duration.rs:14-18,49-52` / R12-IV09 / 重大度 low / low
+- [x] **Duration::from_millis が safe-integer 域を迂回して decompose/render を通す** — 2026-11-23 修正（decompose が MAX_SAFE_MILLIS を再検査しない設計意図を doc 明記、try_from_millis が opt-in 境界、両方の境界回帰テスト、R12 指摘反映）。
 - [x] **PruneError::InvalidConfig の文言 'below' が等価許容と矛盾** — 2026-11-23 修正（文言を "must not exceed the threshold" に変更、head+tail+marker==threshold が Ok／+1 で Err の境界テスト追加、R12 指摘反映）。
 - [x] **JobRegistry::wait の timeout=false 経路がテスト未固定** — 2026-11-23 修正（未 settle のジョブに timeout_ms=1 で wait して false、settle 後は true を固定する回帰テスト追加、R12 指摘反映）。
 - [x] **ToolExecContext の signal_cancelled と cancel_flag の優先順位が doc 未明記** — 2026-11-23 修正（両方が dispatch 前 is_cancelled で OR 判定され、cancel_flag は body 後にも再分類されることを doc 明記、R12 指摘反映）。

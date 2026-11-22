@@ -34,6 +34,10 @@ impl Duration {
 
     /// Decompose into calendar-style units. Negative spans can be built but
     /// cannot be decomposed (sign policy is the caller's responsibility).
+    /// This intentionally does NOT re-check `MAX_SAFE_MILLIS`: values built via
+    /// `from_millis` outside the safe-integer range still decompose/render,
+    /// while `try_from_millis` is the opt-in safe boundary (swarm review
+    /// R12-IV09).
     pub fn decompose(self) -> std::result::Result<Decomposed, Error> {
         if self.0 < 0 {
             return Err(Error::Other(
