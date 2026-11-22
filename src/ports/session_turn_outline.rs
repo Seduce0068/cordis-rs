@@ -29,14 +29,14 @@ fn preview(blocks: Option<&serde_json::Value>, limit: usize) -> String {
             .get("text")
             .and_then(|value| value.as_str())
             .unwrap_or("");
-        if text.chars().count() >= limit * 2 {
+        if text.chars().count() >= limit.saturating_mul(2) {
             unread = true;
             break;
         }
         let chars: Vec<char> = content.chars().collect();
-        let clipped = chars.len() > limit * 2;
+        let clipped = chars.len() > limit.saturating_mul(2);
         let chunk: String = if clipped {
-            chars[..limit * 2].iter().collect()
+            chars[..limit.saturating_mul(2)].iter().collect()
         } else {
             content.to_string()
         };
@@ -52,7 +52,7 @@ fn preview(blocks: Option<&serde_json::Value>, limit: usize) -> String {
     let normalized: String = text.split_whitespace().collect::<Vec<_>>().join(" ");
     let count = normalized.chars().count();
     if count > limit.saturating_sub(1) {
-        let kept: String = normalized.chars().take(limit - 1).collect();
+        let kept: String = normalized.chars().take(limit.saturating_sub(1)).collect();
         return format!("{}…", kept.trim_end());
     }
     if unread {

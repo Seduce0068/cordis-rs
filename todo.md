@@ -283,7 +283,7 @@ status: current
 
 - [ ] **tool_str_replace_editor::parse_range が符号付き end と 32bit 丸めを無検証** — 根拠 `src/ports/tool_str_replace_editor.rs:54-75,124-129` / R12-IV01 / 重大度 medium / confirmed
 - [ ] **session_stats / tmux_context / time_context の u64 加算が overflow し得る** — 根拠 `src/ports/session_stats.rs:49-52` 等 / R12-IV02 / 重大度 medium / confirmed
-- [ ] **session_turn_outline::outline の limit*2 が unchecked** — 根拠 `src/ports/session_turn_outline.rs:32,37,39` / R12-IV03 / 重大度 low / confirmed
+- [x] **session_turn_outline::outline の limit*2 が unchecked** — 2026-11-23 修正（preview の3箇所を saturating_mul(2) に、take を saturating_sub(1) に統一し巨大 limit での overflow を防止、R12 指摘反映）。
 - [ ] **attachment_admission の max_bytes 境界が 1 文字広い（最大 N+2 バイト許容）** — 根拠 `src/ports/attachment_admission.rs:90-91` / R12-IV04 / 重大度 medium / confirmed
 - [ ] **compaction_image_offload::parse_targets が u64→usize 丸めで巨大 index を受理** — 根拠 `src/ports/compaction_image_offload.rs:117-137` / R12-IV05 / 重大度 low / medium
 - [ ] **ToolError::Execution の文字列エラーと構造化 enum が混在** — 根拠 `src/services/tools.rs`, `src/ports/tool_str_replace_editor.rs:98-141` / R12-IV06 / 重大度 medium / medium
