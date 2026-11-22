@@ -159,7 +159,7 @@ pub mod plugin_ports {
     };
     pub use crate::ports::otel_exporter::{
         ALLOWED_ATTRIBUTE_KEYS, FakeCollector, MAX_NAME_LEN, MAX_SESSION_ID_LEN, MAX_VALUE_LEN,
-        OTelExporter, RedactingExporter, otlp_payload, redact_record,
+        OTelExporter, RedactingExporter, otlp_payload, otlp_payload_with_timestamps, redact_record,
     };
     pub use crate::ports::sandbox_policy::{
         EscalationDenial, PROJECTION_KEY as SANDBOX_PROJECTION_KEY, ResolvedPolicy,

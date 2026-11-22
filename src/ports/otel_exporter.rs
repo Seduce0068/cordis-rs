@@ -156,13 +156,29 @@ impl OTelExporter for FakeCollector {
 
 /// Build an OTLP/HTTP JSON log payload from records (no network I/O here).
 pub fn otlp_payload(records: &[EventRecord]) -> serde_json::Value {
+    // Legacy adapter: every record gets the export timestamp. Use
+    // `otlp_payload_with_timestamps` for per-event times (swarm review R9-ST02).
+    // Pass milliseconds (not nanos) to avoid u64 overflow in the per-event
+    // conversion; the export time is rendered unchanged by the adapter path.
+    let export_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as u64)
+        .unwrap_or(0);
+    let timestamps: Vec<u64> = records.iter().map(|_| export_ms).collect();
+    otlp_payload_with_timestamps(records, &timestamps)
+}
+
+/// Build an OTLP payload with a per-event Unix timestamp (milliseconds).
+/// `timestamps` must have the same length as `records`; mismatches fall back
+/// to the export time for the missing entries (swarm review R9-ST02).
+pub fn otlp_payload_with_timestamps(
+    records: &[EventRecord],
+    timestamps_ms: &[u64],
+) -> serde_json::Value {
     // Always redact at the payload boundary: callers must not be able to leak
     // raw secrets by passing `EventLogReporter::events()` directly (R4-OB01).
     // redact_record is idempotent, so pre-redacted records stay unchanged.
     let safe: Vec<EventRecord> = records.iter().map(redact_record).collect();
-    // Export-time UTC nanoseconds. EventRecord stays unchanged for backward
-    // compatibility (6 struct literals in tests), so this is the export
-    // timestamp; per-event timestamps need a separate ADR (R4-OB05).
     let now_ns = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_nanos().to_string())
@@ -170,8 +186,10 @@ pub fn otlp_payload(records: &[EventRecord]) -> serde_json::Value {
     serde_json::json!({
         "resourceLogs": [{
             "scopeLogs": [{
-                "logRecords": safe.iter().map(|record| serde_json::json!({
-                    "timeUnixNano": now_ns.clone(),
+                "logRecords": safe.iter().enumerate().map(|(index, record)| serde_json::json!({
+                    "timeUnixNano": timestamps_ms.get(index)
+                        .map(|ms| (ms * 1_000_000).to_string())
+                        .unwrap_or_else(|| now_ns.clone()),
                     "severityNumber": 9,
                     "name": record.name,
                     "body": { "stringValue": record.name },

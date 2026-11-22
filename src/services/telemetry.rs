@@ -67,7 +67,7 @@ impl std::fmt::Display for TelemetryError {
 
 #[derive(Default)]
 struct ReporterState {
-    events: Vec<EventRecord>,
+    events: Vec<(EventRecord, u64)>,
     next_seq: u64,
     counters: HashMap<String, u64>,
     /// Total number of events silently dropped by the max_events cap.
@@ -128,11 +128,18 @@ impl EventLogReporter {
         let mut guard = self.state.write().expect("telemetry state poisoned");
         guard.next_seq += 1;
         let seq = guard.next_seq;
-        guard.events.push(EventRecord {
-            name: name.clone(),
-            attributes,
-            seq,
-        });
+        let recorded_at_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_millis() as u64)
+            .unwrap_or(0);
+        guard.events.push((
+            EventRecord {
+                name: name.clone(),
+                attributes,
+                seq,
+            },
+            recorded_at_ms,
+        ));
         if guard.events.len() > self.options.max_events {
             let drop_count = guard.events.len() - self.options.max_events;
             guard.events.drain(..drop_count);
@@ -155,6 +162,19 @@ impl EventLogReporter {
     }
 
     pub fn events(&self) -> Vec<EventRecord> {
+        self.state
+            .read()
+            .expect("telemetry state poisoned")
+            .events
+            .iter()
+            .map(|(record, _)| record.clone())
+            .collect()
+    }
+
+    /// Records paired with their capture-time Unix milliseconds. EventRecord
+    /// stays unchanged so existing struct literals keep compiling (swarm
+    /// review R9-ST02).
+    pub fn events_with_timestamps(&self) -> Vec<(EventRecord, u64)> {
         self.state
             .read()
             .expect("telemetry state poisoned")

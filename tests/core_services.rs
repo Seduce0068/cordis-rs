@@ -5825,3 +5825,33 @@ fn domain_errors_expose_stable_category_without_breaking_other() {
     // Domain errors must not be misread as HTTP codes by retry.
     assert_eq!(RetryPolicy::error_code(&shell), None);
 }
+
+#[test]
+fn otlp_payload_uses_per_event_timestamps() {
+    use cordis_rs::core_services::{EventLogOptions, EventLogReporter};
+    use cordis_rs::plugin_ports::otlp_payload_with_timestamps;
+
+    let reporter = EventLogReporter::new(
+        "test",
+        EventLogOptions {
+            max_events: 10,
+            batch_size: 100,
+        },
+    );
+    reporter
+        .record("first", std::collections::HashMap::new())
+        .unwrap();
+    reporter
+        .record("second", std::collections::HashMap::new())
+        .unwrap();
+
+    let dated = reporter.events_with_timestamps();
+    assert_eq!(dated.len(), 2);
+    assert!(dated[0].1 <= dated[1].1, "captured times must be monotonic");
+
+    let records: Vec<_> = dated.iter().map(|(record, _)| record.clone()).collect();
+    let times: Vec<u64> = dated.iter().map(|(_, ms)| *ms).collect();
+    let payload = otlp_payload_with_timestamps(&records, &times).to_string();
+    assert!(payload.contains(&(times[0] * 1_000_000).to_string()));
+    assert!(payload.contains(&(times[1] * 1_000_000).to_string()));
+}
