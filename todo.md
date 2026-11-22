@@ -243,7 +243,7 @@ status: current
 - [ ] **DeepSeek 実 HTTP が FakeTransport 依存で end-to-end 無い** — 根拠 `src/ports/llm_transport.rs:122`, `README.md:73` / R9-ST09 / 重大度 low / confirmed
 - [x] **同期 remove_service の generation 迂回（drain 非同期経路のみ修正済み）** — 2026-11-23 R9-DI01 と同時修正（generation sync API 追加）。
 
-- [ ] **SessionStore::create が自動 ID 生成で next_id を二重インクリメント** — 根拠 `src/services/sessions.rs:167-179` / R10-TX01 / 重大度 medium / confirmed
+- [x] **SessionStore::create が自動 ID 生成で next_id を二重インクリメント** — 2026-11-23 修正（auto ID 分岐のインクリメントを1回のみに、明示 id 指定時は従来どおり cursor 前進、連番の回帰テスト追加、R10 指摘反映）。
 - [x] **ScheduleService が Cancelled レコードを resume で復活させる** — 2026-11-23 修正（set_status に Cancelled 終端ガード、cancel→cancel は冪等として維持、ScheduleError::Cancelled が生成されるように、回帰テスト、R1 指摘反映）。
 - [ ] **Subagent/Agent registry が世代 fencing 無しで古い disposer が新登録を消す** — 根拠 `src/services/subagents.rs:57-77`, `src/services/agents.rs:57-77` / R10-IV03 / 重大度 medium / confirmed
 - [ ] **StorageHub::define_domain が空名・空 required_fields・重複を許す** — 根拠 `src/services/storage.rs:126-132` / R10-IV01 / 重大度 medium / confirmed

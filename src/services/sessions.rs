@@ -164,6 +164,7 @@ impl SessionStore {
     /// Create a session. An explicitly supplied id must be unique.
     pub fn create(&self, id: Option<String>, cwd: Option<String>) -> crate::Result<Session> {
         let mut guard = self.state.write().expect("session store poisoned");
+        let explicit = id.is_some();
         let id = id.unwrap_or_else(|| {
             loop {
                 let candidate = format!("session-{}", guard.next_id);
@@ -176,7 +177,12 @@ impl SessionStore {
         if guard.sessions.iter().any(|session| session.id() == id) {
             return Err(crate::Error::DuplicateSession(id));
         }
-        guard.next_id += 1;
+        // The auto-id branch already advanced the cursor while choosing the
+        // candidate; advancing again here skips every other id (swarm review
+        // R10-TX01).
+        if explicit {
+            guard.next_id += 1;
+        }
         let session = Session::new(id, cwd);
         for observer in &guard.observers {
             session.observe(observer.clone());

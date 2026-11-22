@@ -5973,3 +5973,17 @@ async fn cancelled_schedule_is_terminal_but_cancel_is_idempotent() {
             .all(|item| item.id != record.id)
     );
 }
+
+#[test]
+fn session_store_auto_ids_are_consecutive() {
+    use cordis_rs::core_services::SessionStore;
+
+    let store = SessionStore::default();
+    let a = store.create(None, None).unwrap();
+    let b = store.create(None, None).unwrap();
+    let c = store.create(None, None).unwrap();
+
+    let suffix = |id: &str| id.strip_prefix("session-").unwrap().parse::<u64>().unwrap();
+    assert_eq!(suffix(b.id()), suffix(a.id()) + 1);
+    assert_eq!(suffix(c.id()), suffix(b.id()) + 1);
+}
