@@ -225,6 +225,24 @@ status: current
 - [x] **README が非推奨 alias emit_detached を推奨** — 2026-11-22 修正（推奨 API を emit_spawn に変更、R8 指摘反映）。
 - [x] **doc-count ゲートが port/service の名前一覧を照合しない** — 2026-11-22 修正（ports/mod.rs と README port 一覧の双方向照合 gate を追加、漏れていた session-title-llm を追記、fail 動作を実証。service は module 名と service 名が 1:1 でないため既存件数 gate に委ね、R8 指摘反映）。
 
+- [ ] **with_llm_timeout が total request deadline を持たない** — 根拠 `src/ports/llm_resilience.rs:34-39` / R9-ST01 / 重大度 medium / confirmed
+- [ ] **OTLP EventRecord に per-event 時刻が無く全イベント同一 timestamp** — 根拠 `src/services/telemetry.rs:15-19` / R9-ST02 / 重大度 medium / confirmed
+- [ ] **approval audit pair（approval/asked + approval/decided）が未記録** — 根拠 `src/services/approval.rs:request`, ADR-012 / R9-ST03 / 重大度 medium / confirmed（段階1の agent/callId 保持は済み）
+- [ ] **tool_todo の StaleVersion が適用側 comparison 未配線** — 根拠 `todo.md:159` / R9-ST05 / 重大度 medium / confirmed
+- [ ] **同期 remove_service が generation を検証せず最新登録を消し得る** — 根拠 `src/context.rs:438-442` / R9-DI01 / 重大度 medium / confirmed
+- [ ] **Context::provide がサービス名を検証せず空文字を受理** — 根拠 `src/context.rs:356-395` / R9-DI02 / 重大度 medium / medium
+- [ ] **EventRegistry::remove が存在しない key で空スロットを生成** — 根拠 `src/events.rs:323-333` / R9-EV01 / 重大度 low / confirmed
+- [ ] **typed_event! の decode error store がプロセスグローバル** — 根拠 `src/events.rs:45-49,69-76` / R9-AP01 / 重大度 medium / confirmed
+- [ ] **is_bail_value が bool のみ対応（一般 R 型で false 相当を判定できない）** — 根拠 `src/events.rs:510-514` / R9-AP02 / 重大度 medium / medium
+- [ ] **Context::set_lifecycle が Fiber 状態と無関係に公開され二重状態** — 根拠 `src/context.rs:203-210`, `src/plugin.rs:73` / R9-CY01 / 重大度 medium / medium
+- [ ] **Fiber::mount が inject 未充足でも Pending で返す契約を doc 明記** — 根拠 `src/plugin.rs:150-173` / R9-AP03 / 重大度 low / confirmed
+- [ ] **README/ADR-001 が Some(false) を upstream と異なると誤記** — 根拠 `README.md:38-39`, `docs/ADR-001...:39`, `src/events.rs:510-514` / R9-DC01 / 重大度 low / confirmed
+- [ ] **README に emit の await 版／emit_spawn の使い分け表が無い** — 根拠 `src/events.rs:596-615`, `README.md:43` / R9-EV02 / 重大度 low / medium
+- [ ] **hook 監査イベント文字列が Claude/Codex で重複** — 根拠 `src/ports/hooks_claude_code.rs`, `src/ports/hooks_codex.rs` / R9-ST07 / 重大度 low / medium
+- [ ] **hooks updatedInput rewrite が未接続（select_tool_hooks 未使用）** — 根拠 `src/ports/hooks_codex.rs:81`, `todo.md:115,162` / R9-ST04 / 重大度 low / medium
+- [ ] **DeepSeek 実 HTTP が FakeTransport 依存で end-to-end 無い** — 根拠 `src/ports/llm_transport.rs:122`, `README.md:73` / R9-ST09 / 重大度 low / confirmed
+- [ ] **同期 remove_service の generation 迂回（drain 非同期経路のみ修正済み）** — 根拠 `todo.md:46`, `src/context.rs:438-442` / R9-ST08 / 重大度 medium / medium（R9-DI01 と同根だが登録済み経路として記録）
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -258,3 +276,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-22、round 132）**: `swarm-project-review` R1（AR/CF/AP/DC）と `swarm-todo-discovery` R1（ST/TQ/DC）の2エージェントから14件を取得。root が path:line を Runtime Proof で確認し14件を `## 未着手` へ追記（medium9 / low5）。R2〜R5 は同一情報の重複取得を避け省略。
 - **swarm コンボ R6 集約（2026-11-22、round 148）**: `swarm-project-review` R1 と `swarm-todo-discovery` R1 の2エージェントから15件を取得。root が path:line を Runtime Proof で確認し、重複2件を統合して13件を `## 未着手` へ追記（high1 / medium9 / low3）。agent-12 の disposer「10箇所」は実測8箇所に修正。
 - **swarm コンボ R6 集約（2026-11-22、round 161）**: `swarm-project-review` R1 と `swarm-todo-discovery` R1 の2エージェントから18件を取得（agent-13 は structured_output が利用不可のため通常メッセージで再送）。root が path:line を Runtime Proof で確認し18件を `## 未着手` へ追記（high1 / medium9 / low8）。
+- **swarm コンボ R6 集約（2026-11-22、round 186）**: specialist 2体（cordis-researcher / plugin-ports）から18件取得。R6 で path:line を Runtime Proof で確認し、修正済み1件（ST01-06 port 名 gate）を除外して17件を追記。
