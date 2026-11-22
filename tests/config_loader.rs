@@ -1398,3 +1398,19 @@ fn field_spec_max_rejects_nan() {
     use cordis_rs::{FieldSpec, FieldType};
     let _ = FieldSpec::new("bad", FieldType::Number).max(f64::NAN);
 }
+
+#[test]
+#[should_panic(expected = "min must not exceed the configured max")]
+fn field_spec_max_then_min_rejects_reversed_order() {
+    use cordis_rs::{FieldSpec, FieldType};
+    let _ = FieldSpec::new("bad", FieldType::Number).max(5.0).min(10.0);
+}
+
+#[test]
+#[should_panic(expected = "max_int must not be below the configured min_int")]
+fn field_spec_min_int_then_max_int_rejects_reversed_order() {
+    use cordis_rs::{FieldSpec, FieldType};
+    let _ = FieldSpec::new("bad", FieldType::Integer)
+        .min_int(10)
+        .max_int(5);
+}

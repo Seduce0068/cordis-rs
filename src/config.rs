@@ -176,6 +176,10 @@ impl FieldSpec {
 
     pub fn min(mut self, min: f64) -> Self {
         assert!(!min.is_nan(), "min must not be NaN");
+        assert!(
+            self.max.is_none_or(|max| min <= max),
+            "min must not exceed the configured max"
+        );
         self.min = Some(min);
         self
     }
@@ -189,17 +193,29 @@ impl FieldSpec {
     }
 
     pub fn min_int(mut self, min: i64) -> Self {
+        assert!(
+            self.max_int.is_none_or(|max| min <= max),
+            "min_int must not exceed the configured max_int"
+        );
         self.min_int = Some(min);
         self
     }
 
     pub fn max_int(mut self, max: i64) -> Self {
+        assert!(
+            self.min_int.is_none_or(|min| min <= max),
+            "max_int must not be below the configured min_int"
+        );
         self.max_int = Some(max);
         self
     }
 
     pub fn max(mut self, max: f64) -> Self {
         assert!(!max.is_nan(), "max must not be NaN");
+        assert!(
+            self.min.is_none_or(|min| min <= max),
+            "max must not be below the configured min"
+        );
         self.max = Some(max);
         self
     }
