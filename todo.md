@@ -112,7 +112,7 @@ status: current
 - [x] **MSRV (rust-version) が未宣言で edition 2024 要求が伝わらない** — 2026-11-21 修正（rust-version = "1.85" を宣言、cargo metadata で確認、R4-DP07 反映）。
 - [x] **session reference のデコード上限欠如と markdown 引用の不完全エスケープ** — 2026-11-21 修正（ペイロード長上限とエラーの URI 非露出、ラベルは [ ] ) 改行をエスケープ、R3-IV10 反映）。
 - [x] **compaction-automation の LLM 要約が pruning stub のまま（README に制約記載なし）** — 2026-11-21 修正（安定性マトリクスに phase-1 行と解消条件を追加、R2-FG02 反映）。
-- [ ] **hooks-claude-code の updatedInput/systemMessage/Ask/SessionStart が未接続** — 根拠 `src/ports/hooks_claude_code.rs:137-142` / R2-FG03 / 重大度 low / confirmed
+- [x] **hooks-claude-code の updatedInput/systemMessage/Ask/SessionStart が未接続** — 2026-11-22 段階1修正（HookEffect::Ask 追加、MergedDecision::Ask をマップ、deny middleware は next() 委譲、install_default_controls も Ask をブロック対象外に、回帰テスト、R1 指摘反映。updatedInput/systemMessage と完全な approval 連携は残り）。
 - [x] **mount_real_composition が部分失敗を assert で落とし診断レポートとして機能しない** — 2026-11-21 修正（assert を外し skipped/failed を id と理由付きで一覧出力、R5-VU08 反映）。
 - [x] **README が mount_real_composition の動作を 2 箇所で矛盾説明** — 2026-11-21 修正（診断レポート化した実装に合わせ「6 エントリすべてを起動」を「port 存在分のみ起動＋failed/skipped 一覧」に修正、R2-FG04 反映）。
 - [x] **テスト用一時ディレクトリが PID 依存かつ手動削除で失敗時にゴミが残る** — 2026-11-21 修正（残り18箇所を TempDirGuard に横展開、`AsRef<Path>` / Deref で互換維持、3ファイルでガード定義を同期、R4-TQ09 反映）。

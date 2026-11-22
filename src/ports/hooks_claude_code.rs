@@ -175,6 +175,10 @@ pub enum HookEffect {
     Reject(String),
     Block(String),
     Inject(String),
+    /// Upstream `ask` decision (route to an approval flow). The phase-1
+    /// middleware delegates to `next()` rather than blocking; full approval
+    /// integration is a later step (swarm review R2-FG03).
+    Ask(String),
 }
 
 pub fn map_outcome(event: HookEvent, outcome: &MergedHookOutcome) -> HookEffect {
@@ -185,6 +189,9 @@ pub fn map_outcome(event: HookEvent, outcome: &MergedHookOutcome) -> HookEffect 
             HookEvent::PostToolUse => HookEffect::Block(reason),
             HookEvent::SessionStart => HookEffect::Reject(reason),
         };
+    }
+    if outcome.decision == MergedDecision::Ask {
+        return HookEffect::Ask(reason);
     }
     if let Some(context) = outcome.contexts.first() {
         return HookEffect::Inject(context.clone());

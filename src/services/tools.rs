@@ -269,7 +269,9 @@ pub fn hook_deny_middleware(effect: crate::plugin_ports::HookEffect) -> ToolMidd
                 | crate::plugin_ports::HookEffect::Block(reason) => {
                     Err(ToolError::Execution(format!("blocked by hook: {reason}")))
                 }
-                _ => next(_args, _exec).await,
+                crate::plugin_ports::HookEffect::Ask(_)
+                | crate::plugin_ports::HookEffect::Inject(_)
+                | crate::plugin_ports::HookEffect::Proceed => next(_args, _exec).await,
             }
         })
     })
@@ -335,7 +337,10 @@ impl ToolPipeline {
         self.require_approval();
         let mut disposers = Vec::new();
         if let Some(effect) = hook_effect
-            && !matches!(effect, crate::plugin_ports::HookEffect::Proceed)
+            && !matches!(
+                effect,
+                crate::plugin_ports::HookEffect::Proceed | crate::plugin_ports::HookEffect::Ask(_)
+            )
         {
             disposers.push(self.use_middleware(hook_deny_middleware(effect)));
         }

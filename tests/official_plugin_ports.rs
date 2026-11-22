@@ -3526,3 +3526,29 @@ fn hooks_parse_config_with_warnings_reports_skipped_entries() {
             .any(|warning| warning.contains("no command string"))
     );
 }
+
+#[test]
+fn hooks_ask_decision_maps_to_non_blocking_ask_effect() {
+    use cordis_rs::core_services::{HookOutput, MergedDecision, merge_hook_outputs};
+    use cordis_rs::plugin_ports::{HookEffect, HookEvent, map_outcome};
+
+    let output = |decision, reason: &str| HookOutput {
+        decision,
+        reason: Some(reason.to_string()),
+        stop: false,
+        context: None,
+    };
+    let outcome = merge_hook_outputs(&[
+        output(MergedDecision::Allow, "ok"),
+        output(MergedDecision::Ask, "needs approval"),
+    ]);
+    assert_eq!(
+        map_outcome(HookEvent::PreToolUse, &outcome),
+        HookEffect::Ask("needs approval".to_string())
+    );
+    // Ask must not be treated as a blocking Reject/Block effect.
+    assert!(!matches!(
+        map_outcome(HookEvent::PreToolUse, &outcome),
+        HookEffect::Reject(_) | HookEffect::Block(_)
+    ));
+}
