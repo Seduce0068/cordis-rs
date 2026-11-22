@@ -5343,6 +5343,14 @@ fn retry_backoff_stays_positive_with_invalid_jitter_ratio() {
             "invalid jitter_ratio {ratio} produced zero delay"
         );
     }
+
+    // A zero max_delay_ms must not collapse the delay to a busy loop
+    // (swarm review R8-CF01).
+    let zero_cap = RetryPolicy {
+        max_delay_ms: 0,
+        ..RetryPolicy::default()
+    };
+    assert_eq!(zero_cap.backoff_ms(1, 0.5), 1);
 }
 
 #[test]

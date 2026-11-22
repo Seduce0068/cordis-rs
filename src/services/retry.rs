@@ -114,9 +114,12 @@ impl RetryPolicy {
         // Keep a floor so a misconfigured ratio can never collapse the delay
         // to zero (busy retry). With a valid ratio the floor never binds.
         let jitter = (1.0 - ratio + 2.0 * ratio * clamped).max(0.1);
-        ((exponential as f64) * jitter)
+        // Never return a zero delay: a misconfigured (or zero) max_delay_ms
+        // must not turn retries into a busy loop (swarm review R8-CF01).
+        (((exponential as f64) * jitter)
             .min(self.max_delay_ms as f64)
-            .max(0.0) as u64
+            .max(0.0) as u64)
+            .max(1)
     }
 }
 
