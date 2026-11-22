@@ -51,7 +51,9 @@ impl SessionQueryEngine {
         self.index(session);
     }
 
-    /// Remove a session from the index. Returns true if one was present.
+    /// Remove a session from the index. Returns true if one was present. This
+    /// affects the index only; the underlying `SessionStore` is untouched
+    /// (swarm review R12-ST06).
     pub fn remove(&self, session_id: &str) -> bool {
         self.state
             .write()

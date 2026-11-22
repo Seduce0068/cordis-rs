@@ -292,10 +292,10 @@ status: current
 - [ ] **Duration::from_millis が safe-integer 域を迂回して decompose/render を通す** — 根拠 `src/ports/duration.rs:14-18,49-52` / R12-IV09 / 重大度 low / low
 - [x] **PruneError::InvalidConfig の文言 'below' が等価許容と矛盾** — 2026-11-23 修正（文言を "must not exceed the threshold" に変更、head+tail+marker==threshold が Ok／+1 で Err の境界テスト追加、R12 指摘反映）。
 - [ ] **JobRegistry::wait の timeout=false 経路がテスト未固定** — 根拠 `src/services/jobs.rs:331-332,350-356` / R12-ST02 / 重大度 medium / confirmed
-- [ ] **ToolExecContext の signal_cancelled と cancel_flag の優先順位が-doc 未明記** — 根拠 `src/services/tools.rs:27-36,516` / R12-ST03 / 重大度 low / confirmed
+- [x] **ToolExecContext の signal_cancelled と cancel_flag の優先順位が doc 未明記** — 2026-11-23 修正（両方が dispatch 前 is_cancelled で OR 判定され、cancel_flag は body 後にも再分類されることを doc 明記、R12 指摘反映）。
 - [ ] **EventLogReporter::record の batch boundary が集約カウンタ依存であることを doc 未明記** — 根拠 `src/services/telemetry.rs:116,148-161` / R12-ST04 / 重大度 low / medium
 - [ ] **AgentLoop の module doc が max_steps 到達時の未処理 tool call を説明しない** — 根拠 `src/services/agent_loop.rs:4-6` / R12-ST05 / 重大度 low / medium
-- [ ] **SessionQueryEngine::remove が index のみで SessionStore に触れないことを doc 未明記** — 根拠 `src/services/session_query.rs:54-61` / R12-ST06 / 重大度 low / confirmed
+- [x] **SessionQueryEngine::remove が index のみで SessionStore に触れないことを doc 未明記** — 2026-11-23 修正（index のみに影響し SessionStore は不変であることを doc 明記、R12 指摘反映）。
 - [ ] **HookProtocol の matcher 不正時のログ有無が doc／テスト未固定** — 根拠 `src/services/hook_protocol.rs:104-105` / R12-ST07 / 重大度 low / medium
 
 ## 完了

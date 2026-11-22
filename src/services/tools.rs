@@ -27,10 +27,12 @@ pub type ToolArgs = serde_json::Value;
 pub struct ToolExecContext {
     pub agent: Option<String>,
     pub session: Option<String>,
+    /// Pre-dispatch cancellation signal. Checked by `is_cancelled()` before
+    /// the tool body starts (swarm review R12-ST03).
     pub signal_cancelled: bool,
-    /// Optional shared cancellation flag. A host may set it while the tool
-    /// body is running; the pipeline observes it after the body completes and
-    /// reclassifies a successful result as cancelled (upstream
+    /// Optional shared cancellation flag. `is_cancelled()` also reads it
+    /// before dispatch, and the pipeline re-reads it after the body completes
+    /// to reclassify a successful result as cancelled (upstream
     /// `toolAbortedResult(prior)` semantics). The body is never cut short.
     pub cancel_flag: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
 }
