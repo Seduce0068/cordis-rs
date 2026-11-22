@@ -5461,3 +5461,29 @@ fn command_definition_accepts_canonical_name() {
         "/compact"
     );
 }
+
+#[test]
+fn plugin_registry_try_register_rejects_duplicate_id() {
+    use cordis_rs::{PluginFactory, PluginRegistry};
+
+    let factory = || {
+        PluginFactory::new(
+            |_ctx: &cordis_rs::Context, _config: &cordis_rs::config::Value| async { Ok(()) },
+        )
+    };
+    let mut registry = PluginRegistry::new();
+    registry.try_register("demo", factory()).unwrap();
+    let error = match registry.try_register("demo", factory()) {
+        Ok(_) => panic!("duplicate id must be rejected"),
+        Err(error) => error,
+    };
+    assert!(
+        matches!(&error, cordis_rs::LoaderError::DuplicatePlugin { id } if id == "demo"),
+        "unexpected error: {error}"
+    );
+    assert!(registry.get("demo").is_some());
+
+    // legacy register keeps its last-write-wins behaviour.
+    registry.register("demo", factory());
+    assert!(registry.get("demo").is_some());
+}

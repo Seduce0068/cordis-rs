@@ -41,6 +41,9 @@ pub enum LoaderError {
         plugin: String,
         entry: String,
     },
+    DuplicatePlugin {
+        id: String,
+    },
     InvalidDisabled {
         entry: String,
         got: &'static str,
@@ -70,6 +73,9 @@ impl fmt::Display for LoaderError {
             Self::MissingPlugin { entry } => write!(f, "{entry} is missing `plugin`"),
             Self::UnknownPlugin { plugin, entry } => {
                 write!(f, "{entry} references unregistered plugin `{plugin}`")
+            }
+            Self::DuplicatePlugin { id } => {
+                write!(f, "plugin `{id}` is already registered")
             }
             Self::InvalidDisabled { entry, got } => {
                 write!(f, "{entry}.disabled expected boolean but got {got}")
@@ -621,6 +627,22 @@ impl PluginRegistry {
     pub fn register(&mut self, id: impl Into<String>, factory: PluginFactory) -> &mut Self {
         self.factories.insert(id.into(), factory);
         self
+    }
+
+    /// Register a factory, rejecting an existing id instead of silently
+    /// overwriting it (swarm review R5-AP04). `register` remains as a
+    /// backwards-compatible last-write-wins adapter.
+    pub fn try_register(
+        &mut self,
+        id: impl Into<String>,
+        factory: PluginFactory,
+    ) -> Result<&mut Self, LoaderError> {
+        let id = id.into();
+        if self.factories.contains_key(&id) {
+            return Err(LoaderError::DuplicatePlugin { id });
+        }
+        self.factories.insert(id, factory);
+        Ok(self)
     }
 
     pub fn get(&self, id: &str) -> Option<&PluginFactory> {
