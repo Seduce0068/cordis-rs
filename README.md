@@ -58,7 +58,7 @@ lifecycle の要否で選ぶ（R1-AP03。二系統の統一は v1.0 の設計課
 | ドメイン | まず手に取る API |
 | --- | --- |
 | 実行・ツール基盤 | `ToolPipeline::install_default_controls` / `ToolRegistry` / `provide_tools` |
-| LLM 呼び出し | `LlmService` / `with_llm_timeout` / `with_llm_retry` / `call_config_eq` |
+| LLM 呼び出し | `LlmService` / `with_llm_timeout` / `with_llm_total_timeout` / `with_llm_retry` / `handler_from_transport` / `LlmTransport` / `call_config_eq` |
 | 会話セッション／永続化 | `SessionStore` / `JsonlPersistence` / `provide_sessions` |
 | コンテキスト／圧縮 | `CompactionEngine::maybe_compact` / `mount_compaction_automation` / `fold_goal` |
 | 対話統制（human-in-the-loop） | `mount_hooks_claude_code` / `UserQuestionService` / `mount_sandbox_policy` |
@@ -115,7 +115,7 @@ host は policy を適用する経路で `pipeline.run()` を使うこと。
 ```bash
 cargo fmt --all --check
 cargo check --all-targets
-cargo clippy --all-targets -- -D warnings
+cargo clippy --all-targets --locked -- -D warnings -A clippy::type_complexity -D clippy::undocumented_unsafe_blocks
 cargo test --all-targets
 cargo run --example agent_demo
 cargo run --example agent_checkpoint_demo

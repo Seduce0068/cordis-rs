@@ -253,13 +253,13 @@ status: current
 - [ ] **WorkspaceRegistry::create が archive 済み id の再利用を拒否** — 根拠 `src/services/workspace.rs:55-81,130-138` / R10-TX02 / 重大度 low / medium
 - [ ] **Session::append_with_seq が seq の飛びを許容** — 根拠 `src/services/sessions.rs:112-129` / R10-TX03 / 重大度 low / low
 - [x] **ドメイン Error enum の多くが std::error::Error を実装しない** — 2026-11-23 修正（Storage/Goal/Agent/Subagent/Workspace/Schedule の6 enum に impl std::error::Error を追加、回帰テスト、R10 指摘反映）。
-- [ ] **verify.sh の cargo audit が extra_gates より前で「同順」記述と矛盾** — 根拠 `scripts/verify.sh:27`, `README.md:133`, `.github/workflows/ci.yml:21-29` / R10-ST01 / 重大度 low / confirmed
-- [ ] **README.md:118 の clippy 例が CI の追加フラグを欠く** — 根拠 `README.md:118`, `scripts/verify.sh:20`, `.github/workflows/ci.yml:23` / R10-ST02 / 重大度 low / confirmed
+- [x] **verify.sh の cargo audit が extra_gates より前で「同順」記述と矛盾** — 2026-11-23 修正（audit を extra_gates 相当の全ゲート実行後に移動、R10 指摘反映）。
+- [x] **README.md:118 の clippy 例が CI の追加フラグを欠く** — 2026-11-23 修正（verify.sh と同じ --locked / -A type_complexity / -D undocumented_unsafe_blocks を記載、R10 指摘反映）。
 - [ ] **check-doc-counts.sh が examples/ のファイル一覧を検証しない** — 根拠 `scripts/check-doc-counts.sh:66-77`, `README.md:120-127` / R10-ST03 / 重大度 low / confirmed
 - [ ] **check-markdown.sh のグロブが target/ と .git/ を含む可能性** — 根拠 `scripts/check-markdown.sh:17-21`, `docs/PROGRESS.md:57` / R10-ST04 / 重大度 low / medium
 - [ ] **lib.rs の deprecated alias 6個に since が欠ける** — 根拠 `src/lib.rs:64,66,205,257,259,261` / R10-ST05 / 重大度 low / confirmed
 - [ ] **ToolPipeline approval 既定 fail-open の根拠が ADR-004/012 で二重管理** — 根拠 `docs/ADR-004...:18`, `docs/ADR-012...:46` / R10-ST06 / 重大度 low / medium
-- [ ] **README の LLM API 一覧に transport seam が欠ける** — 根拠 `README.md:61`, `tests/core_services.rs:4040` / R10-ST07 / 重大度 low / confirmed
+- [x] **README の LLM API 一覧に transport seam が欠ける** — 2026-11-23 修正（handler_from_transport / LlmTransport / with_llm_total_timeout を API 一覧に追加、R10 指摘反映）。
 
 ## 完了
 

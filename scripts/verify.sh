@@ -24,6 +24,16 @@ bash scripts/check-secrets.sh
 echo "=== markdownlint (all Markdown deliverables) ==="
 bash scripts/check-markdown.sh
 
+# Same order as `extra_gates` in .github/workflows/ci.yml.
+echo "=== examples smoke ==="
+bash scripts/smoke-examples.sh
+
+echo "=== no unsafe ==="
+bash scripts/check-no-unsafe.sh
+
+echo "=== doc counts ==="
+bash scripts/check-doc-counts.sh
+
 echo "=== cargo audit ==="
 if command -v cargo-audit >/dev/null 2>&1; then
 	cargo audit
@@ -34,15 +44,5 @@ else
 	echo "      or set AUDIT_SKIP=1 to explicitly opt out of this local gate." >&2
 	exit 1
 fi
-
-# Same order as `extra_gates` in .github/workflows/ci.yml.
-echo "=== examples smoke ==="
-bash scripts/smoke-examples.sh
-
-echo "=== no unsafe ==="
-bash scripts/check-no-unsafe.sh
-
-echo "=== doc counts ==="
-bash scripts/check-doc-counts.sh
 
 echo "all verification gates passed"
