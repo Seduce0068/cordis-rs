@@ -72,10 +72,7 @@ impl crate::Plugin for CommandCompact {
                     "Compact older conversation history",
                     handler((*compaction).clone(), sessions),
                 ));
-                scope.on_dispose(move || async move {
-                    let _ = disposer.dispose().await;
-                    Ok(())
-                });
+                scope.on_dispose(move || async move { disposer.dispose().await });
                 Ok(())
             }
         })

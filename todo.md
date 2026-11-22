@@ -192,7 +192,7 @@ status: current
 - [x] **hooks_claude_code の parse_config が数値設定を無検証で受け入れる** — 2026-11-22 修正（0 と usize 超过値を Err として拒否、回帰テスト追加、R6 指摘反映）。
 - [x] **session_turn_outline の turn 比較が u64→i64 キャストで順序を誤る** — 2026-11-22 修正（last_turn を `Option<u64>` にして u64 同士で比較、i64::MAX 超回帰テスト追加、R6 指摘反映）。
 
-- [ ] **port の effect 解除が disposer エラーを握り潰し ADR-007/004 に違反** — 根拠 `src/ports/tool_goal.rs:227` 他 実測8箇所 / R7-ER08 / 重大度 high / confirmed（agent-12 は10箇所と報告だが Runtime Proof で8箇所を確認）
+- [x] **port の effect 解除が disposer エラーを握り潰し ADR-007/004 に違反** — 2026-11-22 修正（実測8箇所の on_dispose を `disposer.dispose().await` の直接伝播に統一、握り潰し箇所ゼロを確認、R7 指摘反映）。
 - [ ] **config::validate が未宣言の config キーをサイレントに破棄し警告経路もない** — 根拠 `src/config.rs:311,338-365`, `src/loader.rs:502-508` / R7-CF09 / 重大度 medium / confirmed
 - [ ] **FieldSpec::with_default が既定値の型・範囲を検証せず不正スキーマを通す** — 根拠 `src/config.rs:162-167,343-345` / R7-IV09 / 重大度 medium / confirmed
 - [ ] **FieldSpec の単発境界 setter に前後関係の検証がなく到達不能レンジを受理** — 根拠 `src/config.rs:177-199`（R5-IV04 は NaN のみ修正済み）/ R7-IV10 / 重大度 medium / confirmed

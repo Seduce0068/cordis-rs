@@ -188,10 +188,7 @@ pub async fn mount(ctx: &Context) -> Result<ToolRegistry> {
             async move {
                 for (name, description, handler) in definitions {
                     let disposer = tools.register(ToolDefinition::new(name, description, handler));
-                    scope.on_dispose(move || async move {
-                        let _ = disposer.dispose().await;
-                        Ok(())
-                    });
+                    scope.on_dispose(move || async move { disposer.dispose().await });
                 }
                 Ok(())
             }

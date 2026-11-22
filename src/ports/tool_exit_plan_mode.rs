@@ -111,10 +111,7 @@ pub async fn mount(ctx: &Context) -> Result<ToolRegistry> {
                     "Present the plan for review and exit plan mode on approval.",
                     handler((*plan_mode).clone()),
                 ));
-                scope.on_dispose(move || async move {
-                    let _ = disposer.dispose().await;
-                    Ok(())
-                });
+                scope.on_dispose(move || async move { disposer.dispose().await });
                 Ok(())
             }
         })

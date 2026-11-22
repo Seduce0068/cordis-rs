@@ -100,10 +100,7 @@ impl crate::Plugin for TimeoutPolicyPlugin {
             let hook = hook.clone();
             async move {
                 let disposer = pipeline.use_middleware(hook);
-                scope.on_dispose(move || async move {
-                    let _ = disposer.dispose().await;
-                    Ok(())
-                });
+                scope.on_dispose(move || async move { disposer.dispose().await });
                 Ok(())
             }
         })
