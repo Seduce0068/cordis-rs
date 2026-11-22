@@ -235,7 +235,7 @@ status: current
 - [ ] **typed_event! の decode error store がプロセスグローバル** — 根拠 `src/events.rs:45-49,69-76` / R9-AP01 / 重大度 medium / confirmed
 - [ ] **is_bail_value が bool のみ対応（一般 R 型で false 相当を判定できない）** — 根拠 `src/events.rs:510-514` / R9-AP02 / 重大度 medium / medium
 - [ ] **Context::set_lifecycle が Fiber 状態と無関係に公開され二重状態** — 根拠 `src/context.rs:203-210`, `src/plugin.rs:73` / R9-CY01 / 重大度 medium / medium
-- [ ] **Fiber::mount が inject 未充足でも Pending で返す契約を doc 明記** — 根拠 `src/plugin.rs:150-173` / R9-AP03 / 重大度 low / confirmed
+- [x] **Fiber::mount が inject 未充足でも Pending で返す契約を doc 明記** — 2026-11-22 修正（await が load 完了を待たず Pending で返る旨を doc に明記、state()/Active 待ちを案内、R9 指摘反映）。
 - [x] **README/ADR-001 が Some(false) を upstream と異なると誤記** — 2026-11-22 修正（Some(false) は非 bail で upstream 同一と明記、R9 指摘反映）。
 - [x] **README に emit の await 版／emit_spawn の使い分け表が無い** — 2026-11-22 修正（emit は await、upstream 準拠の fire-and-forget は emit_spawn と明記、R9 指摘反映）。
 - [ ] **hook 監査イベント文字列が Claude/Codex で重複** — 根拠 `src/ports/hooks_claude_code.rs`, `src/ports/hooks_codex.rs` / R9-ST07 / 重大度 low / medium

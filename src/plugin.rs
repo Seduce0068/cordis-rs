@@ -147,8 +147,10 @@ impl FiberObserver for FiberInner {
 pub struct Fiber(Arc<FiberInner>);
 
 impl Fiber {
-    /// Mount a plugin. The plugin body does not run until its `inject`
-    /// dependencies are available. `await`ing this function waits for load.
+    /// Mount a plugin. If its `inject` dependencies are not yet available the
+    /// fiber is returned in `Pending` state rather than waiting for them;
+    /// callers should observe `state()` / wait for `Active` when they need the
+    /// plugin body to have run (swarm review R9-AP03).
     pub async fn mount(ctx: &Context, plugin: Box<dyn Plugin>) -> Result<Self> {
         let name = plugin.name().to_string();
         let inject: Vec<String> = plugin
