@@ -54,7 +54,7 @@ DSH の GPUI 再実装における最大の障壁だった Cordis プラグイ�
   → example smoke → no-unsafe → doc-counts（CI の `extra_gates` と同順）
 - CI は共通ワークフロー `Seduce0068/workflows` の `rust-gates.yml@v1` に委譲
 - `extra_gates`: smoke-examples / check-no-unsafe / check-doc-counts /
-  check-secrets（gitleaks） / check-markdown（全 18 Markdown）
+  check-secrets（gitleaks） / check-markdown（全 Markdown、target/ と .git/ は除外）
 - pre-commit は gitleaks を主軸、CI スキャンを最終ゲートとして併設
 - doc-count gate は src 内 unit test も計上し `cargo test -- --list` と一致
 

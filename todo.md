@@ -256,7 +256,7 @@ status: current
 - [x] **verify.sh の cargo audit が extra_gates より前で「同順」記述と矛盾** — 2026-11-23 修正（audit を extra_gates 相当の全ゲート実行後に移動、R10 指摘反映）。
 - [x] **README.md:118 の clippy 例が CI の追加フラグを欠く** — 2026-11-23 修正（verify.sh と同じ --locked / -A type_complexity / -D undocumented_unsafe_blocks を記載、R10 指摘反映）。
 - [x] **check-doc-counts.sh が examples/ のファイル一覧を検証しない** — 2026-11-23 修正（examples/*.rs と README の cargo run --example 一覧の双方向チェックを追加、故意の drift でゲート失敗することを確認、R10 指摘反映）。
-- [ ] **check-markdown.sh のグロブが target/ と .git/ を含む可能性** — 根拠 `scripts/check-markdown.sh:17-21`, `docs/PROGRESS.md:57` / R10-ST04 / 重大度 low / medium
+- [x] **check-markdown.sh のグロブが target/ と .git/ を含む可能性** — 2026-11-23 修正（markdownlint-cli2 に !**/target/** と !**/.git/** の除外 glob を追加、PROGRESS の件数固定表記を動的表記に変更、R10 指摘反映）。
 - [x] **lib.rs の deprecated alias 6個に since が欠ける** — 2026-11-23 修正（ADR-005 の方針「since は意図的に省略」に合わせ、唯一 since が付いていた1件を外して7件すべて統一、R10 指摘反映）。
 - [ ] **ToolPipeline approval 既定 fail-open の根拠が ADR-004/012 で二重管理** — 根拠 `docs/ADR-004...:18`, `docs/ADR-012...:46` / R10-ST06 / 重大度 low / medium
 - [x] **README の LLM API 一覧に transport seam が欠ける** — 2026-11-23 修正（handler_from_transport / LlmTransport / with_llm_total_timeout を API 一覧に追加、R10 指摘反映）。

@@ -9,9 +9,9 @@ set -euo pipefail
 MARKDOWNLINT_VERSION="0.24.1"
 
 if command -v markdownlint-cli2 >/dev/null 2>&1; then
-  markdownlint-cli2 '**/*.md'
+  markdownlint-cli2 '**/*.md' '!**/target/**' '!**/.git/**'
 elif [ "${GITHUB_ACTIONS:-}" = "true" ] && command -v npx >/dev/null 2>&1; then
-  npx --yes "markdownlint-cli2@${MARKDOWNLINT_VERSION}" '**/*.md'
+  npx --yes "markdownlint-cli2@${MARKDOWNLINT_VERSION}" '**/*.md' '!**/target/**' '!**/.git/**'
 else
   echo "markdownlint-cli2 (or npx on CI) is required for the Markdown gate" >&2
   exit 1
