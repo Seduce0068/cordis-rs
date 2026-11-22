@@ -5855,3 +5855,46 @@ fn otlp_payload_uses_per_event_timestamps() {
     assert!(payload.contains(&(times[0] * 1_000_000).to_string()));
     assert!(payload.contains(&(times[1] * 1_000_000).to_string()));
 }
+
+#[tokio::test]
+async fn llm_total_timeout_fires_even_with_regular_chunks() {
+    use cordis_rs::core_services::{LlmRequest, StreamChunk};
+    use cordis_rs::plugin_ports::{TIMEOUT_PREFIX, with_llm_total_timeout};
+    use futures::StreamExt;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    // Each gap (10ms) is shorter than the total (40ms), so a per-chunk budget
+    // would never fire; only the total deadline can stop this stream.
+    let steady: cordis_rs::services::llm::StreamHandler = Arc::new(|_request| {
+        Box::pin(futures::stream::unfold(0u32, |n| async move {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            Some((StreamChunk::Text("x".to_string()), n + 1))
+        }))
+    });
+    let timed = with_llm_total_timeout(steady, Duration::from_millis(40));
+    let chunks: Vec<_> = timed(LlmRequest {
+        model: "m".to_string(),
+        messages: Vec::new(),
+    })
+    .collect()
+    .await;
+
+    let errors: Vec<_> = chunks
+        .iter()
+        .filter_map(|chunk| match chunk {
+            StreamChunk::Error(reason) if reason.starts_with(TIMEOUT_PREFIX) => Some(reason),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        errors.len(),
+        1,
+        "exactly one timeout error expected: {chunks:?}"
+    );
+    assert!(
+        chunks
+            .last()
+            .is_some_and(|c| matches!(c, StreamChunk::Error(_)))
+    );
+}

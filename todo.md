@@ -225,7 +225,7 @@ status: current
 - [x] **README が非推奨 alias emit_detached を推奨** — 2026-11-22 修正（推奨 API を emit_spawn に変更、R8 指摘反映）。
 - [x] **doc-count ゲートが port/service の名前一覧を照合しない** — 2026-11-22 修正（ports/mod.rs と README port 一覧の双方向照合 gate を追加、漏れていた session-title-llm を追記、fail 動作を実証。service は module 名と service 名が 1:1 でないため既存件数 gate に委ね、R8 指摘反映）。
 
-- [ ] **with_llm_timeout が total request deadline を持たない** — 根拠 `src/ports/llm_resilience.rs:34-39` / R9-ST01 / 重大度 medium / confirmed
+- [x] **with_llm_timeout が total request deadline を持たない** — 2026-11-22 修正（with_llm_total_timeout を timeout_at で追加、既存 decorator 不変、定期チャンクでも発火する回帰テスト、R1 指摘反映）。
 - [x] **OTLP EventRecord に per-event 時刻が無く全イベント同一 timestamp** — 2026-11-22 修正（EventRecord 不変のまま ReporterState が (record, ms) を保持、events_with_timestamps と otlp_payload_with_timestamps を追加、otlp_payload は adapter 維持、回帰テスト、R1 指摘反映）。
 - [ ] **approval audit pair（approval/asked + approval/decided）が未記録** — 根拠 `src/services/approval.rs:request`, ADR-012 / R9-ST03 / 重大度 medium / confirmed（段階1の agent/callId 保持は済み）
 - [ ] **tool_todo の StaleVersion が適用側 comparison 未配線** — 根拠 `todo.md:159` / R9-ST05 / 重大度 medium / confirmed

@@ -63,6 +63,35 @@ pub fn with_llm_timeout(handler: StreamHandler, budget: Duration) -> StreamHandl
     })
 }
 
+/// Wrap a handler with a deadline for the whole stream. Unlike
+/// [`with_llm_timeout`] (a per-chunk budget), this bounds the total request
+/// duration even when the provider emits chunks regularly. On expiry it yields
+/// exactly one `StreamChunk::Error` and terminates (swarm review R9-ST01).
+pub fn with_llm_total_timeout(handler: StreamHandler, total: Duration) -> StreamHandler {
+    Arc::new(move |request: LlmRequest| {
+        let deadline = tokio::time::Instant::now() + total;
+        let stream = handler(request);
+        Box::pin(futures::stream::unfold(
+            (stream, deadline, false),
+            |(mut stream, deadline, terminated)| async move {
+                if terminated {
+                    return None;
+                }
+                match tokio::time::timeout_at(deadline, stream.next()).await {
+                    Ok(Some(chunk)) => Some((chunk, (stream, deadline, false))),
+                    Ok(None) => None,
+                    Err(_) => Some((
+                        StreamChunk::Error(format!(
+                            "{TIMEOUT_PREFIX}llm request exceeded total deadline"
+                        )),
+                        (stream, deadline, true),
+                    )),
+                }
+            },
+        ))
+    })
+}
+
 /// Wrap a handler so a failed stream is retried per `policy`. The whole call
 /// (all chunks until `Done`) is drained and re-dispatched on a retryable error.
 /// Do not combine this with AgentLoop's own retry (double backoff).
