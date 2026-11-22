@@ -223,7 +223,7 @@ status: current
 - [x] **README の「根拠」path:line アンカーが陳腐化** — 2026-11-22 修正（session_persistence_jsonl.rs:348、hooks_claude_code.rs:152,159 にアンカー更新、R8 指摘反映）。
 - [x] **ADR-008 の「将来利用」棚卸しと alias 削除方針が現状と矛盾** — 2026-11-22 修正（sandbox_mode_fold / apply_goal_event を「利用あり」に更新、alias 削除方針の優先文書を明記、R8 指摘反映）。
 - [x] **README が非推奨 alias emit_detached を推奨** — 2026-11-22 修正（推奨 API を emit_spawn に変更、R8 指摘反映）。
-- [ ] **doc-count ゲートが port/service の名前一覧を照合しない** — 根拠 `scripts/check-doc-counts.sh:28-32,66-80`, `README.md:30,32` / R8-CI01 / 重大度 low / confirmed
+- [x] **doc-count ゲートが port/service の名前一覧を照合しない** — 2026-11-22 修正（ports/mod.rs と README port 一覧の双方向照合 gate を追加、漏れていた session-title-llm を追記、fail 動作を実証。service は module 名と service 名が 1:1 でないため既存件数 gate に委ね、R8 指摘反映）。
 
 ## 完了
 

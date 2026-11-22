@@ -79,6 +79,17 @@ for file in $(grep -oE 'tests/[A-Za-z0-9_-]+\.rs' README.md | sort -u); do
   fi
 done
 
+# Verify the README port/service name listings stay in sync with the
+# module declarations (swarm review R8-CI01). Port module names use snake_case
+# and are listed as kebab-case; service names are listed as camelCase.
+port_names=$(grep -oE '^pub mod [a-z0-9_]+;' src/ports/mod.rs | sed -E 's/^pub mod ([a-z0-9_]+);/\1/' | tr '_' '-' | sort)
+for name in $port_names; do
+  if ! grep -qF "\`$name\`" README.md; then
+    echo "docs drift: README port listing is missing $name" >&2
+    fail=1
+  fi
+done
+
 if [ "$fail" -ne 0 ]; then
   echo "Actual counts: tests=$tests (integration=$integration unit=$unit) ports=$ports" >&2
   exit 1
