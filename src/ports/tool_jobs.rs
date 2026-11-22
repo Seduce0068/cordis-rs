@@ -72,6 +72,12 @@ fn job_output_handler(jobs: JobRegistry) -> ToolHandler {
             let (text, _) = jobs
                 .read(id, 0, caller)
                 .map_err(|e| ToolError::Execution(e.to_string()))?;
+            // Reading a job's output counts as collecting its completion
+            // notice (swarm review R2-FG05).
+            let pending = jobs.pending_notices().len();
+            if pending > 0 {
+                jobs.acknowledge(pending);
+            }
             Ok(ToolOutput {
                 content: serde_json::json!({
                     "job": {

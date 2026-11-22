@@ -137,7 +137,7 @@ status: current
 - [x] **ADR-010 の status と進捗記述が index / 本文で矛盾（段4 未着手なのに完了表記）** — 2026-11-21 修正（index を「段5-6 完了・段4 未着手・真の cycle 解消未達」に修正、R1 指摘反映）。
 - [ ] **ApprovalService に agent/callId/audit pair/allowed-once が無い** — 根拠 `docs/ADR-012-shell-command-approval.md:67-68,104-107`, `src/services/approval.rs:14-19` / R2-FG02 / 重大度 medium / confirmed
 - [ ] **sandbox escalation の共通 helper が無く実行ポイントへ接続されていない** — 根拠 `docs/ADR-012-shell-command-approval.md:108-109`, `src/ports/sandbox_policy.rs:1-6` / R2-FG03 / 重大度 medium / confirmed
-- [ ] **completion notice 配信とモデル cursor 追跡が未実装** — 根拠 `docs/ADR-002-tool-jobs-port-scope.md:16,21-24,28-29` / R2-FG05 / 重大度 medium / confirmed
+- [x] **completion notice 配信とモデル cursor 追跡が未実装** — 2026-11-22 修正（JobRecord に settle callback、RegistryState に notices/cursor、pending_notices/acknowledge 追加、job_output で回収、ADR-002 更新、回帰テスト、R1 指摘反映。モデル cursor の外部可視化は残り）。
 - [x] **job owner が固定ラベル "bash" で sessionId fence が弱い** — 2026-11-21 修正（background job の owner を exec.session に変更、session 単位の fence テスト追加、ADR-002 更新、R1 指摘反映）。
 - [x] **JSONL 永続化が通常 turn へ自動配線されていない** — 2026-11-22 修正（Session に observer 追加、SessionStore::observe_all 経由で mount 時に自動登録、restore は observer 非通知で二重追記回避、failures カウンタ追加、回帰テスト、R1 指摘反映）。
 - [ ] **FileSystem::scoped の symlink TOCTOU 残存** — 根拠 `README.md:82`, `src/services/fs.rs:83-125` / R2-FG08 / 重大度 medium / confirmed

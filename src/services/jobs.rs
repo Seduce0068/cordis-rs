@@ -64,12 +64,16 @@ impl OutputRing {
     }
 }
 
+type SettleCallback = dyn Fn(u64, JobStatus) + Send + Sync;
+
 struct JobRecord {
     id: u64,
     owner: Option<String>,
     status: JobStatus,
     ring: OutputRing,
     terminal: Arc<(Mutex<bool>, Condvar)>,
+    /// Notifies the registry when this job settles (swarm review R2-FG05).
+    on_settle: Option<Arc<SettleCallback>>,
 }
 
 #[derive(Clone)]
@@ -98,16 +102,21 @@ impl JobHandle {
     }
 
     pub fn settle(&self, status: JobStatus) {
-        {
+        let callback = {
             let mut guard = self.record.write().expect("job record poisoned");
-            if !guard.status.is_terminal() {
-                guard.status = status;
+            if guard.status.is_terminal() {
+                return;
             }
-        }
+            guard.status = status;
+            guard.on_settle.clone()
+        };
         let terminal = &self.record.read().expect("job record poisoned").terminal;
         let (lock, cvar) = &**terminal;
         *lock.lock().expect("job terminal poisoned") = true;
         cvar.notify_all();
+        if let Some(callback) = callback {
+            callback(self.id(), status);
+        }
     }
 }
 
@@ -140,6 +149,9 @@ struct RegistryState {
     jobs: HashMap<u64, JobHandle>,
     max_concurrent: usize,
     retain_bytes: usize,
+    /// Unacknowledged completion notices and the cursor into them.
+    notices: Vec<(u64, JobStatus)>,
+    cursor: usize,
 }
 
 /// The shared background job registry.
@@ -156,6 +168,8 @@ impl JobRegistry {
                 jobs: HashMap::new(),
                 max_concurrent: max_concurrent.max(1),
                 retain_bytes: retain_bytes.max(1024),
+                notices: Vec::new(),
+                cursor: 0,
             })),
         }
     }
@@ -183,6 +197,7 @@ impl JobRegistry {
         }
         let id = guard.next_id.fetch_add(1, Ordering::SeqCst);
         let retain = guard.retain_bytes;
+        let weak_state = Arc::downgrade(&self.state);
         let handle = JobHandle {
             record: Arc::new(RwLock::new(JobRecord {
                 id,
@@ -190,10 +205,32 @@ impl JobRegistry {
                 status: JobStatus::Running,
                 ring: OutputRing::new(retain),
                 terminal: Arc::new((Mutex::new(false), Condvar::new())),
+                on_settle: Some(Arc::new(move |settled_id, status| {
+                    if let Some(state) = weak_state.upgrade() {
+                        state
+                            .write()
+                            .expect("job registry poisoned")
+                            .notices
+                            .push((settled_id, status));
+                    }
+                })),
             })),
         };
         guard.jobs.insert(id, handle.clone());
         Ok(handle)
+    }
+
+    /// Completion notices newer than the acknowledged cursor, without
+    /// advancing it (swarm review R2-FG05).
+    pub fn pending_notices(&self) -> Vec<(u64, JobStatus)> {
+        let guard = self.state.read().expect("job registry poisoned");
+        guard.notices.iter().skip(guard.cursor).cloned().collect()
+    }
+
+    /// Advance the notice cursor after a notice has been collected.
+    pub fn acknowledge(&self, through: usize) {
+        let mut guard = self.state.write().expect("job registry poisoned");
+        guard.cursor = guard.cursor.max(through);
     }
 
     pub fn get(&self, id: u64) -> Option<JobHandle> {

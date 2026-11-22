@@ -5732,3 +5732,20 @@ fn time_and_tmux_context_share_state_across_clones() {
     tmux.mark_injected(location.clone());
     assert!(!tmux_clone.should_inject(&location));
 }
+
+#[test]
+fn job_registry_tracks_completion_notices_and_cursor() {
+    use cordis_rs::core_services::{JobRegistry, JobStatus};
+
+    let registry = JobRegistry::new(2, 1024);
+    let handle = registry.start(None).unwrap();
+    assert!(registry.pending_notices().is_empty());
+
+    handle.settle(JobStatus::Succeeded);
+    let notices = registry.pending_notices();
+    assert_eq!(notices.len(), 1);
+    assert_eq!(notices[0], (handle.id(), JobStatus::Succeeded));
+
+    registry.acknowledge(notices.len());
+    assert!(registry.pending_notices().is_empty());
+}

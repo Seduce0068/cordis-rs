@@ -25,8 +25,9 @@ status: accepted
 
 ## 意図的な差分
 
-- **completion notice 配信**: 未実装。settled ジョブの未回収通知は、ローカルでは
-  `job_list` でユーザーが明示的に確認する運用を取る。
+- **completion notice 配信**: `JobRegistry::pending_notices()` / `acknowledge()` で
+  構造化通知と cursor を提供。`job_output` が出力を読んだ時点で通知を回収する
+  （R2-FG05 で第2段階として実装）。
 - **user steer による早期終了**: 未実装。ローカル `kill` は状態を反転させるだけで
   実プロセスを停止しないため、描画文言も "requested cancellation" に留める。
 - **待機の実装**: upstream の非同期 wait に対し、ローカル `wait` は
