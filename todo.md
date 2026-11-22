@@ -65,7 +65,7 @@ status: current
 - [x] **docs/index.md が ADR-002/003/004/006/007 を索引していない** — 2026-11-21 修正（ADR-001〜012 の完全索引と status 表記を現状に合わせて再構成、R1 指摘反映）。
 - [x] **PROGRESS.md が status: current のまま旧スナップショット** — 2026-11-21 修正（v0.245.0 / 331 commits / 237 tests / 67 ラウンド時点に更新、gitleaks / markdownlint ゲートを記載）。
 - [ ] **loader.rs が YAML 解析・式評価・検証・composition 構築の4責務（2102行）** — 根拠 `src/loader.rs:1,706,1220,2102` / R1-AR01 / 重大度 medium / confirmed
-- [ ] **23個のドメイン Error enum が Error::Other に平坦化され種別分岐不能** — 根拠 `src/error.rs:4,30,34`, `src/loader.rs:108` / R1-AP02 / 重大度 medium / confirmed
+- [x] **23個のドメイン Error enum が Error::Other に平坦化され種別分岐不能** — 2026-11-22 段階1修正（Error::Domain(&static str, String) 追加、ShellError/PersistenceError/ToolError に From 実装、Error::Other は不変、残り20個は段階移行、回帰テスト、R1 指摘反映）。
 - [x] **port 初期化 API が mount と provide の二系統（lifecycle も不同）** — 2026-11-22 段階1修正（呼び出し0件の no-op fs_patch::provide を削除、README に mount（fiber 永続）／provide（純粋 service）の使い分けを明記、二系統の統一は v1.0 設計課題として記録、R1 指摘反映）。
 - [x] **require_untyped が未登録サービスを無期限・無ログで待つ** — 2026-11-21 修正（require_untyped_with_timeout を追加、既存 require 85 箇所は不変、エラーに service 名と ctx 名、R1 指摘反映）。
 - [x] **GUI のエラー表示が次の成功後も消えない** — 2026-11-21 修正（take_prompt で前回の error バナーをクリア、R5-VU01 反映）。

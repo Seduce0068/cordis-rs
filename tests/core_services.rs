@@ -5806,3 +5806,22 @@ fn sandbox_escalation_helper_enforces_strictly_wider_and_justification() {
     assert!(denial.starts_with("SANDBOX_ESCALATION_DENIED:"));
     assert!(!denial.chars().any(|c| c.is_ascii_digit()));
 }
+
+#[test]
+fn domain_errors_expose_stable_category_without_breaking_other() {
+    use cordis_rs::Error;
+    use cordis_rs::core_services::{RetryPolicy, ShellError};
+
+    // Existing Other construction remains intact.
+    assert_eq!(Error::Other("boom".to_string()).to_string(), "boom");
+
+    let shell: Error = ShellError::InvalidCommand("rm -rf /".to_string()).into();
+    match &shell {
+        Error::Domain(domain, _) => assert_eq!(*domain, "shell"),
+        other => panic!("expected Domain, got {other:?}"),
+    }
+    assert!(shell.to_string().starts_with("shell: "));
+
+    // Domain errors must not be misread as HTTP codes by retry.
+    assert_eq!(RetryPolicy::error_code(&shell), None);
+}
