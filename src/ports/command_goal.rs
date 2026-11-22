@@ -39,8 +39,12 @@ fn handler(store: GoalStore) -> CommandHandler {
                 return render(store.get());
             }
             if input == "clear" {
-                store.clear();
-                return CommandResult::success("Goal cleared.");
+                // Propagate a failed clear instead of reporting success
+                // (swarm review R8-ER01).
+                return match store.try_clear() {
+                    Ok(()) => CommandResult::success("Goal cleared."),
+                    Err(error) => CommandResult::error(format!("failed to clear goal: {error}")),
+                };
             }
             if input == "pause" || input == "resume" {
                 let Some(goal) = store.get() else {

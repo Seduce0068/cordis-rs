@@ -1134,6 +1134,14 @@ async fn goal_store_enforces_revisions_and_command_registers() {
     store.clear();
     assert!(store.get().is_none());
     assert!(store.event_count() > 0);
+
+    // try_clear exposes the commit result while clear() stays an adapter
+    // (swarm review R8-ER01).
+    store.set("again", 5).expect("set must succeed after clear");
+    store
+        .try_clear()
+        .expect("try_clear must succeed with a goal set");
+    assert!(store.get().is_none());
 }
 
 #[tokio::test]

@@ -229,7 +229,12 @@ impl GoalStore {
     }
 
     pub fn clear(&self) {
-        let _ = self.commit(GoalEvent::Clear);
+        let _ = self.try_clear();
+    }
+
+    /// Clear the goal, propagating a commit failure (swarm review R8-ER01).
+    pub fn try_clear(&self) -> std::result::Result<(), GoalError> {
+        self.commit(GoalEvent::Clear)
     }
 
     pub fn get(&self) -> Option<Goal> {

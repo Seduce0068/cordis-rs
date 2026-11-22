@@ -208,13 +208,13 @@ status: current
 
 - [x] **with_llm_retry が Done を合成し枯渇ストリームを成功として返す** — 2026-11-22 修正（Done/Error 無しの枯渇時に Error を返し fail-closed、chain(Done) は LlmService::stream が Error で先に return するため維持、flaky テストに Done 追加＋回帰テスト、R1 指摘反映）。
 - [ ] **PermissionPresets::register が組み込み preset 名を黙って上書きできる** — 根拠 `src/services/permission_presets.rs:114-132,191-197` / R8-AP01 / 重大度 medium / confirmed
-- [ ] **RetryPolicy の遅延フィールドに下限がなく 0 で busy retry になる** — 根拠 `src/services/retry.rs:12-28,104-119` / R8-CF01 / 重大度 medium / confirmed
+- [x] **RetryPolicy の遅延フィールドに下限がなく 0 で busy retry になる** — 2026-11-22 修正（backoff_ms の返り値に 1ms 下限、max_delay_ms=0 の回帰アサーション追加、R8 指摘反映）。
 - [ ] **公開ヘルパが UTF-8 境界を無視したバイトスライスで panic しうる** — 根拠 `src/services/time_context.rs:26-52`, `src/services/file_reference.rs:49-50` / R8-IV01 / 重大度 medium / confirmed
 - [ ] **状態を持つ TimeContext / TmuxContext が Clone で状態共有されない** — 根拠 `src/services/time_context.rs:54-87`, `src/services/tmux_context.rs:65-87` / R8-AP02 / 重大度 medium / confirmed
 - [ ] **StorageHub::write が Object 以外で必須フィールド検証をスキップ** — 根拠 `src/services/storage.rs:149-162` / R8-IV02 / 重大度 medium / confirmed
 - [ ] **SkillRegistry::catalog が read guard 保持中に provider コールバックを実行** — 根拠 `src/services/skills.rs:82-89` / R8-AP03 / 重大度 medium / confirmed
 - [ ] **hooks.json の未知イベント名・不正エントリが警告なしでスキップ** — 根拠 `src/ports/hooks_claude_code.rs:87-120` / R8-CF02 / 重大度 medium / confirmed
-- [ ] **GoalService::clear が commit 失敗を握り潰す** — 根拠 `src/services/goals.rs:183-188,231-233` / R8-ER01 / 重大度 medium / confirmed
+- [x] **GoalService::clear が commit 失敗を握り潰す** — 2026-11-22 修正（try_clear を追加して commit 結果を伝播、command_goal で失敗を CommandResult::error 化、clear() は adapter 維持、R8 指摘反映）。
 - [ ] **MessageFeedback の version が辞書順比較で数値版を誤判定** — 根拠 `src/ports/message_feedback.rs:37,133-148` / R8-IV03 / 重大度 medium / likely
 - [ ] **validate_with_warnings がネスト Object/Array の未宣言キーを検出しない** — 根拠 `src/config.rs:326-343,481-497` / R8-CF03 / 重大度 low / confirmed
 - [ ] **WorkspaceRegistry::sessions_in の doc に存在しない cwd 引数の記述** — 根拠 `src/services/workspace.rs:123-128` / R8-DC01 / 重大度 low / confirmed
