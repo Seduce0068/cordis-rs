@@ -231,7 +231,7 @@ status: current
 - [ ] **tool_todo の StaleVersion が適用側 comparison 未配線** — 根拠 `todo.md:159` / R9-ST05 / 重大度 medium / confirmed
 - [ ] **同期 remove_service が generation を検証せず最新登録を消し得る** — 根拠 `src/context.rs:438-442` / R9-DI01 / 重大度 medium / confirmed
 - [ ] **Context::provide がサービス名を検証せず空文字を受理** — 根拠 `src/context.rs:356-395` / R9-DI02 / 重大度 medium / medium
-- [ ] **EventRegistry::remove が存在しない key で空スロットを生成** — 根拠 `src/events.rs:323-333` / R9-EV01 / 重大度 low / confirmed
+- [x] **EventRegistry::remove が存在しない key で空スロットを生成** — 2026-11-22 修正（remove を try_slot ベースに変更し未登録 listener の削除でスロットを作らない、internal 回帰テスト追加、R9 指摘反映）。
 - [ ] **typed_event! の decode error store がプロセスグローバル** — 根拠 `src/events.rs:45-49,69-76` / R9-AP01 / 重大度 medium / confirmed
 - [ ] **is_bail_value が bool のみ対応（一般 R 型で false 相当を判定できない）** — 根拠 `src/events.rs:510-514` / R9-AP02 / 重大度 medium / medium
 - [ ] **Context::set_lifecycle が Fiber 状態と無関係に公開され二重状態** — 根拠 `src/context.rs:203-210`, `src/plugin.rs:73` / R9-CY01 / 重大度 medium / medium

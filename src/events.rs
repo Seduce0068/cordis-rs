@@ -321,11 +321,14 @@ impl EventRegistry {
     }
 
     pub fn remove(&self, key: SlotKey, id: u64) -> Result<()> {
-        let binding = self.slot(key);
-        binding
-            .write()
-            .expect("event slot poisoned")
-            .retain(|(current, _)| *current != id);
+        // Never create an empty slot just because a stale disposer removes an
+        // unknown listener (swarm review R9-EV01).
+        if let Some(binding) = self.try_slot(&key) {
+            binding
+                .write()
+                .expect("event slot poisoned")
+                .retain(|(current, _)| *current != id);
+        }
         // Drop the option metadata too; otherwise HookMeta accumulates in
         // long-running hosts even after every listener is unloaded.
         self.meta.write().expect("event meta poisoned").remove(&id);
@@ -726,5 +729,23 @@ where
         } else {
             Err(EmitErrors(errors))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn removing_unknown_listener_does_not_create_an_empty_slot() {
+        let registry = EventRegistry::default();
+        let key = named_emit_slot("never-registered");
+        assert!(registry.try_slot(&key).is_none());
+
+        registry.remove(key.clone(), u64::MAX).unwrap();
+        assert!(
+            registry.try_slot(&key).is_none(),
+            "remove must not insert an empty slot (swarm review R9-EV01)"
+        );
     }
 }
