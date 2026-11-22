@@ -6384,3 +6384,20 @@ fn pruner_config_boundary_is_inclusive() {
     assert!(error.to_string().contains("must not exceed the threshold"));
     assert_eq!(error, PruneError::InvalidConfig);
 }
+
+#[test]
+fn job_wait_returns_false_on_timeout() {
+    use cordis_rs::core_services::{JobRegistry, JobStatus};
+
+    let registry = JobRegistry::new(2, 1024);
+    let handle = registry.start(Some("agent".to_string())).unwrap();
+
+    // The job has not settled, so wait times out with false rather than an
+    // error (swarm review R12-ST02).
+    assert!(!registry.wait(handle.id(), Some("agent"), 1).unwrap());
+    assert_eq!(handle.status(), JobStatus::Running);
+
+    // After settling, the same wait returns true immediately.
+    handle.settle(JobStatus::Succeeded);
+    assert!(registry.wait(handle.id(), Some("agent"), 1).unwrap());
+}
