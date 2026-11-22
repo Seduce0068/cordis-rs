@@ -216,7 +216,7 @@ status: current
 - [ ] **hooks.json の未知イベント名・不正エントリが警告なしでスキップ** — 根拠 `src/ports/hooks_claude_code.rs:87-120` / R8-CF02 / 重大度 medium / confirmed
 - [x] **GoalService::clear が commit 失敗を握り潰す** — 2026-11-22 修正（try_clear を追加して commit 結果を伝播、command_goal で失敗を CommandResult::error 化、clear() は adapter 維持、R8 指摘反映）。
 - [x] **MessageFeedback の version が辞書順比較で数値版を誤判定** — 2026-11-22 修正（両者が数値なら u64 比較、他形式は従来の辞書順を維持、9→10 回帰テスト追加、R8 指摘反映）。
-- [ ] **validate_with_warnings がネスト Object/Array の未宣言キーを検出しない** — 根拠 `src/config.rs:326-343,481-497` / R8-CF03 / 重大度 low / confirmed
+- [x] **validate_with_warnings がネスト Object/Array の未宣言キーを検出しない** — 2026-11-22 修正（validate_inner で warnings を再帰伝播、ネスト Object/Array の未宣言キーも検出、回帰テスト追加、R8 指摘反映）。
 - [x] **WorkspaceRegistry::sessions_in の doc に存在しない cwd 引数の記述** — 2026-11-22 修正（コメントを実際のシグネチャに合わせ「Sessions attached to the workspace.」に修正、R8 指摘反映）。
 - [x] **CommandRegistry::names が HashMap 順で非決定的** — 2026-11-22 修正（names() の結果を sort して人間向け一覧を決定的に、R8 指摘反映）。
 - [x] **ADR-004 の fail 動作表が現行実装と2点乖離** — 2026-11-22 修正（approval 既定 fail-open と post-execute 失敗時実行を現行実装に合わせ明記、R8 指摘反映）。

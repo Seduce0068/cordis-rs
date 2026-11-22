@@ -330,15 +330,8 @@ pub fn validate_with_warnings(
     fields: &[FieldSpec],
     raw: &Value,
 ) -> std::result::Result<(Value, Vec<String>), Vec<ValidationError>> {
-    let validated = validate(fields, raw)?;
     let mut warnings = Vec::new();
-    if let Value::Object(map) = raw {
-        for key in map.keys() {
-            if !fields.iter().any(|spec| spec.name == *key) {
-                warnings.push(format!("undeclared config key: {key}"));
-            }
-        }
-    }
+    let validated = validate_inner(fields, raw, Some(&mut warnings))?;
     Ok((validated, warnings))
 }
 
@@ -348,6 +341,14 @@ pub fn validate_with_warnings(
 pub fn validate(
     fields: &[FieldSpec],
     raw: &Value,
+) -> std::result::Result<Value, Vec<ValidationError>> {
+    validate_inner(fields, raw, None)
+}
+
+fn validate_inner(
+    fields: &[FieldSpec],
+    raw: &Value,
+    mut warnings: Option<&mut Vec<String>>,
 ) -> std::result::Result<Value, Vec<ValidationError>> {
     let object = match raw {
         Value::Object(map) => map,
@@ -370,6 +371,13 @@ pub fn validate(
 
     let mut errors = Vec::new();
     let mut result = BTreeMap::new();
+    if let Some(ref mut warnings) = warnings {
+        for key in object.keys() {
+            if !fields.iter().any(|spec| spec.name == *key) {
+                warnings.push(format!("undeclared config key: {key}"));
+            }
+        }
+    }
     for spec in fields {
         let path = spec.name.clone();
         match object.get(&spec.name) {
@@ -379,7 +387,7 @@ pub fn validate(
                     // Validate the default too, so an invalid schema cannot
                     // inject a wrong-typed/out-of-range value (swarm review
                     // R7-IV09).
-                    match validate_value(spec, default, &path) {
+                    match validate_value(spec, default, &path, warnings.as_deref_mut()) {
                         Ok(validated) => {
                             result.insert(spec.name.clone(), validated);
                         }
@@ -392,7 +400,7 @@ pub fn validate(
                     });
                 }
             }
-            Some(value) => match validate_value(spec, value, &path) {
+            Some(value) => match validate_value(spec, value, &path, warnings.as_deref_mut()) {
                 Ok(validated) => {
                     result.insert(spec.name.clone(), validated);
                 }
@@ -412,6 +420,7 @@ fn validate_value(
     spec: &FieldSpec,
     value: &Value,
     path: &str,
+    mut warnings: Option<&mut Vec<String>>,
 ) -> std::result::Result<Value, Vec<ValidationError>> {
     if let Value::Reference(name) = value {
         return Err(vec![ValidationError {
@@ -484,14 +493,14 @@ fn validate_value(
         let mut validated_items = Vec::with_capacity(items.len());
         for (index, item) in items.iter().enumerate() {
             let child_path = format!("{path}[{index}]");
-            match validate_value(element, item, &child_path) {
+            match validate_value(element, item, &child_path, warnings.as_deref_mut()) {
                 Ok(validated) => validated_items.push(validated),
                 Err(mut found) => errors.append(&mut found),
             }
         }
         result = Value::Array(validated_items);
     } else if spec.ty == FieldType::Object && !spec.fields.is_empty() {
-        match validate(&spec.fields, value) {
+        match validate_inner(&spec.fields, value, warnings) {
             Ok(validated) => result = validated,
             Err(mut found) => errors.append(&mut found),
         }

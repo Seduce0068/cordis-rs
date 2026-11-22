@@ -1490,3 +1490,31 @@ entries:
     assert_eq!(report.warnings[0].entry, "a");
     assert_eq!(report.warnings[0].key, "config:undeclared config key: typo");
 }
+
+#[test]
+fn validate_with_warnings_reports_nested_undeclared_keys() {
+    use cordis_rs::{ConfigValue, FieldSpec, FieldType, validate_with_warnings};
+
+    let schema = vec![
+        FieldSpec::new("outer", FieldType::Object)
+            .fields(vec![FieldSpec::new("inner", FieldType::String)]),
+    ];
+    let raw = ConfigValue::Object(
+        [(
+            "outer".to_string(),
+            ConfigValue::Object(
+                [
+                    ("inner".to_string(), ConfigValue::String("ok".into())),
+                    ("typo".to_string(), ConfigValue::Integer(1)),
+                ]
+                .into_iter()
+                .collect(),
+            ),
+        )]
+        .into_iter()
+        .collect(),
+    );
+
+    let (_validated, warnings) = validate_with_warnings(&schema, &raw).unwrap();
+    assert_eq!(warnings, vec!["undeclared config key: typo"]);
+}
