@@ -72,10 +72,7 @@ pub mod plugin_ports {
         mount as mount_compaction_image_offload, offload_payload, select_oldest,
         select_oldest_after, validate_payload,
     };
-    #[deprecated(
-        since = "0.204.0",
-        note = "use `TOOL_RESULT_PRUNER_SERVICE_NAME` instead"
-    )]
+    #[deprecated(note = "use `TOOL_RESULT_PRUNER_SERVICE_NAME` instead")]
     pub use crate::ports::compaction_tool_result_pruner::SERVICE_NAME;
     pub use crate::ports::compaction_tool_result_pruner::{
         CompactionToolResultPruner, PruneSessionResult, REPLACEMENT_EVENT,
