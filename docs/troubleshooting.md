@@ -16,7 +16,7 @@ status: "Self-reviewed"
 
 この runbook は cordis-rs（PoC）で想定される障害の切り分けと復旧手順をまとめる。
 **本リポジトリは production-ready ではない**（README の安定性マトリクスを参照）。
-ここに列举する手順は PoC 内の診断を目的とし、本番運用の保証ではない。
+ここに列挙する手順は PoC 内の診断を目的とし、本番運用の保証ではない。
 
 作成時に確認した観測 API: `CompositionState::try_load`、`JsonlPersistence::read_recovered`、
 `EventLogReporter::dropped`、`RedactingExporter::failures`。

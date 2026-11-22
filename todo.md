@@ -202,9 +202,9 @@ status: current
 - [ ] **「6 エントリすべてを mount」という記述が部分 mount 実装と乖離** — 根拠 `docs/PROGRESS.md:26`, `docs/ADR-001...:57-58`, `examples/mount_real_composition.rs:3-6` / R7-DC16 / 重大度 medium / confirmed
 - [ ] **production_ports.rs だけ TempDirGuard 規約を回避** — 根拠 `tests/production_ports.rs:153-165` / R7-TQ01 / 重大度 medium / confirmed
 - [ ] **timeout 経路の child.kill/wait エラーが破棄され後始末失敗が観測不能** — 根拠 `src/services/shell.rs:242-247` / R7-ER09 / 重大度 medium / likely
-- [ ] **Cargo.toml の tokio features 説明コメントが actual feature 一覧と乖離** — 根拠 `Cargo.toml:20-24` / R7-DC17 / 重大度 low / confirmed
+- [x] **Cargo.toml の tokio features 説明コメントが actual feature 一覧と乖離** — 2026-11-22 修正（library 側 process/io-util を含む実 feature を反映、同期要旨を明記、R7 指摘反映）。
 - [ ] **PROGRESS.md が status: current のまま 100 ラウンド・20 件の旧スナップショット** — 根拠 `docs/PROGRESS.md:4,17,63` / R7-DC18 / 重大度 low / confirmed（agent-11/12 の重複を統合）
-- [ ] **runbook に中国語混在の誤記（列举）** — 根拠 `docs/troubleshooting.md:19` / R7-DC19 / 重大度 low / confirmed
+- [x] **runbook に中国語混在の誤記（列举）** — 2026-11-22 修正（「列举」を「列挙」に修正、R7 指摘反映）。
 
 ## 完了
 
