@@ -6050,3 +6050,30 @@ fn jsonl_restore_strict_mode_rejects_seq_gaps() {
     .unwrap();
     assert!(store.restore_with("seq", None, true).is_ok());
 }
+
+#[test]
+fn storage_write_error_order_is_config_before_record() {
+    use cordis_rs::core_services::{DomainSpec, StorageError, StorageHub};
+
+    let hub = StorageHub::new();
+    hub.define_domain(DomainSpec::new("prefs", vec!["theme".to_string()]));
+
+    // Backend missing + required_fields non-empty + invalid record:
+    // configuration error wins (R10-EC02).
+    assert!(matches!(
+        hub.write("prefs", "missing", "k", serde_json::json!("bad")),
+        Err(StorageError::UnknownBackend(_))
+    ));
+    // Unknown domain still wins over unknown backend.
+    assert!(matches!(
+        hub.write("unknown", "missing", "k", serde_json::json!({})),
+        Err(StorageError::UnknownDomain(_))
+    ));
+
+    // Once the backend exists, record validation applies as before.
+    hub.register_backend("mem", cordis_rs::core_services::MemoryBackend::new());
+    assert!(matches!(
+        hub.write("prefs", "mem", "k", serde_json::json!("bad")),
+        Err(StorageError::InvalidRecord { .. })
+    ));
+}
