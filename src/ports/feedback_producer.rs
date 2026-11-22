@@ -6,8 +6,6 @@
 //! Source: `snapshots/sdk/text-turn/feedback-producer.mjs` in
 //! deepseek-ai/deepseek-harness (MIT), read as untrusted reference data.
 
-use std::sync::Arc;
-
 use async_trait::async_trait;
 
 use crate::services::commands::CommandRegistry;
@@ -153,9 +151,4 @@ pub async fn mount(ctx: &Context, event: TurnStoppingEvent) -> Result<()> {
 /// Convenience constructor for the event descriptor used by this port.
 pub fn turn_stopping_event() -> TurnStoppingEvent {
     TurnStoppingEvent::new("agent/turn-stopping")
-}
-
-/// Helper: an Arc handle to the event, for hosts sharing it.
-pub fn shared_event() -> Arc<TurnStoppingEvent> {
-    Arc::new(turn_stopping_event())
 }

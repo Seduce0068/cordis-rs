@@ -51,7 +51,7 @@ pub fn record_feedback(session: &Session, entry: &FeedbackRecord) {
 }
 
 /// Port of the command's `executeFeedbackCommand`.
-pub fn execute_command(invocation: &CommandInvocation) -> Option<(String, FeedbackRecord)> {
+fn execute_command(invocation: &CommandInvocation) -> Option<(String, FeedbackRecord)> {
     let text = invocation.raw_input.trim();
     if text.is_empty() {
         return None;

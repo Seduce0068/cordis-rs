@@ -64,14 +64,6 @@ impl CompactionAutomation {
         &self.config
     }
 
-    /// Number of compactions performed (test/observability).
-    pub fn compaction_count(&self) -> usize {
-        self.state
-            .read()
-            .expect("compaction automation state poisoned")
-            .compactions
-    }
-
     /// Drive compaction for a session on a trigger.
     pub fn drive(&self, session_id: &str, trigger: CompactionTrigger) -> Result<AutomationOutcome> {
         if !self.config.auto {
@@ -126,15 +118,6 @@ impl CompactionAutomation {
             shadowed_events: result.shadowed_events,
             pressure: result.pressure,
         })
-    }
-
-    /// Reset the overflow retry counter after a successful response.
-    pub fn note_success(&self, session_id: &str) {
-        self.state
-            .write()
-            .expect("compaction automation state poisoned")
-            .overflow_retries
-            .remove(session_id);
     }
 }
 
