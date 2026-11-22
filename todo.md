@@ -228,7 +228,7 @@ status: current
 - [x] **with_llm_timeout が total request deadline を持たない** — 2026-11-22 修正（with_llm_total_timeout を timeout_at で追加、既存 decorator 不変、定期チャンクでも発火する回帰テスト、R1 指摘反映）。
 - [x] **OTLP EventRecord に per-event 時刻が無く全イベント同一 timestamp** — 2026-11-22 修正（EventRecord 不変のまま ReporterState が (record, ms) を保持、events_with_timestamps と otlp_payload_with_timestamps を追加、otlp_payload は adapter 維持、回帰テスト、R1 指摘反映）。
 - [ ] **approval audit pair（approval/asked + approval/decided）が未記録** — 根拠 `src/services/approval.rs:request`, ADR-012 / R9-ST03 / 重大度 medium / confirmed（段階1の agent/callId 保持は済み）
-- [ ] **tool_todo の StaleVersion が適用側 comparison 未配線** — 根拠 `todo.md:159` / R9-ST05 / 重大度 medium / confirmed
+- [x] **tool_todo の StaleVersion が適用側 comparison 未配線** — 2026-11-23 修正（write_with_version と todo_version を Tools に追加、既存 invoke/TodoWriteArgs 不変、stale は ToolFailure::Args で拒否、回帰テスト、R1 指摘反映）。
 - [x] **同期 remove_service が generation を検証せず最新登録を消し得る** — 2026-11-23 修正（remove_service_generation_sync を追加、既存 remove_service は明示的全削除として不変＋doc 明記、stale disposer 回帰テスト、R1 指摘反映）。
 - [x] **Context::provide がサービス名を検証せず空文字を受理** — 2026-11-22 修正（空／空白のみのサービス名を Err で拒否、回帰テスト追加、R9 指摘反映）。
 - [x] **EventRegistry::remove が存在しない key で空スロットを生成** — 2026-11-22 修正（remove を try_slot ベースに変更し未登録 listener の削除でスロットを作らない、internal 回帰テスト追加、R9 指摘反映）。

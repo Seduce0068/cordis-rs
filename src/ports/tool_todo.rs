@@ -215,6 +215,8 @@ struct ToolDefinition {
 struct ToolsState {
     next_id: u64,
     entries: Vec<ToolDefinition>,
+    /// Monotonic version for optimistic todo writes (swarm review R9-ST05).
+    todo_version: u64,
 }
 
 /// Shared `ctx.tools` seam. A host keeps a clone and calls `invoke` to drive
@@ -285,6 +287,32 @@ impl Tools {
             Some(handler) => handler(args, exec).await,
             None => Err(ToolFailure::NotFound(name.to_string())),
         }
+    }
+
+    /// Invoke a tool with optimistic version checking. The write is rejected
+    /// when `expected_version` does not match the current version, so a stale
+    /// client cannot overwrite newer todos (swarm review R9-ST05).
+    pub async fn write_with_version(
+        &self,
+        name: &str,
+        args: TodoWriteArgs,
+        exec: ToolExecution,
+        expected_version: u64,
+    ) -> std::result::Result<TodoWriteResult, ToolFailure> {
+        let current = self.state.lock().expect("tools poisoned").todo_version;
+        if current != expected_version {
+            return Err(ToolFailure::Args(format!(
+                "stale todo version: expected {expected_version}, actual {current}"
+            )));
+        }
+        let result = self.invoke(name, args, exec).await?;
+        self.state.lock().expect("tools poisoned").todo_version += 1;
+        Ok(result)
+    }
+
+    /// Current optimistic todo version.
+    pub fn todo_version(&self) -> u64 {
+        self.state.lock().expect("tools poisoned").todo_version
     }
 
     /// Synchronous variant for hosts whose event loop cannot await (for

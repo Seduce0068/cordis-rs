@@ -173,7 +173,7 @@ danger-full-access は allow）。
 `tests/core_services.rs`（コアサービス・port）、`tests/official_plugin_port.rs`
 （`dsh-command-compact`）、`tests/official_plugin_ports.rs`（`command-goal` / `tool-todo` の
 ローカル再現）、`tests/production_ports.rs`（本番 port の mount 検証）に分かれています
-（テスト 303 件（統合 299 ＋ unit 4））。
+（テスト 304 件（統合 300 ＋ unit 4））。
 
 `mount_real_composition` は上流 `snapshots/sdk/text-turn/cordis.yml` の
 6 エントリのうち port が存在するものだけを fiber として起動し、

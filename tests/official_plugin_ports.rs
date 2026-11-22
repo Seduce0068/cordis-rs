@@ -3552,3 +3552,39 @@ fn hooks_ask_decision_maps_to_non_blocking_ask_effect() {
         HookEffect::Reject(_) | HookEffect::Block(_)
     ));
 }
+
+#[tokio::test]
+async fn todo_write_with_version_rejects_stale_writes() {
+    use cordis_rs::plugin_ports::{RawTodo, TodoWriteArgs, ToolExecution, Tools};
+
+    let tools = Tools::default();
+    // A no-op tool name is enough: write_with_version checks the version
+    // before delegating to invoke.
+    let args = || TodoWriteArgs {
+        todos: vec![RawTodo::new("task", "pending")],
+    };
+
+    assert_eq!(tools.todo_version(), 0);
+    let stale = tools
+        .write_with_version("missing", args(), ToolExecution::agent("alice"), 5)
+        .await;
+    assert!(stale.is_err(), "stale version must be rejected");
+    assert_eq!(
+        tools.todo_version(),
+        0,
+        "rejected write must not bump version"
+    );
+
+    // Register a real todo_write handler and confirm a matching version is
+    // accepted and advances the version.
+    let ctx = cordis_rs::Context::root("todo-version");
+    let _mounted = cordis_rs::plugin_ports::mount_tool_todo(&ctx, false)
+        .await
+        .unwrap();
+    let tools_service = ctx.require::<Tools>("todoTools").await.unwrap();
+    let ok = tools_service
+        .write_with_version("todo_write", args(), ToolExecution::agent("alice"), 0)
+        .await;
+    assert!(ok.is_ok(), "matching version must be accepted: {ok:?}");
+    assert_eq!(tools_service.todo_version(), 1);
+}
