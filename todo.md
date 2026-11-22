@@ -181,7 +181,7 @@ status: current
 - [x] **TimeoutPolicyPlugin の inject("tools") と apply の require("toolPipeline") が不一致** — 2026-11-22 修正（inject を "toolPipeline" に変更、R2-ST02 と同種、回帰テスト追加、R5 指摘反映）。
 - [ ] **CommandRegistry が同名コマンドを先着優先で保持し ToolRegistry と世代ルールが異なる** — 根拠 `src/services/commands.rs:87-149` / R5-AP03 / 重大度 medium / confirmed
 - [x] **FieldSpec の単発 min/max ビルダーに順序・NaN 検証がなく range() と方針が割れる** — 2026-11-22 修正（min()/max() に NaN assert 追加、range() と方針統一、should_panic テスト2件、R5 指摘反映）。
-- [ ] **ValidationReason::OutOfRange が i64 境界を f64 に丸め 2^53 超で診断値が誤る** — 根拠 `src/config.rs:224-228,382-396` / R5-DI03 / 重大度 medium / confirmed
+- [x] **ValidationReason::OutOfRange が i64 境界を f64 に丸め 2^53 超で診断値が誤る** — 2026-11-22 修正（IntegerOutOfRange バリアントを追加し i64 を exact 保持、Display と validate を更新、既存 f64 range は OutOfRange 維持、R5 指摘反映）。
 - [x] **PluginRegistry::register が同一 id を黙って上書きし MountReport に現れない** — 2026-11-22 修正（try_register と LoaderError::DuplicatePlugin を追加、既存 register は後方互換 adapter として維持、回帰テスト追加、R5 指摘反映）。
 - [x] **FsError の Display に安定コードがなくログから種別を判別できない** — 2026-11-22 修正（FsErrorCode に Display、FsError::Display にコード接頭辞、回帰テスト追加、R5 指摘反映）。
 - [x] **unsafe 禁止ゲートの行頭 unsafe { 取りこぼしとセルフテスト欠如** — 2026-11-22 修正（regex を (^|空白)unsafe{ に修正、行頭・インデント・extern fn の3形セルフテスト追加、検出を実証、R5 指摘反映）。

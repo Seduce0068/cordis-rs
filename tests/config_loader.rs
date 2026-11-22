@@ -1355,9 +1355,14 @@ fn integer_range_validation_uses_exact_i64_comparison() {
     assert!(run(spec.clone(), 9_007_199_254_740_993).is_empty());
     let errors = run(spec, 9_007_199_254_740_994);
     assert!(
-        errors
-            .iter()
-            .any(|error| matches!(error.reason, ValidationReason::OutOfRange { .. }))
+        errors.iter().any(|error| matches!(
+            error.reason,
+            ValidationReason::IntegerOutOfRange {
+                actual: 9_007_199_254_740_994,
+                ..
+            }
+        )),
+        "integer bounds must keep exact i64 values in diagnostics: {errors:?}"
     );
 
     // Existing f64 `range()` still works for Integer fields (backward compat).

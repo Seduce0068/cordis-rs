@@ -228,6 +228,13 @@ pub enum ValidationReason {
         max: Option<f64>,
         actual: f64,
     },
+    /// Integer bounds keep their exact i64 values so diagnostics above 2^53
+    /// are not rounded (swarm review R5-DI03).
+    IntegerOutOfRange {
+        min: Option<i64>,
+        max: Option<i64>,
+        actual: i64,
+    },
     UnresolvedReference(String),
 }
 
@@ -253,6 +260,16 @@ impl fmt::Display for ValidationError {
                         self.path
                     )
                 }
+                (Some(min), None) => write!(f, "{} must be >= {min} (got {actual})", self.path),
+                (None, Some(max)) => write!(f, "{} must be <= {max} (got {actual})", self.path),
+                (None, None) => write!(f, "{} out of range (got {actual})", self.path),
+            },
+            ValidationReason::IntegerOutOfRange { min, max, actual } => match (min, max) {
+                (Some(min), Some(max)) => write!(
+                    f,
+                    "{} out of range [{min}, {max}] (got {actual})",
+                    self.path
+                ),
                 (Some(min), None) => write!(f, "{} must be >= {min} (got {actual})", self.path),
                 (None, Some(max)) => write!(f, "{} must be <= {max} (got {actual})", self.path),
                 (None, None) => write!(f, "{} out of range (got {actual})", self.path),
@@ -389,10 +406,10 @@ fn validate_value(
         {
             errors.push(ValidationError {
                 path: path.to_string(),
-                reason: ValidationReason::OutOfRange {
-                    min: spec.min_int.map(|value| value as f64).or(spec.min),
-                    max: spec.max_int.map(|value| value as f64).or(spec.max),
-                    actual: *number as f64,
+                reason: ValidationReason::IntegerOutOfRange {
+                    min: spec.min_int,
+                    max: spec.max_int,
+                    actual: *number,
                 },
             });
         }
