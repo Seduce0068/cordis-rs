@@ -192,6 +192,20 @@ status: current
 - [x] **hooks_claude_code の parse_config が数値設定を無検証で受け入れる** — 2026-11-22 修正（0 と usize 超过値を Err として拒否、回帰テスト追加、R6 指摘反映）。
 - [x] **session_turn_outline の turn 比較が u64→i64 キャストで順序を誤る** — 2026-11-22 修正（last_turn を `Option<u64>` にして u64 同士で比較、i64::MAX 超回帰テスト追加、R6 指摘反映）。
 
+- [ ] **port の effect 解除が disposer エラーを握り潰し ADR-007/004 に違反** — 根拠 `src/ports/tool_goal.rs:227` 他 実測8箇所 / R7-ER08 / 重大度 high / confirmed（agent-12 は10箇所と報告だが Runtime Proof で8箇所を確認）
+- [ ] **config::validate が未宣言の config キーをサイレントに破棄し警告経路もない** — 根拠 `src/config.rs:311,338-365`, `src/loader.rs:502-508` / R7-CF09 / 重大度 medium / confirmed
+- [ ] **FieldSpec::with_default が既定値の型・範囲を検証せず不正スキーマを通す** — 根拠 `src/config.rs:162-167,343-345` / R7-IV09 / 重大度 medium / confirmed
+- [ ] **FieldSpec の単発境界 setter に前後関係の検証がなく到達不能レンジを受理** — 根拠 `src/config.rs:177-199`（R5-IV04 は NaN のみ修正済み）/ R7-IV10 / 重大度 medium / confirmed
+- [ ] **check-doc-counts.sh が README のテストファイル一覧を検証していない** — 根拠 `scripts/check-doc-counts.sh:25-32`, `README.md:168-172` / R7-CI05 / 重大度 medium / confirmed（agent-11/12 の重複を統合）
+- [ ] **doc-count ゲートが実際の cargo test 件数と突き合わせていない** — 根拠 `scripts/check-doc-counts.sh:8-10`, `docs/PROGRESS.md:59` / R7-CI06 / 重大度 medium / confirmed
+- [ ] **todo.md と ADR-010 / docs/index.md で段4（dispatch API registry 化）の完了状態が矛盾** — 根拠 `todo.md:39`, `docs/ADR-010...:53,81-90`, `docs/index.md:26-27` / R7-DC15 / 重大度 medium / confirmed
+- [ ] **「6 エントリすべてを mount」という記述が部分 mount 実装と乖離** — 根拠 `docs/PROGRESS.md:26`, `docs/ADR-001...:57-58`, `examples/mount_real_composition.rs:3-6` / R7-DC16 / 重大度 medium / confirmed
+- [ ] **production_ports.rs だけ TempDirGuard 規約を回避** — 根拠 `tests/production_ports.rs:153-165` / R7-TQ01 / 重大度 medium / confirmed
+- [ ] **timeout 経路の child.kill/wait エラーが破棄され後始末失敗が観測不能** — 根拠 `src/services/shell.rs:242-247` / R7-ER09 / 重大度 medium / likely
+- [ ] **Cargo.toml の tokio features 説明コメントが actual feature 一覧と乖離** — 根拠 `Cargo.toml:20-24` / R7-DC17 / 重大度 low / confirmed
+- [ ] **PROGRESS.md が status: current のまま 100 ラウンド・20 件の旧スナップショット** — 根拠 `docs/PROGRESS.md:4,17,63` / R7-DC18 / 重大度 low / confirmed（agent-11/12 の重複を統合）
+- [ ] **runbook に中国語混在の誤記（列举）** — 根拠 `docs/troubleshooting.md:19` / R7-DC19 / 重大度 low / confirmed
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -223,3 +237,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-22、round 102）**: `swarm-project-review` R1（AR/CF/DR）と `swarm-todo-discovery` R1（ST/FG/TQ/DC）の2エージェントから16件を取得。既知の hooks-claude-code 重複は Codex 側の未接続として整理して追記。root が path:line を Runtime Proof で確認し16件を `## 未着手` へ追記（high1 / medium10 / low5、すべて small/medium の実装容易性）。R2〜R5 は同一情報の重複取得を避け省略。
 - **swarm コンボ R6 集約（2026-11-22、round 119）**: `swarm-project-review` R1（AR/CF/AP/DC）と `swarm-todo-discovery` R1（ST/TQ/DC）の2エージェントから14件を取得。root が path:line を Runtime Proof で確認し14件を `## 未着手` へ追記（high1 / medium2 / low11）。R2〜R5 は同一情報の重複取得を避け省略。
 - **swarm コンボ R6 集約（2026-11-22、round 132）**: `swarm-project-review` R1（AR/CF/AP/DC）と `swarm-todo-discovery` R1（ST/TQ/DC）の2エージェントから14件を取得。root が path:line を Runtime Proof で確認し14件を `## 未着手` へ追記（medium9 / low5）。R2〜R5 は同一情報の重複取得を避け省略。
+- **swarm コンボ R6 集約（2026-11-22、round 148）**: `swarm-project-review` R1 と `swarm-todo-discovery` R1 の2エージェントから15件を取得。root が path:line を Runtime Proof で確認し、重複2件を統合して13件を `## 未着手` へ追記（high1 / medium9 / low3）。agent-12 の disposer「10箇所」は実測8箇所に修正。
