@@ -55,6 +55,14 @@ for file in README.md docs/PROGRESS.md docs/ADR-001-cordis-runtime-reimplementat
   fi
 done
 
+# Cross-check the static #[test] count against the actually registered tests
+# (docs/PROGRESS.md promises parity with `cargo test -- --list`, R7-CI06).
+listed=$(cargo test --all-targets -- --list 2>/dev/null | grep -c ': test$' || true)
+if [ -n "$listed" ] && [ "$listed" != "$tests" ]; then
+  echo "docs drift: cargo test --all-targets -- --list reports $listed tests, docs report $tests" >&2
+  fail=1
+fi
+
 # Verify the README test-file listing stays in sync with tests/*.rs
 # (swarm review R7-CI05). Both directions are checked: a real file missing
 # from the docs, and a documented file that no longer exists.
