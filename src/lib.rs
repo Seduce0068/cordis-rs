@@ -341,7 +341,9 @@ pub mod core_services {
         ApprovalPolicy, PermissionPresets, PermissionState, Preset, PresetSpec, SandboxMode,
         provide as provide_permission_presets,
     };
-    pub use crate::services::plan_mode::{PlanMode, PlanModeEvent, provide as provide_plan_mode};
+    pub use crate::services::plan_mode::{
+        PlanMode, PlanModeError, PlanModeEvent, provide as provide_plan_mode,
+    };
     pub use crate::services::plugin_inventory::{
         PluginEntryView, PluginInventory, PluginInventorySnapshot,
         provide as provide_plugin_inventory,

@@ -248,7 +248,7 @@ status: current
 - [ ] **Subagent/Agent registry が世代 fencing 無しで古い disposer が新登録を消す** — 根拠 `src/services/subagents.rs:57-77`, `src/services/agents.rs:57-77` / R10-IV03 / 重大度 medium / confirmed
 - [ ] **StorageHub::define_domain が空名・空 required_fields・重複を許す** — 根拠 `src/services/storage.rs:126-132` / R10-IV01 / 重大度 medium / confirmed
 - [ ] **StorageHub::write が domain/backend 未設定でエラー優先順が不安定** — 根拠 `src/services/storage.rs:141-158` / R10-EC02 / 重大度 low / medium
-- [ ] **PlanMode::set が空 session_id を受理** — 根拠 `src/services/plan_mode.rs:55-70` / R10-IV05 / 重大度 medium / medium
+- [x] **PlanMode::set が空 session_id を受理** — 2026-11-23 修正（try_set/try_enter/try_exit と PlanModeError を追加して fail-closed に、set は try_set の expect adapter、seq を消費せず拒否、回帰テスト、R1 指摘反映）。
 - [ ] **CredentialProvider が数字始まりの参照名を受理** — 根拠 `src/services/credentials.rs:19-32,78-98` / R10-IV04 / 重大度 low / medium
 - [ ] **WorkspaceRegistry::create が archive 済み id の再利用を拒否** — 根拠 `src/services/workspace.rs:55-81,130-138` / R10-TX02 / 重大度 low / medium
 - [ ] **Session::append_with_seq が seq の飛びを許容** — 根拠 `src/services/sessions.rs:112-129` / R10-TX03 / 重大度 low / low

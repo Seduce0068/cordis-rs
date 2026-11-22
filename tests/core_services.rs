@@ -5987,3 +5987,22 @@ fn session_store_auto_ids_are_consecutive() {
     assert_eq!(suffix(b.id()), suffix(a.id()) + 1);
     assert_eq!(suffix(c.id()), suffix(b.id()) + 1);
 }
+
+#[test]
+fn plan_mode_try_set_rejects_empty_session_id() {
+    use cordis_rs::core_services::{PlanMode, PlanModeError};
+
+    let plan = PlanMode::new();
+    assert_eq!(plan.try_set("", true), Err(PlanModeError::EmptySessionId));
+    assert_eq!(plan.try_enter("   "), Err(PlanModeError::EmptySessionId));
+    assert_eq!(plan.try_exit(""), Err(PlanModeError::EmptySessionId));
+
+    // Rejected writes consume no sequence number and create no session.
+    assert!(plan.trace("").is_empty());
+    assert!(!plan.is_active(""));
+
+    // A normal id still works through both APIs.
+    assert!(plan.try_enter("s1").is_ok());
+    assert!(plan.is_active("s1"));
+    assert_eq!(plan.trace("s1").len(), 1);
+}

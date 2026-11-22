@@ -10,6 +10,22 @@ use std::sync::{Arc, RwLock};
 
 use crate::Result;
 
+/// Validation error for the fallible plan-mode API (swarm review R10-IV05).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PlanModeError {
+    EmptySessionId,
+}
+
+impl std::fmt::Display for PlanModeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::EmptySessionId => f.write_str("plan mode session_id must not be empty"),
+        }
+    }
+}
+
+impl std::error::Error for PlanModeError {}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlanModeEvent {
     pub seq: u64,
@@ -52,8 +68,32 @@ impl PlanMode {
         self
     }
 
-    /// Append a plan/mode event. Last event wins when folding.
+    /// Append a plan/mode event. Last event wins when folding. An empty
+    /// `session_id` is rejected (fail-closed); use [`Self::try_set`] to handle
+    /// that case without panicking (swarm review R10-IV05).
     pub fn set(&self, session_id: &str, active: bool) -> PlanModeEvent {
+        self.try_set(session_id, active)
+            .expect("session_id must not be empty")
+    }
+
+    pub fn enter(&self, session_id: &str) -> PlanModeEvent {
+        self.set(session_id, true)
+    }
+
+    pub fn exit(&self, session_id: &str) -> PlanModeEvent {
+        self.set(session_id, false)
+    }
+
+    /// Fallible variant of [`Self::set`]: rejects an empty `session_id` before
+    /// consuming a sequence number (swarm review R10-IV05).
+    pub fn try_set(
+        &self,
+        session_id: &str,
+        active: bool,
+    ) -> std::result::Result<PlanModeEvent, PlanModeError> {
+        if session_id.trim().is_empty() {
+            return Err(PlanModeError::EmptySessionId);
+        }
         let mut guard = self.state.write().expect("plan mode poisoned");
         guard.next_seq += 1;
         let event = PlanModeEvent {
@@ -66,15 +106,17 @@ impl PlanMode {
             let drop_count = log.len() - self.max_events;
             log.drain(..drop_count);
         }
-        event
+        Ok(event)
     }
 
-    pub fn enter(&self, session_id: &str) -> PlanModeEvent {
-        self.set(session_id, true)
+    /// Fallible variant of [`Self::enter`].
+    pub fn try_enter(&self, session_id: &str) -> std::result::Result<PlanModeEvent, PlanModeError> {
+        self.try_set(session_id, true)
     }
 
-    pub fn exit(&self, session_id: &str) -> PlanModeEvent {
-        self.set(session_id, false)
+    /// Fallible variant of [`Self::exit`].
+    pub fn try_exit(&self, session_id: &str) -> std::result::Result<PlanModeEvent, PlanModeError> {
+        self.try_set(session_id, false)
     }
 
     /// Fold the log: a session with no events is not in plan mode.
