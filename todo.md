@@ -263,7 +263,7 @@ status: current
 
 - [x] **GoalRoundDriver::drive が write guard 保持中に session.append を呼ぶ** — 2026-11-23 修正（判定・competing リセット・round 採番・状態更新は guard 内、durable append のみ guard 外の2フェーズ化、observer から note_competing 再入デッドロック解消、タイムアウト付き回帰テスト、R1 指摘反映）。
 - [ ] **MessageFeedback::put が read guard 保持中に session.append を呼ぶ** — 根拠 `src/ports/message_feedback.rs:127,162-170` / R11-LC02 / 重大度 medium / confirmed
-- [ ] **SessionStore::observe_all が write guard 保持中に session.observe を呼ぶ** — 根拠 `src/services/sessions.rs:194-200` / R11-LC04 / 重大度 medium / confirmed
+- [x] **SessionStore::observe_all が write guard 保持中に session.observe を呼ぶ** — 2026-11-23 修正（store write guard 内で sessions を clone して guard を drop してから各 session.observe を呼ぶ、observer からの store 再入デッドロック解消、タイムアウト付き回帰テスト、R11 指摘反映）。
 - [ ] **write_with_version が check と increment を別ロックに分け並行書込みが両方通る** — 根拠 `src/ports/tool_todo.rs:302-309` / R11-TX01 / 重大度 medium / confirmed（StaleVersion 配線修正済みとは別の TOCTOU）
 - [ ] **JobRegistry が完了ジョブを削除せず notices も縮小しない** — 根拠 `src/services/jobs.rs:179-234` / R11-RS01 / 重大度 medium / confirmed
 - [ ] **JobHandle::settle と start のロック順序が未明示（AB-BA 窓）** — 根拠 `src/services/jobs.rs:104-120,180-188` / R11-LC03 / 重大度 low / medium

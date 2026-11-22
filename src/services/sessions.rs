@@ -193,9 +193,14 @@ impl SessionStore {
 
     /// Observe events appended to all current and future sessions.
     pub fn observe_all(&self, observer: Arc<EventObserver>) {
-        let mut guard = self.state.write().expect("session store poisoned");
-        guard.observers.push(observer.clone());
-        for session in &guard.sessions {
+        let sessions = {
+            let mut guard = self.state.write().expect("session store poisoned");
+            guard.observers.push(observer.clone());
+            guard.sessions.clone()
+        };
+        // Drop the store lock before touching each Session's own observer
+        // lock: an observer may re-enter the store (swarm review R11-LC04).
+        for session in sessions {
             session.observe(observer.clone());
         }
     }

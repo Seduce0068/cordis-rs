@@ -6265,3 +6265,31 @@ fn goal_driver_append_observer_can_reenter_note_competing() {
     // The competing flag is consumed by the next drive (swarm review R11-LC01).
     assert_eq!(driver.drive(&ctx, "a1").unwrap(), DriveOutcome::Noop);
 }
+
+#[test]
+fn observe_all_observer_can_reenter_session_store() {
+    use cordis_rs::core_services::SessionStore;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    let store = SessionStore::default();
+    let session = store
+        .create(Some("observer-reentry".to_string()), None)
+        .unwrap();
+
+    let store_for_observer = store.clone();
+    store.observe_all(Arc::new(move |_id, _event| {
+        // Re-enter the store from inside an observer; this used to deadlock
+        // while observe_all held the store write guard (swarm review R11-LC04).
+        let _ = store_for_observer.get("observer-reentry");
+    }));
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let session_for_thread = session.clone();
+    std::thread::spawn(move || {
+        session_for_thread.append("e", serde_json::json!({}));
+        let _ = tx.send(());
+    });
+    rx.recv_timeout(Duration::from_secs(3))
+        .expect("append deadlocked after observe_all");
+}
