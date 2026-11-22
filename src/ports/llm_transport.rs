@@ -148,10 +148,14 @@ impl FakeTransport {
 
 impl LlmTransport for FakeTransport {
     fn send(&self, request: &HttpRequest) -> Result<HttpResponse, String> {
-        self.requests
-            .write()
-            .expect("fake transport poisoned")
-            .push(request.clone());
+        {
+            self.requests
+                .write()
+                .expect("fake transport poisoned")
+                .push(request.clone());
+        }
+        // Drop the requests lock before taking responses (swarm review
+        // R11-RS02): holding both invites lock-order contention.
         let mut responses = self.responses.write().expect("fake transport poisoned");
         if responses.is_empty() {
             Err("fake transport: no queued response".to_string())
