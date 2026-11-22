@@ -217,6 +217,8 @@ struct ToolsState {
     entries: Vec<ToolDefinition>,
     /// Monotonic version for optimistic todo writes (swarm review R9-ST05).
     todo_version: u64,
+    /// Serialises in-flight optimistic writes (swarm review R11-TX01).
+    todo_in_flight: bool,
 }
 
 /// Shared `ctx.tools` seam. A host keeps a clone and calls `invoke` to drive
@@ -299,15 +301,33 @@ impl Tools {
         exec: ToolExecution,
         expected_version: u64,
     ) -> std::result::Result<TodoWriteResult, ToolFailure> {
-        let current = self.state.lock().expect("tools poisoned").todo_version;
-        if current != expected_version {
-            return Err(ToolFailure::Args(format!(
-                "stale todo version: expected {expected_version}, actual {current}"
-            )));
+        // Check and reserve in one critical section so two concurrent callers
+        // with the same expected version cannot both proceed (swarm review
+        // R11-TX01). The guard is dropped before the await.
+        {
+            let mut state = self.state.lock().expect("tools poisoned");
+            if state.todo_in_flight {
+                return Err(ToolFailure::Args(
+                    "todo write already in flight".to_string(),
+                ));
+            }
+            if state.todo_version != expected_version {
+                return Err(ToolFailure::Args(format!(
+                    "stale todo version: expected {expected_version}, actual {}",
+                    state.todo_version
+                )));
+            }
+            state.todo_in_flight = true;
         }
-        let result = self.invoke(name, args, exec).await?;
-        self.state.lock().expect("tools poisoned").todo_version += 1;
-        Ok(result)
+        let result = self.invoke(name, args, exec).await;
+        {
+            let mut state = self.state.lock().expect("tools poisoned");
+            state.todo_in_flight = false;
+            if result.is_ok() {
+                state.todo_version += 1;
+            }
+        }
+        result
     }
 
     /// Current optimistic todo version.

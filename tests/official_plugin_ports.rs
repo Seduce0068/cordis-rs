@@ -3588,3 +3588,46 @@ async fn todo_write_with_version_rejects_stale_writes() {
     assert!(ok.is_ok(), "matching version must be accepted: {ok:?}");
     assert_eq!(tools_service.todo_version(), 1);
 }
+
+#[tokio::test]
+async fn todo_write_version_reservation_rejects_concurrent_writers() {
+    use cordis_rs::plugin_ports::{RawTodo, TodoWriteArgs, ToolExecution, Tools};
+    use std::sync::Arc;
+
+    let ctx = cordis_rs::Context::root("todo-concurrent");
+    cordis_rs::plugin_ports::mount_tool_todo(&ctx, false)
+        .await
+        .unwrap();
+    let tools = Arc::new(ctx.require::<Tools>("todoTools").await.unwrap());
+    let args = || TodoWriteArgs {
+        todos: vec![RawTodo::new("task", "pending")],
+    };
+
+    // Two concurrent callers with the same expected version: only one may
+    // win the reservation (swarm review R11-TX01).
+    let (t1, t2) = (tools.clone(), tools.clone());
+    let h1 = tokio::spawn(async move {
+        t1.write_with_version("todo_write", args(), ToolExecution::agent("alice"), 0)
+            .await
+    });
+    let h2 = tokio::spawn(async move {
+        t2.write_with_version("todo_write", args(), ToolExecution::agent("bob"), 0)
+            .await
+    });
+    let r1 = h1.await.unwrap();
+    let r2 = h2.await.unwrap();
+    assert_eq!(
+        r1.is_ok() as u8 + r2.is_ok() as u8,
+        1,
+        "exactly one concurrent writer must succeed: {r1:?} / {r2:?}"
+    );
+
+    // The reservation is released so a sequential retry with the new version
+    // still works.
+    assert!(
+        tools
+            .write_with_version("todo_write", args(), ToolExecution::agent("alice"), 1)
+            .await
+            .is_ok()
+    );
+}
