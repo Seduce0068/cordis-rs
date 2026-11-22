@@ -6205,3 +6205,63 @@ fn workspace_archived_id_can_be_reused_without_order_duplication() {
     assert!(registry.attach("w1", "s3").is_ok());
     assert_eq!(registry.sessions_in("w1"), vec!["s3"]);
 }
+
+#[test]
+fn goal_driver_append_observer_can_reenter_note_competing() {
+    use cordis_rs::core_services::{AgentRecord, provide_agents, provide_goals, provide_sessions};
+    use cordis_rs::plugin_ports::{DriveOutcome, GoalRoundDriver};
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let ctx = rt.block_on(async {
+        let ctx = Context::root("goal-driver-reentry");
+        provide_sessions(&ctx).await.unwrap();
+        provide_goals(&ctx).await.unwrap();
+        provide_agents(&ctx).await.unwrap();
+        ctx
+    });
+
+    let sessions = ctx
+        .get::<cordis_rs::core_services::SessionStore>("sessions")
+        .unwrap();
+    let agents = ctx
+        .get::<cordis_rs::core_services::AgentRegistry>("agents")
+        .unwrap();
+    let goals = ctx
+        .get::<cordis_rs::core_services::GoalStore>("goals")
+        .unwrap();
+    let session = sessions
+        .create(Some("reentry-session".to_string()), None)
+        .unwrap();
+    agents
+        .register(AgentRecord {
+            id: "a1".to_string(),
+            session_id: session.id().to_string(),
+            cwd: None,
+        })
+        .unwrap();
+    goals.set("Ship it".to_string(), 3).unwrap();
+
+    let driver = Arc::new(GoalRoundDriver::new());
+    let driver_for_observer = driver.clone();
+    session.observe(Arc::new(move |_id, _event| {
+        driver_for_observer.note_competing();
+    }));
+
+    // Run drive on a worker thread with a timeout: a deadlock would hang here.
+    let driver_for_thread = driver.clone();
+    let ctx_for_thread = ctx.clone();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let result = driver_for_thread.drive(&ctx_for_thread, "a1");
+        let _ = tx.send(result);
+    });
+    let result = rx
+        .recv_timeout(Duration::from_secs(3))
+        .expect("drive deadlocked");
+    assert_eq!(result.unwrap(), DriveOutcome::Queued { round: 1 });
+
+    // The competing flag is consumed by the next drive (swarm review R11-LC01).
+    assert_eq!(driver.drive(&ctx, "a1").unwrap(), DriveOutcome::Noop);
+}

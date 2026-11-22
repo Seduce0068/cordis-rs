@@ -20,6 +20,23 @@ pub enum DriveOutcome {
     Blocked,
 }
 
+/// Internal action decided under the state lock; the durable append is then
+/// performed after dropping the guard so observers can re-enter the driver
+/// (swarm review R11-LC01).
+enum DriveAction {
+    Noop,
+    Blocked {
+        goal_id: String,
+        round: u32,
+    },
+    Queue {
+        goal_id: String,
+        round: u32,
+        text: String,
+        session_id: String,
+    },
+}
+
 #[derive(Debug, Clone)]
 struct RoundAttempt {
     goal_revision: u64,
@@ -81,73 +98,88 @@ impl GoalRoundDriver {
         };
 
         let goal_id = format!("agent-{agent_id}");
-        let mut state = self.state.write().expect("goal driver state poisoned");
-        if goal.status != GoalStatus::Active || state.blocked.contains(&goal_id) {
-            state.attempt = None;
-            return Ok(DriveOutcome::Noop);
-        }
-
-        // Duplicate guard: one outstanding attempt per goal.
-        if state.attempt.is_some() && !state.competing {
-            return Ok(DriveOutcome::Noop);
-        }
-        if state.competing {
-            state.attempt = None;
-            state.competing = false;
-            return Ok(DriveOutcome::Noop);
-        }
-
-        let round = state.rounds.get(&goal_id).copied().unwrap_or(0) + 1;
-        if round > goal.max_rounds {
-            // Append a block change event, modeled after upstream durable log.
-            if let Some(session) = sessions.get(&agent.session_id) {
-                session.append(
-                    "goal/change",
-                    serde_json::json!({
-                        "kind": "goal/change", "version": 1, "operation": "block",
-                        "goal": {
-                            "id": goal_id, "revision": goal.revision + 1,
-                            "objective": goal.objective, "phase": "blocked",
-                            "maxGoalRounds": goal.max_rounds,
-                            "blockedReason": {
-                                "code": "round-limit",
-                                "message": format!("round limit {} reached", goal.max_rounds)
-                            }
-                        },
-                        "roundsStarted": round - 1, "createdAt": 0, "updatedAt": 0
-                    }),
-                );
+        // Phase 1: decide and commit state under the lock. Round numbering and
+        // competing reset must stay inside the critical section (R11-LC01).
+        let action = {
+            let mut state = self.state.write().expect("goal driver state poisoned");
+            if goal.status != GoalStatus::Active || state.blocked.contains(&goal_id) {
+                state.attempt = None;
+                DriveAction::Noop
+            } else if state.attempt.is_some() && !state.competing {
+                DriveAction::Noop
+            } else if state.competing {
+                state.attempt = None;
+                state.competing = false;
+                DriveAction::Noop
+            } else {
+                let round = state.rounds.get(&goal_id).copied().unwrap_or(0) + 1;
+                if round > goal.max_rounds {
+                    state.blocked.insert(goal_id.clone());
+                    state.attempt = None;
+                    DriveAction::Blocked { goal_id, round }
+                } else if let Some(attempt) = &state.attempt
+                    && attempt.goal_revision != goal.revision
+                {
+                    state.attempt = None;
+                    DriveAction::Noop
+                } else {
+                    state.attempt = Some(RoundAttempt {
+                        goal_revision: goal.revision,
+                    });
+                    state.rounds.insert(goal_id.clone(), round);
+                    DriveAction::Queue {
+                        goal_id,
+                        round,
+                        text: Self::prompt(&goal.objective, round, goal.max_rounds),
+                        session_id: agent.session_id.clone(),
+                    }
+                }
             }
-            state.blocked.insert(goal_id.clone());
-            state.attempt = None;
-            return Ok(DriveOutcome::Blocked);
-        }
-
-        // CAS: the outstanding attempt must match the current revision.
-        if let Some(attempt) = &state.attempt
-            && attempt.goal_revision != goal.revision
-        {
-            state.attempt = None;
-            return Ok(DriveOutcome::Noop);
-        }
-
-        let Some(session) = sessions.get(&agent.session_id) else {
-            return Ok(DriveOutcome::Noop);
         };
-        let text = Self::prompt(&goal.objective, round, goal.max_rounds);
-        let event = session.append(
-            "user/message",
-            serde_json::json!({
-                "content": [{"type": "text", "text": text}],
-                "source": {"kind": "goal", "goalId": goal_id, "revision": goal.revision, "round": round}
-            }),
-        );
-        let _ = event;
-        state.attempt = Some(RoundAttempt {
-            goal_revision: goal.revision,
-        });
-        state.rounds.insert(goal_id, round);
-        Ok(DriveOutcome::Queued { round })
+
+        // Phase 2: append with no state lock held so an observer calling
+        // note_competing() cannot deadlock (swarm review R11-LC01).
+        match action {
+            DriveAction::Noop => Ok(DriveOutcome::Noop),
+            DriveAction::Blocked { goal_id, round } => {
+                if let Some(session) = sessions.get(&agent.session_id) {
+                    session.append(
+                        "goal/change",
+                        serde_json::json!({
+                            "kind": "goal/change", "version": 1, "operation": "block",
+                            "goal": {
+                                "id": goal_id, "revision": goal.revision + 1,
+                                "objective": goal.objective, "phase": "blocked",
+                                "maxGoalRounds": goal.max_rounds,
+                                "blockedReason": {
+                                    "code": "round-limit",
+                                    "message": format!("round limit {} reached", goal.max_rounds)
+                                }
+                            },
+                            "roundsStarted": round - 1, "createdAt": 0, "updatedAt": 0
+                        }),
+                    );
+                }
+                Ok(DriveOutcome::Blocked)
+            }
+            DriveAction::Queue {
+                goal_id,
+                round,
+                text,
+                session_id,
+            } => {
+                if let Some(session) = sessions.get(&session_id) {
+                    session.append(
+                        "user/message",
+                        serde_json::json!({
+                            "content": [{"type": "text", "text": text}],
+                            "source": {"kind": "goal", "goalId": goal_id, "revision": goal.revision, "round": round}
+                        }),
+                    );
+                }
+                Ok(DriveOutcome::Queued { round })
+            }
+        }
     }
 
     /// Record a competing (human) input after a queued round. Approximates

@@ -261,7 +261,7 @@ status: current
 - [x] **ToolPipeline approval 既定 fail-open の根拠が ADR-004/012 で二重管理** — 2026-11-23 修正（ADR-004 を正本とし、ADR-012 と README を参照化。既存の振る舞いテスト tool_pipeline_require_approval_is_opt_in_fail_closed が fail-open を固定済みのため getter 追加は見送り、R1 指摘反映）。
 - [x] **README の LLM API 一覧に transport seam が欠ける** — 2026-11-23 修正（handler_from_transport / LlmTransport / with_llm_total_timeout を API 一覧に追加、R10 指摘反映）。
 
-- [ ] **GoalRoundDriver::drive が write guard 保持中に session.append を呼ぶ** — 根拠 `src/ports/goal_round_driver.rs:84,100-144` / R11-LC01 / 重大度 high / confirmed
+- [x] **GoalRoundDriver::drive が write guard 保持中に session.append を呼ぶ** — 2026-11-23 修正（判定・competing リセット・round 採番・状態更新は guard 内、durable append のみ guard 外の2フェーズ化、observer から note_competing 再入デッドロック解消、タイムアウト付き回帰テスト、R1 指摘反映）。
 - [ ] **MessageFeedback::put が read guard 保持中に session.append を呼ぶ** — 根拠 `src/ports/message_feedback.rs:127,162-170` / R11-LC02 / 重大度 medium / confirmed
 - [ ] **SessionStore::observe_all が write guard 保持中に session.observe を呼ぶ** — 根拠 `src/services/sessions.rs:194-200` / R11-LC04 / 重大度 medium / confirmed
 - [ ] **write_with_version が check と increment を別ロックに分け並行書込みが両方通る** — 根拠 `src/ports/tool_todo.rs:302-309` / R11-TX01 / 重大度 medium / confirmed（StaleVersion 配線修正済みとは別の TOCTOU）
