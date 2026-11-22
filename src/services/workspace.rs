@@ -61,9 +61,11 @@ impl WorkspaceRegistry {
     ) -> std::result::Result<WorkspaceRecord, WorkspaceError> {
         let id = id.into();
         let mut guard = self.state.write().expect("workspace registry poisoned");
-        if guard.records.contains_key(&id) {
-            return Err(WorkspaceError::Duplicate(id));
-        }
+        let was_archived = match guard.records.get(&id) {
+            Some(existing) if existing.archived => true,
+            Some(_) => return Err(WorkspaceError::Duplicate(id)),
+            None => false,
+        };
         let path = path.into();
         let title = std::path::Path::new(&path)
             .file_name()
@@ -78,7 +80,12 @@ impl WorkspaceRegistry {
             archived: false,
         };
         guard.records.insert(id.clone(), record.clone());
-        guard.order.push(id);
+        // An archived id is reused in place: keep its original position in
+        // the durable order instead of appending a duplicate (swarm review
+        // R10-TX02).
+        if !was_archived {
+            guard.order.push(id);
+        }
         Ok(record)
     }
 

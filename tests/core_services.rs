@@ -6178,3 +6178,30 @@ async fn stale_provider_disposer_keeps_newer_registration() {
     );
     new_factory.dispose().await.unwrap();
 }
+
+#[test]
+fn workspace_archived_id_can_be_reused_without_order_duplication() {
+    use cordis_rs::core_services::{WorkspaceError, WorkspaceRegistry};
+
+    let registry = WorkspaceRegistry::new();
+    let first = registry.create("w1", "/old").unwrap();
+    assert!(!first.archived);
+
+    // A live id still cannot be recreated.
+    assert!(matches!(
+        registry.create("w1", "/other"),
+        Err(WorkspaceError::Duplicate(_))
+    ));
+
+    registry.archive("w1").unwrap();
+    let reused = registry.create("w1", "/new").unwrap();
+    assert!(!reused.archived);
+    assert_eq!(reused.path, "/new");
+    assert!(reused.session_ids.is_empty());
+
+    // Original order position is kept (no duplicate entry), and attach works
+    // on the fresh record (swarm review R10-TX02).
+    assert_eq!(registry.list().len(), 1);
+    assert!(registry.attach("w1", "s3").is_ok());
+    assert_eq!(registry.sessions_in("w1"), vec!["s3"]);
+}
