@@ -5487,3 +5487,34 @@ fn plugin_registry_try_register_rejects_duplicate_id() {
     registry.register("demo", factory());
     assert!(registry.get("demo").is_some());
 }
+
+#[tokio::test]
+async fn command_registry_last_registration_wins_with_generation_fencing() {
+    use cordis_rs::core_services::{
+        CommandDefinition, CommandInvocation, CommandResult, provide_commands,
+    };
+
+    let ctx = Context::root("command-generation");
+    let commands = provide_commands(&ctx).await.unwrap();
+    let handler = || {
+        std::sync::Arc::new(|_inv: CommandInvocation| {
+            Box::pin(async { CommandResult::success("ok") })
+                as core::pin::Pin<Box<dyn futures::Future<Output = CommandResult> + Send>>
+        })
+    };
+
+    let old = commands.register(CommandDefinition::new("/demo", "old", handler()));
+    assert_eq!(commands.description("/demo").as_deref(), Some("old"));
+
+    let new = commands.register(CommandDefinition::new("/demo", "new", handler()));
+    assert_eq!(commands.description("/demo").as_deref(), Some("new"));
+    assert_eq!(commands.names(), vec!["/demo"]);
+
+    // Disposing the stale registration must not remove the newer one
+    // (swarm review R5-AP03).
+    old.dispose().await.unwrap();
+    assert_eq!(commands.description("/demo").as_deref(), Some("new"));
+
+    new.dispose().await.unwrap();
+    assert!(commands.names().is_empty());
+}

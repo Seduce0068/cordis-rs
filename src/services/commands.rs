@@ -3,6 +3,7 @@
 //! Upstream: `packages/interaction/commands/src/index.ts` in
 //! deepseek-ai/deepseek-harness (MIT), read as untrusted reference data.
 
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use crate::Result;
@@ -98,7 +99,7 @@ impl CommandDefinition {
 
 #[derive(Default)]
 struct RegistryState {
-    commands: Vec<(u64, CommandDefinition)>,
+    commands: HashMap<String, (u64, CommandDefinition)>,
     next_id: u64,
 }
 
@@ -114,17 +115,22 @@ impl CommandRegistry {
         let mut guard = state.write().expect("command registry poisoned");
         let id = guard.next_id;
         guard.next_id += 1;
-        guard.commands.push((id, definition.clone()));
+        let name = definition.name().to_string();
+        // Match ToolRegistry: last registration wins, and an older disposer
+        // must not remove a newer definition with the same name (swarm review
+        // R5-AP03).
+        guard
+            .commands
+            .insert(name.clone(), (id, definition.clone()));
         drop(guard);
 
         Disposer::new(move || {
             let state = state.clone();
             async move {
-                state
-                    .write()
-                    .expect("command registry poisoned")
-                    .commands
-                    .retain(|(current, _)| *current != id);
+                let mut guard = state.write().expect("command registry poisoned");
+                if guard.commands.get(&name).map(|(current, _)| *current) == Some(id) {
+                    guard.commands.remove(&name);
+                }
                 Ok(())
             }
         })
@@ -135,7 +141,7 @@ impl CommandRegistry {
             .read()
             .expect("command registry poisoned")
             .commands
-            .iter()
+            .values()
             .map(|(_, definition)| definition.name().to_string())
             .collect()
     }
@@ -145,8 +151,7 @@ impl CommandRegistry {
             .read()
             .expect("command registry poisoned")
             .commands
-            .iter()
-            .find(|(_, definition)| definition.name() == name)
+            .get(name)
             .map(|(_, definition)| definition.description().to_string())
     }
 
@@ -156,8 +161,7 @@ impl CommandRegistry {
             .read()
             .expect("command registry poisoned")
             .commands
-            .iter()
-            .find(|(_, definition)| definition.name() == name)
+            .get(name)
             .map(|(_, definition)| definition.handler.clone());
         match handler {
             Some(handler) => Some(handler(invocation).await),
