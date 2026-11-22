@@ -243,6 +243,24 @@ status: current
 - [ ] **DeepSeek 実 HTTP が FakeTransport 依存で end-to-end 無い** — 根拠 `src/ports/llm_transport.rs:122`, `README.md:73` / R9-ST09 / 重大度 low / confirmed
 - [x] **同期 remove_service の generation 迂回（drain 非同期経路のみ修正済み）** — 2026-11-23 R9-DI01 と同時修正（generation sync API 追加）。
 
+- [ ] **SessionStore::create が自動 ID 生成で next_id を二重インクリメント** — 根拠 `src/services/sessions.rs:167-179` / R10-TX01 / 重大度 medium / confirmed
+- [ ] **ScheduleService が Cancelled レコードを resume で復活させる** — 根拠 `src/services/schedule.rs:109-141`, `ScheduleError::Cancelled` / R10-IV02 / 重大度 high / confirmed（todo.md:254 メモ既出だが未タスク化）
+- [ ] **Subagent/Agent registry が世代 fencing 無しで古い disposer が新登録を消す** — 根拠 `src/services/subagents.rs:57-77`, `src/services/agents.rs:57-77` / R10-IV03 / 重大度 medium / confirmed
+- [ ] **StorageHub::define_domain が空名・空 required_fields・重複を許す** — 根拠 `src/services/storage.rs:126-132` / R10-IV01 / 重大度 medium / confirmed
+- [ ] **StorageHub::write が domain/backend 未設定でエラー優先順が不安定** — 根拠 `src/services/storage.rs:141-158` / R10-EC02 / 重大度 low / medium
+- [ ] **PlanMode::set が空 session_id を受理** — 根拠 `src/services/plan_mode.rs:55-70` / R10-IV05 / 重大度 medium / medium
+- [ ] **CredentialProvider が数字始まりの参照名を受理** — 根拠 `src/services/credentials.rs:19-32,78-98` / R10-IV04 / 重大度 low / medium
+- [ ] **WorkspaceRegistry::create が archive 済み id の再利用を拒否** — 根拠 `src/services/workspace.rs:55-81,130-138` / R10-TX02 / 重大度 low / medium
+- [ ] **Session::append_with_seq が seq の飛びを許容** — 根拠 `src/services/sessions.rs:112-129` / R10-TX03 / 重大度 low / low
+- [ ] **ドメイン Error enum の多くが std::error::Error を実装しない** — 根拠 `impl std::error::Error` は3件のみ / R10-EC01 / 重大度 medium / confirmed
+- [ ] **verify.sh の cargo audit が extra_gates より前で「同順」記述と矛盾** — 根拠 `scripts/verify.sh:27`, `README.md:133`, `.github/workflows/ci.yml:21-29` / R10-ST01 / 重大度 low / confirmed
+- [ ] **README.md:118 の clippy 例が CI の追加フラグを欠く** — 根拠 `README.md:118`, `scripts/verify.sh:20`, `.github/workflows/ci.yml:23` / R10-ST02 / 重大度 low / confirmed
+- [ ] **check-doc-counts.sh が examples/ のファイル一覧を検証しない** — 根拠 `scripts/check-doc-counts.sh:66-77`, `README.md:120-127` / R10-ST03 / 重大度 low / confirmed
+- [ ] **check-markdown.sh のグロブが target/ と .git/ を含む可能性** — 根拠 `scripts/check-markdown.sh:17-21`, `docs/PROGRESS.md:57` / R10-ST04 / 重大度 low / medium
+- [ ] **lib.rs の deprecated alias 6個に since が欠ける** — 根拠 `src/lib.rs:64,66,205,257,259,261` / R10-ST05 / 重大度 low / confirmed
+- [ ] **ToolPipeline approval 既定 fail-open の根拠が ADR-004/012 で二重管理** — 根拠 `docs/ADR-004...:18`, `docs/ADR-012...:46` / R10-ST06 / 重大度 low / medium
+- [ ] **README の LLM API 一覧に transport seam が欠ける** — 根拠 `README.md:61`, `tests/core_services.rs:4040` / R10-ST07 / 重大度 low / confirmed
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -277,3 +295,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-22、round 148）**: `swarm-project-review` R1 と `swarm-todo-discovery` R1 の2エージェントから15件を取得。root が path:line を Runtime Proof で確認し、重複2件を統合して13件を `## 未着手` へ追記（high1 / medium9 / low3）。agent-12 の disposer「10箇所」は実測8箇所に修正。
 - **swarm コンボ R6 集約（2026-11-22、round 161）**: `swarm-project-review` R1 と `swarm-todo-discovery` R1 の2エージェントから18件を取得（agent-13 は structured_output が利用不可のため通常メッセージで再送）。root が path:line を Runtime Proof で確認し18件を `## 未着手` へ追記（high1 / medium9 / low8）。
 - **swarm コンボ R6 集約（2026-11-22、round 186）**: specialist 2体（cordis-researcher / plugin-ports）から18件取得。R6 で path:line を Runtime Proof で確認し、修正済み1件（ST01-06 port 名 gate）を除外して17件を追記。
+- **swarm コンボ R6 集約（2026-11-23、round 199）**: specialist 2体（cordis-researcher / plugin-ports）から16件取得。R6 で path:line を Runtime Proof で確認し17件を追記（IV02 は既出メモのタスク化、うち1件は同根で重複カウント）。観点を「入力検証・エラー契約・トランザクション整合性」と「テスト・ドキュメント・ゲート乖離」に絞った再走。
