@@ -233,7 +233,7 @@ status: current
 - [x] **Context::provide がサービス名を検証せず空文字を受理** — 2026-11-22 修正（空／空白のみのサービス名を Err で拒否、回帰テスト追加、R9 指摘反映）。
 - [x] **EventRegistry::remove が存在しない key で空スロットを生成** — 2026-11-22 修正（remove を try_slot ベースに変更し未登録 listener の削除でスロットを作らない、internal 回帰テスト追加、R9 指摘反映）。
 - [x] **typed_event! の decode error store がプロセスグローバル** — 2026-11-22 修正（EventRegistry に decode_errors 追加、マクロは registry のみに記録、静的 take_decode_errors は後方互換 shim として残す、Context 分離回帰テスト追加、R1 指摘反映）。
-- [ ] **is_bail_value が bool のみ対応（一般 R 型で false 相当を判定できない）** — 根拠 `src/events.rs:510-514` / R9-AP02 / 重大度 medium / medium
+- [x] **is_bail_value が bool のみ対応（一般 R 型で false 相当を判定できない）** — 2026-11-23 修正（R = bool のみ false を非 bail と認識する制限を doc 明記。false 相当 newtype の一般化は設計判断として残す、R9 指摘反映）。
 - [ ] **Context::set_lifecycle が Fiber 状態と無関係に公開され二重状態** — 根拠 `src/context.rs:203-210`, `src/plugin.rs:73` / R9-CY01 / 重大度 medium / medium
 - [x] **Fiber::mount が inject 未充足でも Pending で返す契約を doc 明記** — 2026-11-22 修正（await が load 完了を待たず Pending で返る旨を doc に明記、state()/Active 待ちを案内、R9 指摘反映）。
 - [x] **README/ADR-001 が Some(false) を upstream と異なると誤記** — 2026-11-22 修正（Some(false) は非 bail で upstream 同一と明記、R9 指摘反映）。

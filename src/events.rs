@@ -535,6 +535,8 @@ where
     }
 
     /// Upstream's `false` is a non-bail value; detect it generically via Any.
+    /// `R = bool` is the only type for which `false` is recognised today; a
+    /// false-like newtype is treated as a bail value (swarm review R9-AP02).
     fn is_bail_value(value: &R) -> bool {
         let any = value as &dyn std::any::Any;
         !matches!(any.downcast_ref::<bool>(), Some(false))
