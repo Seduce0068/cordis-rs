@@ -42,7 +42,8 @@ pub type AgentFactory = Arc<dyn Fn(&str) -> std::result::Result<AgentRecord, Err
 #[derive(Default)]
 struct RegistryState {
     agents: BTreeMap<String, AgentRecord>,
-    factories: BTreeMap<String, AgentFactory>,
+    next_factory_id: u64,
+    factories: BTreeMap<String, (u64, AgentFactory)>,
 }
 
 #[derive(Default, Clone)]
@@ -59,20 +60,23 @@ impl AgentRegistry {
     pub fn register_factory(&self, name: impl Into<String>, factory: AgentFactory) -> Disposer {
         let name = name.into();
         let state = self.state.clone();
-        state
-            .write()
-            .expect("agent registry poisoned")
-            .factories
-            .insert(name.clone(), factory);
+        let id = {
+            let mut guard = state.write().expect("agent registry poisoned");
+            let id = guard.next_factory_id;
+            guard.next_factory_id += 1;
+            guard.factories.insert(name.clone(), (id, factory));
+            id
+        };
         Disposer::new(move || {
             let state = state.clone();
             let name = name.clone();
             async move {
-                state
-                    .write()
-                    .expect("agent registry poisoned")
-                    .factories
-                    .remove(&name);
+                let mut guard = state.write().expect("agent registry poisoned");
+                // Stale disposers must not remove a newer registration
+                // (swarm review R10-IV03).
+                if guard.factories.get(&name).map(|(current, _)| *current) == Some(id) {
+                    guard.factories.remove(&name);
+                }
                 Ok(())
             }
         })
@@ -92,7 +96,7 @@ impl AgentRegistry {
             .expect("agent registry poisoned")
             .factories
             .get(factory)
-            .cloned()
+            .map(|(_, handler)| handler.clone())
             .ok_or_else(|| AgentError::UnknownFactory(factory.to_string()))?;
         let mut record = factory(&id).map_err(|error| AgentError::NotFound(error.to_string()))?;
         record.session_id = id.clone();

@@ -6143,3 +6143,38 @@ fn storage_try_registration_validates_names_and_duplicates() {
         "overwritten domain with no required fields accepts scalars"
     );
 }
+
+#[tokio::test]
+async fn stale_provider_disposer_keeps_newer_registration() {
+    use cordis_rs::core_services::{AgentFactory, AgentRecord, AgentRegistry, SubagentRegistry};
+    use std::sync::Arc;
+
+    let subagents = SubagentRegistry::default();
+    let handler: cordis_rs::services::subagents::SubagentHandler =
+        Arc::new(|_| Box::pin(async { "first".to_string() }));
+    let old = subagents.register("worker", handler.clone());
+    let new = subagents.register("worker", handler);
+
+    old.dispose().await.unwrap();
+    assert!(subagents.names().iter().any(|name| name == "worker"));
+
+    new.dispose().await.unwrap();
+    assert!(!subagents.names().iter().any(|name| name == "worker"));
+
+    let agents = AgentRegistry::new();
+    let factory: AgentFactory = Arc::new(|id| {
+        Ok(AgentRecord {
+            id: id.to_string(),
+            session_id: id.to_string(),
+            cwd: None,
+        })
+    });
+    let old_factory = agents.register_factory("builder", factory.clone());
+    let new_factory = agents.register_factory("builder", factory);
+    old_factory.dispose().await.unwrap();
+    assert!(
+        agents.create("builder", "a").is_ok(),
+        "new factory must survive a stale disposer"
+    );
+    new_factory.dispose().await.unwrap();
+}

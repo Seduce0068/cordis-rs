@@ -47,7 +47,8 @@ impl std::error::Error for SubagentError {}
 
 #[derive(Default)]
 struct RegistryState {
-    providers: BTreeMap<String, SubagentHandler>,
+    next_id: u64,
+    providers: BTreeMap<String, (u64, SubagentHandler)>,
 }
 
 #[derive(Default, Clone)]
@@ -59,20 +60,23 @@ impl SubagentRegistry {
     pub fn register(&self, name: impl Into<String>, handler: SubagentHandler) -> Disposer {
         let name = name.into();
         let state = self.state.clone();
-        state
-            .write()
-            .expect("subagent registry poisoned")
-            .providers
-            .insert(name.clone(), handler);
+        let id = {
+            let mut guard = state.write().expect("subagent registry poisoned");
+            let id = guard.next_id;
+            guard.next_id += 1;
+            guard.providers.insert(name.clone(), (id, handler));
+            id
+        };
         Disposer::new(move || {
             let state = state.clone();
             let name = name.clone();
             async move {
-                state
-                    .write()
-                    .expect("subagent registry poisoned")
-                    .providers
-                    .remove(&name);
+                let mut guard = state.write().expect("subagent registry poisoned");
+                // Stale disposers must not remove a newer registration
+                // (swarm review R10-IV03).
+                if guard.providers.get(&name).map(|(current, _)| *current) == Some(id) {
+                    guard.providers.remove(&name);
+                }
                 Ok(())
             }
         })
@@ -106,7 +110,7 @@ impl SubagentRegistry {
             .expect("subagent registry poisoned")
             .providers
             .get(provider)
-            .cloned()
+            .map(|(_, handler)| handler.clone())
             .ok_or_else(|| SubagentError::UnknownProvider(provider.to_string()))?;
         let text = handler(request).await;
         Ok(SubagentResult {
