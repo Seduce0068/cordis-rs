@@ -6,6 +6,7 @@
 //! timestamp with an explicit UTC offset and renders the sampling line.
 
 use crate::{Error, Result};
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TimeContextConfig {
@@ -58,7 +59,9 @@ pub fn has_utc_offset(value: &str) -> bool {
 #[derive(Debug, Clone)]
 pub struct TimeContext {
     config: TimeContextConfig,
-    last_injected_ms: Option<u64>,
+    /// Shared so clones (including the one registered by `provide`) observe
+    /// the same injection state (swarm review R8-AP02).
+    last_injected_ms: Arc<RwLock<Option<u64>>>,
 }
 
 impl TimeContext {
@@ -66,22 +69,25 @@ impl TimeContext {
         validate_refresh_interval(config.refresh_interval_ms)?;
         Ok(Self {
             config,
-            last_injected_ms: None,
+            last_injected_ms: Arc::new(RwLock::new(None)),
         })
     }
 
     /// Decide whether a sample should be injected at `now_ms`, honoring the
     /// refresh interval. First sample is always injected.
     pub fn should_inject(&self, now_ms: u64) -> bool {
-        match self.last_injected_ms {
+        match *self.last_injected_ms.read().expect("time context poisoned") {
             None => true,
             Some(last) => now_ms.saturating_sub(last) >= self.config.refresh_interval_ms,
         }
     }
 
     /// Record an injected sample.
-    pub fn mark_injected(&mut self, now_ms: u64) {
-        self.last_injected_ms = Some(now_ms);
+    pub fn mark_injected(&self, now_ms: u64) {
+        *self
+            .last_injected_ms
+            .write()
+            .expect("time context poisoned") = Some(now_ms);
     }
 }
 

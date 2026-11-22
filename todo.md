@@ -210,7 +210,7 @@ status: current
 - [x] **PermissionPresets::register が組み込み preset 名を黙って上書きできる** — 2026-11-22 修正（try_register を追加して組み込み名を拒否、register は legacy last-write-wins を維持、回帰テスト追加、R8 指摘反映）。
 - [x] **RetryPolicy の遅延フィールドに下限がなく 0 で busy retry になる** — 2026-11-22 修正（backoff_ms の返り値に 1ms 下限、max_delay_ms=0 の回帰アサーション追加、R8 指摘反映）。
 - [x] **公開ヘルパが UTF-8 境界を無視したバイトスライスで panic しうる** — 2026-11-22 修正（has_utc_offset は get() で境界防御、active_at_token は char_indices で column→byte 変換、マルチバイト回帰テスト追加、R8 指摘反映）。
-- [ ] **状態を持つ TimeContext / TmuxContext が Clone で状態共有されない** — 根拠 `src/services/time_context.rs:54-87`, `src/services/tmux_context.rs:65-87` / R8-AP02 / 重大度 medium / confirmed
+- [x] **状態を持つ TimeContext / TmuxContext が Clone で状態共有されない** — 2026-11-22 修正（last を Arc<RwLock<Option<..>>> 化して clone 間で状態共有、mark_injected を &self に、sample_message も &TimeContext に変更、回帰テスト追加、R1 指摘反映）。
 - [x] **StorageHub::write が Object 以外で必須フィールド検証をスキップ** — 2026-11-22 修正（必須フィールド持つドメインは Object 以外を InvalidRecord 拒否、必須なしドメインの scalar は従来どおり許容、回帰アサーション追加、R8 指摘反映）。
 - [x] **SkillRegistry::catalog が read guard 保持中に provider コールバックを実行** — 2026-11-22 修正（guard 内で providers を clone して drop 後にコールバック実行、reentrant デッドロック回帰テスト追加、R8 指摘反映）。
 - [ ] **hooks.json の未知イベント名・不正エントリが警告なしでスキップ** — 根拠 `src/ports/hooks_claude_code.rs:87-120` / R8-CF02 / 重大度 medium / confirmed

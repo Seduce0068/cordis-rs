@@ -2502,7 +2502,7 @@ async fn time_context_formats_samples_and_respects_refresh_interval() {
     assert!(has_utc_offset("2026-11-17T12:56:29-05:00"));
     assert!(!has_utc_offset("no-offset"));
 
-    let mut throttled = TimeContext::new(TimeContextConfig {
+    let throttled = TimeContext::new(TimeContextConfig {
         refresh_interval_ms: 1000,
     })
     .unwrap();
@@ -2659,7 +2659,7 @@ async fn tmux_context_parses_and_formats_locations() {
     assert!(line.contains("session=main"));
     assert!(line.contains("window=0:shell"));
 
-    let mut context = TmuxContext::new();
+    let context = TmuxContext::new();
     assert!(context.should_inject(&location));
     context.mark_injected(location.clone());
     assert!(!context.should_inject(&location));
@@ -5698,4 +5698,37 @@ async fn feedback_numeric_versions_compare_numerically() {
         feedback.put("numeric", put("9")).is_err(),
         "a lower numeric version must still conflict"
     );
+}
+
+#[test]
+fn time_and_tmux_context_share_state_across_clones() {
+    use cordis_rs::core_services::{TimeContext, TimeContextConfig, TmuxContext, TmuxLocation};
+
+    let time = TimeContext::new(TimeContextConfig {
+        refresh_interval_ms: 1000,
+    })
+    .unwrap();
+    let time_clone = time.clone();
+    assert!(time_clone.should_inject(100));
+    time.mark_injected(100);
+    assert!(
+        !time_clone.should_inject(200),
+        "clones must share injection state (swarm review R8-AP02)"
+    );
+
+    let tmux = TmuxContext::new();
+    let tmux_clone = tmux.clone();
+    let location = TmuxLocation {
+        session_name: "s".to_string(),
+        window_index: "0".to_string(),
+        window_name: "w".to_string(),
+        pane_index: "0".to_string(),
+        pane_id: "%1".to_string(),
+        window_active: "1".to_string(),
+        pane_active: "1".to_string(),
+        window_layout: "x".to_string(),
+    };
+    assert!(tmux_clone.should_inject(&location));
+    tmux.mark_injected(location.clone());
+    assert!(!tmux_clone.should_inject(&location));
 }

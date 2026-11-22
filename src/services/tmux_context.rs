@@ -5,6 +5,8 @@
 //! This port parses the tab-separated `display-message` output into a
 //! structured location and renders the sampling line.
 
+use std::sync::{Arc, RwLock};
+
 use crate::{Error, Result};
 
 pub const READING_PREFIX: &str = "tmux location (turn ";
@@ -62,9 +64,19 @@ pub fn is_changed(previous: Option<&TmuxLocation>, current: &TmuxLocation) -> bo
     previous != Some(current)
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct TmuxContext {
-    last: Option<TmuxLocation>,
+    /// Shared so clones observe the same last-injected location (swarm review
+    /// R8-AP02).
+    last: Arc<RwLock<Option<TmuxLocation>>>,
+}
+
+impl Default for TmuxContext {
+    fn default() -> Self {
+        Self {
+            last: Arc::new(RwLock::new(None)),
+        }
+    }
 }
 
 impl TmuxContext {
@@ -73,11 +85,12 @@ impl TmuxContext {
     }
 
     pub fn should_inject(&self, current: &TmuxLocation) -> bool {
-        is_changed(self.last.as_ref(), current)
+        let guard = self.last.read().expect("tmux context poisoned");
+        is_changed(guard.as_ref(), current)
     }
 
-    pub fn mark_injected(&mut self, location: TmuxLocation) {
-        self.last = Some(location);
+    pub fn mark_injected(&self, location: TmuxLocation) {
+        *self.last.write().expect("tmux context poisoned") = Some(location);
     }
 }
 

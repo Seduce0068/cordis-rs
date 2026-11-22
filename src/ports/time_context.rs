@@ -47,7 +47,7 @@ pub struct PreStepDecision {
 
 /// Build the injected message for a step, honoring the refresh interval.
 pub fn sample_message(
-    context: &mut TimeContext,
+    context: &TimeContext,
     args: &PreStepArgs,
 ) -> std::result::Result<Option<ChatMessage>, Error> {
     if !context.should_inject(args.now_ms) {
