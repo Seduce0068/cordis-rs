@@ -296,7 +296,7 @@ status: current
 - [x] **EventLogReporter::record の batch boundary が集約カウンタ依存であることを doc 未明記** — 2026-11-23 修正（境界が cardinality 集約後の per-name counter に従う旨を doc 明記、R12 指摘反映）。
 - [x] **AgentLoop の module doc が max_steps 到達時の未処理 tool call を説明しない** — 2026-11-23 修正（R6 Runtime Proof で「未処理 call は無く各 step の tool call は実行済み」と確認し、その旨を doc 明記、R12 指摘反映）。
 - [x] **SessionQueryEngine::remove が index のみで SessionStore に触れないことを doc 未明記** — 2026-11-23 修正（index のみに影響し SessionStore は不変であることを doc 明記、R12 指摘反映）。
-- [ ] **HookProtocol の matcher 不正時のログ有無が doc／テスト未固定** — 根拠 `src/services/hook_protocol.rs:104-105` / R12-ST07 / 重大度 low / medium
+- [x] **HookProtocol の matcher 不正時のログ有無が doc／テスト未固定** — 2026-11-23 修正（CompiledMatcher::Never のコンパイル失敗はサイレントで config load 時の matcher_diagnostic が診断を担う旨を doc 明記、既存 non-match テストで固定済み、R12 指摘反映）。
 
 ## 完了
 

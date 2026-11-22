@@ -102,7 +102,9 @@ pub enum CompiledMatcher {
     Literal(Vec<String>),
     Regex(regex::Regex),
     /// Invalid pattern or config that slipped through validation: always
-    /// non-match (fail-closed).
+    /// non-match (fail-closed). Compilation failure is silent here by design;
+    /// `matcher_diagnostic` reports the problem at config load, so dispatch
+    /// stays log-free (swarm review R12-ST07).
     Never,
 }
 
