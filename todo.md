@@ -265,7 +265,7 @@ status: current
 - [x] **MessageFeedback::put が read guard 保持中に session.append を呼ぶ** — 2026-11-23 修正（put / put_events とも Session を clone して state guard を drop してから操作、observer からの service 再入デッドロック解消、タイムアウト付き回帰テスト、R11 指摘反映）。
 - [x] **SessionStore::observe_all が write guard 保持中に session.observe を呼ぶ** — 2026-11-23 修正（store write guard 内で sessions を clone して guard を drop してから各 session.observe を呼ぶ、observer からの store 再入デッドロック解消、タイムアウト付き回帰テスト、R11 指摘反映）。
 - [ ] **write_with_version が check と increment を別ロックに分け並行書込みが両方通る** — 根拠 `src/ports/tool_todo.rs:302-309` / R11-TX01 / 重大度 medium / confirmed（StaleVersion 配線修正済みとは別の TOCTOU）
-- [ ] **JobRegistry が完了ジョブを削除せず notices も縮小しない** — 根拠 `src/services/jobs.rs:179-234` / R11-RS01 / 重大度 medium / confirmed
+- [x] **JobRegistry が完了ジョブを削除せず notices も縮小しない** — 2026-11-23 段階1修正（acknowledge で通知を drain し cursor を 0 リセット、未読集合は単調減少、回帰テスト、R1 指摘反映）。完了ジョブの即削除は get/list 契約（完了後も view/read で出力回収）を壊すため見送り、保持方針は別 ADR 案件。
 - [ ] **JobHandle::settle と start のロック順序が未明示（AB-BA 窓）** — 根拠 `src/services/jobs.rs:104-120,180-188` / R11-LC03 / 重大度 low / medium
 - [x] **FakeTransport::send が requests guard 保持中に responses lock を取得** — 2026-11-23 修正（requests push の guard をブロックスコープで明示的に drop してから responses lock を取得、R11 指摘反映）。
 - [x] **JsonlPersistence::open が exists チェックと insert を別ロックで行う** — 2026-11-23 修正（handle 検索・path 存在確認・insert を単一 write guard 内で原子的に実行、並行 open での重複 handle 生成を防止、R11 指摘反映）。

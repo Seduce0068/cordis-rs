@@ -6336,3 +6336,22 @@ fn session_log_default_max_bytes_is_public() {
     use cordis_rs::plugin_ports::DEFAULT_MAX_BYTES;
     assert_eq!(DEFAULT_MAX_BYTES, 8 * 1024 * 1024);
 }
+
+#[test]
+fn job_notices_after_acknowledge_are_not_shadowed() {
+    use cordis_rs::core_services::{JobRegistry, JobStatus};
+
+    let registry = JobRegistry::new(2, 1024);
+    let first = registry.start(None).unwrap();
+    first.settle(JobStatus::Succeeded);
+    assert_eq!(registry.pending_notices().len(), 1);
+    registry.acknowledge(1);
+    assert!(registry.pending_notices().is_empty());
+
+    // A second job settling after acknowledgement must be visible even though
+    // the cursor was reset when notices were drained (swarm review R11-RS01).
+    let second = registry.start(None).unwrap();
+    second.settle(JobStatus::Failed);
+    let notices = registry.pending_notices();
+    assert_eq!(notices, vec![(second.id(), JobStatus::Failed)]);
+}
