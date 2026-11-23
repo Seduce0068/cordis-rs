@@ -57,6 +57,8 @@ pub struct ReadWindow {
 #[derive(Default)]
 struct FsState {
     versions: HashMap<PathBuf, u64>,
+    /// Monotonic counter for unique temp file names (swarm review R15-AS08).
+    write_seq: u64,
 }
 
 /// The filesystem seam. Clonable handle backed by the local filesystem.
@@ -261,11 +263,17 @@ impl FileSystem {
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos())
             .unwrap_or(0);
+        let seq = {
+            let mut guard = self.state.write().expect("fs state poisoned");
+            guard.write_seq = guard.write_seq.wrapping_add(1);
+            guard.write_seq
+        };
         let temp = resolved.with_file_name(format!(
-            ".{}.{}.{}.tmp",
+            ".{}.{}.{}.{}.tmp",
             resolved.file_name().unwrap_or_default().to_string_lossy(),
             std::process::id(),
-            nanos
+            nanos,
+            seq
         ));
         let write_result =
             std::fs::write(&temp, content).and_then(|_| std::fs::rename(&temp, resolved));
