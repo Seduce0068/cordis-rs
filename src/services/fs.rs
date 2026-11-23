@@ -305,7 +305,10 @@ impl FileSystem {
                 "version mismatch: expected {expected}, found {current}"
             )));
         }
-        let next = current.unwrap_or(0) + 1;
+        let next = current
+            .unwrap_or(0)
+            .checked_add(1)
+            .ok_or_else(|| Error::Other("file version overflow".to_string()))?;
         guard.versions.insert(resolved.to_path_buf(), next);
         Ok((current, next))
     }
