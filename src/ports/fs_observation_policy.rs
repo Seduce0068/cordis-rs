@@ -42,7 +42,9 @@ impl std::fmt::Display for PolicyError {
 }
 
 /// Per-owner observation table. Upstream keys by event actor; here the host
-/// supplies an owner id explicitly.
+/// supplies an owner id explicitly. `Clone` shares the entire owner→path map
+/// (one `Arc<Mutex<_>>`), so entries set through one handle are visible through
+/// every clone; it is not an isolated per-scope copy (swarm review R13-OW10).
 #[derive(Clone)]
 pub struct FsObservationPolicy {
     entries: Arc<Mutex<HashMap<String, HashMap<String, Observation>>>>,

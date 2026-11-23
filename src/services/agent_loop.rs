@@ -137,6 +137,8 @@ impl AgentLoop {
         self
     }
 
+    /// Replace the call parser. The previous hook is simply dropped; any
+    /// external cleanup it owned is not invoked (swarm review R13-OW09).
     pub fn with_call_parser(mut self, parser: CallParser) -> Self {
         self.parse_calls = parser;
         self
@@ -178,7 +180,8 @@ impl AgentLoop {
         self
     }
 
-    /// Checkpoint the session after each committed step.
+    /// Checkpoint the session after each committed step. Replacing an earlier
+    /// hook drops it without invoking cleanup (swarm review R13-OW09).
     pub fn with_checkpoint(mut self, hook: CheckpointHook) -> Self {
         self.checkpoint = Some(hook);
         self

@@ -306,8 +306,8 @@ status: current
 - [ ] **CredentialProvider::with_env が既存 clone と env を共有しない** — 根拠 `src/services/credentials.rs:60-75` / R13-OW06 / 重大度 medium / medium
 - [ ] **Fake* テスト用型が本番公開 API に露出し誤配線リスク** — 根拠 `src/ports/llm_transport.rs:120-125`, `src/ports/otel_exporter.rs:128-132` / R13-OW07 / 重大度 low / medium
 - [ ] **ProjectionFold の stateful fold 契約（Arc の Mutex capture）が doc 未明記** — 根拠 `src/services/sessions.rs:256,304-320` / R13-OW08 / 重大度 low / low
-- [ ] **AgentLoop::with_call_parser / with_checkpoint の古い hook cleanup 未呼び出しが doc 未明記** — 根拠 `src/services/agent_loop.rs:48-61,140-143,182-185` / R13-OW09 / 重大度 low / medium
-- [ ] **FsObservationPolicy の clone が二段マップ全体を共有する契約が doc 未明記** — 根拠 `src/ports/fs_observation_policy.rs:46-48` / R13-OW10 / 重大度 low / medium
+- [x] **AgentLoop::with_call_parser / with_checkpoint の古い hook cleanup 未呼び出しが doc 未明記** — 2026-11-23 修正（旧 hook は単に drop され cleanup は呼ばれない旨を各 builder の doc 明記、R13 指摘反映）。
+- [x] **FsObservationPolicy の clone が二段マップ全体を共有する契約が doc 未明記** — 2026-11-23 修正（clone が owner→path マップ全体を共有し独立コピーでない旨を型 doc 明記、R13 指摘反映）。
 - [x] **ToolRegistry::register の generation-guard 回帰テストが未固定** — 2026-11-23 修正（同名2登録→旧 disposer が新定義を消さない、二重 dispose が no-op を固定する回帰テスト追加、R13 指摘反映）。
 - [ ] **DeepSeekLlmApiExtensions::register の bool 拒否分岐が未テスト** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:45-68` / R13-ST02 / 重大度 low / confirmed
 - [x] **SessionTitleFirstPromptLlm::generate の空 messages → Ok(false) が未テスト** — 2026-11-23 修正（有効 config で空 messages を渡し Ok(false) を返す early return を固定する回帰テスト追加、R13 指摘反映）。
