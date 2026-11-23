@@ -218,8 +218,7 @@ impl FileSystem {
     pub fn write_text(&self, path: &str, content: &str) -> Result<FsWriteOutcome> {
         let resolved = self.resolve(path)?;
         let existed = resolved.exists();
-        let previous = self.version(path);
-        let version = self.reserve_version(&resolved, None)?;
+        let (previous, version) = self.reserve_version(&resolved, None)?;
         if let Some(error) = self.write_text_inner(&resolved, content) {
             self.restore_version(&resolved, previous);
             return Err(Error::Other(error));
@@ -281,7 +280,14 @@ impl FileSystem {
 
     /// Atomically check the expected version and reserve the next one under a
     /// single write guard (swarm review R14-RB04).
-    fn reserve_version(&self, resolved: &std::path::Path, expected: Option<u64>) -> Result<u64> {
+    /// Returns `(previous, next)` so the caller can restore the exact prior
+    /// value on I/O failure without a second lock acquisition (swarm review
+    /// R15-AS02).
+    fn reserve_version(
+        &self,
+        resolved: &std::path::Path,
+        expected: Option<u64>,
+    ) -> Result<(Option<u64>, u64)> {
         let mut guard = self.state.write().expect("fs state poisoned");
         let current = guard.versions.get(resolved).copied();
         if let (Some(expected), Some(current)) = (expected, current)
@@ -293,7 +299,7 @@ impl FileSystem {
         }
         let next = current.unwrap_or(0) + 1;
         guard.versions.insert(resolved.to_path_buf(), next);
-        Ok(next)
+        Ok((current, next))
     }
 
     fn restore_version(&self, resolved: &std::path::Path, previous: Option<u64>) {
@@ -345,8 +351,7 @@ impl FileSystem {
         // Reserve the version immediately before writing so a concurrent
         // writer cannot slip between the check and the increment (swarm review
         // R14-RB04).
-        let previous = self.version(path);
-        let version = self.reserve_version(&resolved, expected_version)?;
+        let (previous, version) = self.reserve_version(&resolved, expected_version)?;
         if let Some(error) = self.write_text_inner(&resolved, &updated) {
             self.restore_version(&resolved, previous);
             return Err(Error::Other(error));
