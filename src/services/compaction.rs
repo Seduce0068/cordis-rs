@@ -77,10 +77,19 @@ impl CompactionEngine {
         config: CompactionConfig,
         meter: TokenMeter,
     ) -> std::result::Result<Self, crate::Error> {
+        let base = config.head_chars.saturating_add(config.tail_chars);
+        // Guard the derived threshold explicitly: saturating alone would clamp
+        // to usize::MAX and silently pass the pruner's bound check (swarm
+        // review R13-OW01).
+        if base == usize::MAX || base > (usize::MAX - 64) / 4 {
+            return Err(crate::Error::Other(
+                "compaction config overflow".to_string(),
+            ));
+        }
         let pruner = ToolResultPruner::new(PrunerConfig {
             head_chars: config.head_chars,
             tail_chars: config.tail_chars,
-            threshold_chars: (config.head_chars + config.tail_chars) * 4 + 64,
+            threshold_chars: base * 4 + 64,
         })
         .map_err(|error| crate::Error::Other(error.to_string()))?;
         Ok(Self {

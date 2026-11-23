@@ -6461,3 +6461,30 @@ fn duration_decompose_keeps_from_millis_range_policy() {
     assert!(wide.decompose().is_ok());
     assert!(wide.render().is_ok());
 }
+
+#[test]
+fn pruner_and_compaction_reject_overflowing_config() {
+    use cordis_rs::core_services::{PruneError, PrunerConfig, ToolResultPruner};
+    use cordis_rs::services::compaction::{CompactionConfig, CompactionEngine};
+    use cordis_rs::services::token_meter::TokenMeter;
+
+    let huge = PrunerConfig {
+        head_chars: usize::MAX,
+        tail_chars: 0,
+        threshold_chars: usize::MAX,
+    };
+    assert_eq!(
+        ToolResultPruner::new(huge).unwrap_err(),
+        PruneError::InvalidConfig
+    );
+
+    let huge_compaction = CompactionConfig {
+        head_chars: usize::MAX / 2,
+        tail_chars: usize::MAX / 2,
+        ..Default::default()
+    };
+    assert!(CompactionEngine::new(huge_compaction, TokenMeter::new(1000)).is_err());
+
+    // Default config still works.
+    assert!(CompactionEngine::new(CompactionConfig::default(), TokenMeter::new(1000)).is_ok());
+}

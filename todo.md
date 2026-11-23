@@ -298,7 +298,7 @@ status: current
 - [x] **SessionQueryEngine::remove が index のみで SessionStore に触れないことを doc 未明記** — 2026-11-23 修正（index のみに影響し SessionStore は不変であることを doc 明記、R12 指摘反映）。
 - [x] **HookProtocol の matcher 不正時のログ有無が doc／テスト未固定** — 2026-11-23 修正（CompiledMatcher::Never のコンパイル失敗はサイレントで config load 時の matcher_diagnostic が診断を担う旨を doc 明記、既存 non-match テストで固定済み、R12 指摘反映）。
 
-- [ ] **ToolResultPruner / CompactionEngine の設定加算が unchecked で巨大設定で panic** — 根拠 `src/services/pruner.rs:63-65`, `src/services/compaction.rs:80-85` / R13-OW01 / 重大度 medium / confirmed
+- [x] **ToolResultPruner / CompactionEngine の設定加算が unchecked で巨大設定で panic** — 2026-11-23 修正（pruner は saturating + 明示 overflow 拒否で InvalidConfig、compaction は閾値オーバーフローを明示 Err、既定値は不変、回帰テスト、R1 指摘反映）。
 - [ ] **LlmService::register の disposer が名前ベースで default 所有権が弱い** — 根拠 `src/services/llm.rs:116-149` / R13-OW02 / 重大度 medium / medium
 - [ ] **AgentLoop::with_session の Session 共有（Arc）が doc 未明記** — 根拠 `src/services/agent_loop.rs:145-149` / R13-OW03 / 重大度 low / medium
 - [ ] **ToolOutput の deep clone が observer 経路で繰り返される** — 根拠 `src/services/tools.rs:83-110,423`, `src/services/agent_loop.rs:312` / R13-OW04 / 重大度 low / medium
