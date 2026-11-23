@@ -6601,3 +6601,17 @@ fn schedule_create_accepts_empty_text_without_new_error_variant() {
     assert_eq!(record.prompt, "");
     assert!(service.get(&record.id).is_some());
 }
+
+#[test]
+fn file_mention_quoted_directory_omits_trailing_quote() {
+    use cordis_rs::core_services::{ReferenceKind, format_file_mention};
+
+    assert_eq!(
+        format_file_mention("my docs", ReferenceKind::Directory, true),
+        Some("@\"my docs/".to_string())
+    );
+    assert_eq!(
+        format_file_mention("my docs", ReferenceKind::File, true),
+        Some("@\"my docs\"".to_string())
+    );
+}

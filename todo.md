@@ -326,7 +326,7 @@ status: current
 - [ ] **tool_bash::mount が require_approval 後の失敗で承認要求を残す** — 根拠 `src/ports/tool_bash.rs:204-218` / R14-RB08 / 重大度 medium / medium
 - [ ] **GoalStore::commit に rollback 境界が無い（将来の不整合リスク）** — 根拠 `src/services/goals.rs:183-188` / R14-RB09 / 重大度 low / low
 - [ ] **RepeatToolReminder::observe が状態更新を発行より前に実施** — 根拠 `src/services/repeat_reminder.rs:104-141` / R14-RB10 / 重大度 low / low
-- [ ] **format_file_mention の Directory quoted 分岐が doc/テスト未固定** — 根拠 `src/services/file_reference.rs:22-45` / R14-ST02 / 重大度 low / high
+- [x] **format_file_mention の Directory quoted 分岐が doc/テスト未固定** — 2026-11-23 修正（Directory の quoted mention が末尾引用符を省略する grammar を doc 明記、File との対比を固定する回帰テスト追加、R14 指摘反映）。
 - [ ] **WorkingDirectory::set の「絶対パスを返す」(doc) が未検証** — 根拠 `src/services/working_directory.rs:41-60` / R14-ST03 / 重大度 low / medium
 - [ ] **JobHandle::read の offset 範囲外挙動が doc/テスト未定義** — 根拠 `src/services/jobs.rs:98-102` / R14-ST04 / 重大度 low / medium
 - [x] **RetryPolicy::should_retry の retry>=max_retries 境界が doc/テスト未固定** — 2026-11-23 修正（既存テストが retry=3=max_retries で Stop を固定済みと確認、doc に予算枯渇条件を明記、R14 指摘反映）。

@@ -20,7 +20,10 @@ pub struct ActiveAtToken {
 }
 
 /// Format a file mention for insertion. Returns `None` for paths the grammar
-/// cannot represent safely (control characters or embedded quotes).
+/// cannot represent safely (control characters or embedded quotes). A quoted
+/// `Directory` mention intentionally omits the trailing quote (the trailing
+/// `/` terminates the token); only `File` mentions close the quote (swarm
+/// review R14-ST02).
 pub fn format_file_mention(
     path: &str,
     kind: ReferenceKind,
