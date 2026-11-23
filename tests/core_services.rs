@@ -7188,3 +7188,14 @@ fn title_from_output_handles_all_emphasis_widths() {
     // Nested emphasis is kept verbatim rather than partially stripped.
     assert_eq!(title_from_output("**a*b**").as_deref(), Some("**a*b**"));
 }
+
+#[test]
+fn llm_resolve_none_on_empty_registry_is_none() {
+    use cordis_rs::core_services::LlmService;
+
+    // With no provider and no default, resolve(None) must return None rather
+    // than panicking (swarm review R17-DUAL2-06).
+    let service = LlmService::default();
+    assert!(service.resolve(None).is_none());
+    assert!(service.resolve(Some("missing")).is_none());
+}

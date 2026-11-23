@@ -376,7 +376,7 @@ status: current
 - [ ] **GPUI TitlePanel::apply_build_result の Err で旧 rows を捨てる契約が doc 未明記** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_title_ui.rs:89-104` / R17-DUAL2-03 / 重大度 low / small
 - [ ] **GPUI SwitchErrorKind::Service が preset エラーを含む境界が未固定** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_permission_ui.rs:164-167` / R17-DUAL2-04 / 重大度 low / small
 - [ ] **WorkspaceRegistry archived の get=Some / attach=Err 非対称が doc 未明記** — 根拠 `cordis-rs/src/services/workspace.rs:92-126` / R17-DUAL2-05 / 重大度 low / small
-- [ ] **LlmService::resolve(None) が default 未設定で None を返す分岐が未テスト** — 根拠 `cordis-rs/src/services/llm.rs:160` / R17-DUAL2-06 / 重大度 low / small
+- [x] **LlmService::resolve(None) が default 未設定で None を返す分岐が未テスト** — 2026-11-24 修正（空 registry で resolve(None) / resolve(Some(missing)) が None を返す回帰テスト追加。provider 登録済み・default 未設定は register が自動 default 化するため到達不能、R17 指摘反映）。
 
 ## 完了
 
