@@ -6856,3 +6856,15 @@ async fn jsonl_poison_blocks_reads_and_restore() {
 
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn message_feedback_rejects_zero_note_bytes() {
+    use cordis_rs::plugin_ports::{MessageFeedback, MessageFeedbackConfig};
+
+    let config = MessageFeedbackConfig { max_note_bytes: 0 };
+    match MessageFeedback::new(config) {
+        Err(error) => assert!(error.to_string().contains("maxNoteBytes")),
+        Ok(_) => panic!("zero max_note_bytes must be rejected"),
+    }
+    assert!(MessageFeedback::new(MessageFeedbackConfig::default()).is_ok());
+}

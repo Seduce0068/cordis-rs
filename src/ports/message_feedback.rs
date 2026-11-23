@@ -86,6 +86,8 @@ pub struct MessageFeedback {
 }
 
 impl MessageFeedback {
+    /// Fail fast when `max_note_bytes` is zero: an unbounded/empty note budget
+    /// is a config error, not a fallback to a default (swarm review R15-ST05).
     pub fn new(config: MessageFeedbackConfig) -> std::result::Result<Self, Error> {
         if config.max_note_bytes == 0 {
             return Err(Error::Other(

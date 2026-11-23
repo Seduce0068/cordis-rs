@@ -346,7 +346,7 @@ status: current
 - [ ] **JobRegistry::new の max_concurrent / retain_bytes 下限 clamp が untested** — 根拠 `src/services/jobs.rs:176-177` / R15-ST02 / 重大度 low / high
 - [ ] **AgentLoop::with_max_steps(0) が 1 に丸められる契約が untested** — 根拠 `src/services/agent_loop.rs:135-137` / R15-ST03 / 重大度 low / high
 - [ ] **NativeToolExecutor::with_max_parallel(0) の 1 丸めが untested** — 根拠 `src/ports/native_tool_executor.rs:116` / R15-ST04 / 重大度 low / high
-- [ ] **MessageFeedbackConfig::max_note_bytes=0 の拒否時挙動が doc 未記載** — 根拠 `src/ports/message_feedback.rs:90` / R15-ST05 / 重大度 low / medium
+- [x] **MessageFeedbackConfig::max_note_bytes=0 の拒否時挙動が doc 未記載** — 2026-11-23 修正（new() が max_note_bytes=0 を fail-fast で拒否する旨を doc 明記、回帰テスト追加、R15 指摘反映）。
 - [ ] **CompactionAutomationConfig の pressure_threshold > 1.0 / NaN 扱いが untested** — 根拠 `src/ports/compaction_automation.rs:148` / R15-ST06 / 重大度 medium / medium
 
 ## 完了
