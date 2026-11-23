@@ -25,6 +25,10 @@ pub enum WriteOperation {
     Update,
 }
 
+/// Marker shared with hosts for matching path-escape errors (swarm review
+/// R16-DUAL03).
+pub const PATH_ESCAPE_MARKER: &str = "path escapes filesystem root";
+
 /// Remove directories created by a failed write, deepest first. `remove_dir`
 /// is a no-op when a concurrent process put something inside, so another
 /// writer's files survive (swarm review R14-RB03 / R15-AS09).
@@ -112,15 +116,11 @@ impl FileSystem {
                         let mut tail = Vec::new();
                         while !ancestor.exists() {
                             let Some(name) = ancestor.file_name() else {
-                                return Err(Error::Other(format!(
-                                    "path escapes filesystem root: {path}"
-                                )));
+                                return Err(Error::Other(format!("{PATH_ESCAPE_MARKER}: {path}")));
                             };
                             tail.push(name.to_os_string());
                             let Some(parent) = ancestor.parent() else {
-                                return Err(Error::Other(format!(
-                                    "path escapes filesystem root: {path}"
-                                )));
+                                return Err(Error::Other(format!("{PATH_ESCAPE_MARKER}: {path}")));
                             };
                             ancestor = parent;
                         }
@@ -134,9 +134,7 @@ impl FileSystem {
                     }
                 };
                 if !canonical.starts_with(canonical_root) {
-                    return Err(Error::Other(format!(
-                        "path escapes filesystem root: {path}"
-                    )));
+                    return Err(Error::Other(format!("{PATH_ESCAPE_MARKER}: {path}")));
                 }
                 // Return the verified canonical path so callers operate on
                 // exactly what was checked (limits symlink TOCTOU exposure).

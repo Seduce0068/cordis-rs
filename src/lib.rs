@@ -317,8 +317,8 @@ pub mod core_services {
         provide as provide_file_search,
     };
     pub use crate::services::fs::{
-        FileSystem, FsEditOutcome, FsInfo, FsWriteOutcome, ReadWindow, WriteOperation,
-        provide as provide_fs, provide_scoped as provide_fs_scoped,
+        FileSystem, FsEditOutcome, FsInfo, FsWriteOutcome, PATH_ESCAPE_MARKER, ReadWindow,
+        WriteOperation, provide as provide_fs, provide_scoped as provide_fs_scoped,
     };
     pub use crate::services::goals::{
         Goal, GoalError, GoalStatus, GoalStore, provide as provide_goals,
@@ -412,8 +412,8 @@ pub mod core_services {
         provide as provide_token_meter,
     };
     pub use crate::services::tools::{
-        ToolArgs, ToolDefinition, ToolError, ToolExecContext, ToolHandler, ToolNext, ToolOutput,
-        ToolPipeline, ToolRegistry, hook_deny_middleware, invoke_blocking,
+        APPROVAL_DENIED_MARKER, ToolArgs, ToolDefinition, ToolError, ToolExecContext, ToolHandler,
+        ToolNext, ToolOutput, ToolPipeline, ToolRegistry, hook_deny_middleware, invoke_blocking,
         provide as provide_tools,
     };
     pub use crate::services::working_directory::{

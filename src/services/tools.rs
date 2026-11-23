@@ -297,6 +297,10 @@ struct PipelineState {
     retry: Option<crate::services::retry::RetryPolicy>,
 }
 
+/// Marker shared with hosts for matching approval-denial errors without
+/// duplicating the message text (swarm review R16-DUAL03).
+pub const APPROVAL_DENIED_MARKER: &str = "denied by approval policy";
+
 /// Shared execution pipeline. Registered hooks are reversible effects.
 #[derive(Default, Clone)]
 pub struct ToolPipeline {
@@ -460,7 +464,7 @@ impl ToolPipeline {
                         Ok(outcome) if outcome.decision == ApprovalDecision::Allow => {}
                         Ok(_) => {
                             return Err(ToolError::Execution(format!(
-                                "tool {tool_name} denied by approval policy"
+                                "tool {tool_name} {APPROVAL_DENIED_MARKER}"
                             )));
                         }
                         Err(error) => {
