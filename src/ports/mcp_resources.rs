@@ -268,38 +268,46 @@ pub async fn mount(ctx: &Context) -> Result<McpResourceRegistry> {
 
     let result_registry = registry.clone();
     let tools_for_effect = tools.clone();
-    ctx.effect(move |scope| {
-        let tools = tools_for_effect.clone();
-        let registry = registry.clone();
-        let service_disposer = service_disposer.clone();
-        async move {
-            // Roll the service back together with the tool registrations when
-            // setup fails (swarm review R14-RB06).
-            scope.on_dispose(move || async move { service_disposer.dispose().await });
-            let defs = [
-                (
-                    LIST_RESOURCES,
-                    "List MCP resources",
-                    list_handler(registry.clone(), "resources/list"),
-                ),
-                (
-                    LIST_TEMPLATES,
-                    "List MCP resource templates",
-                    list_handler(registry.clone(), "resources/templates/list"),
-                ),
-                (
-                    READ_RESOURCE,
-                    "Read an MCP resource",
-                    read_handler(registry),
-                ),
-            ];
-            for (name, description, handler) in defs {
-                let disposer = tools.register(ToolDefinition::new(name, description, handler));
-                scope.on_dispose(move || async move { disposer.dispose().await });
+    let effect_disposer = service_disposer.clone();
+    let effect = ctx
+        .effect(move |scope| {
+            let tools = tools_for_effect.clone();
+            let registry = registry.clone();
+            let service_disposer = effect_disposer.clone();
+            async move {
+                // Roll the service back together with the tool registrations when
+                // setup fails (swarm review R14-RB06).
+                scope.on_dispose(move || async move { service_disposer.dispose().await });
+                let defs = [
+                    (
+                        LIST_RESOURCES,
+                        "List MCP resources",
+                        list_handler(registry.clone(), "resources/list"),
+                    ),
+                    (
+                        LIST_TEMPLATES,
+                        "List MCP resource templates",
+                        list_handler(registry.clone(), "resources/templates/list"),
+                    ),
+                    (
+                        READ_RESOURCE,
+                        "Read an MCP resource",
+                        read_handler(registry),
+                    ),
+                ];
+                for (name, description, handler) in defs {
+                    let disposer = tools.register(ToolDefinition::new(name, description, handler));
+                    scope.on_dispose(move || async move { disposer.dispose().await });
+                }
+                Ok(())
             }
-            Ok(())
-        }
-    })
-    .await?;
+        })
+        .await;
+    if let Err(error) = effect {
+        // The disposer had not reached the effect scope yet (swarm review
+        // R15-AS06), so roll the service back explicitly.
+        service_disposer.dispose().await?;
+        return Err(error);
+    }
     Ok(result_registry)
 }
