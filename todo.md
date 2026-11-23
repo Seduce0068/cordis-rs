@@ -357,7 +357,7 @@ status: current
 - [ ] **RetryPolicy::backoff_ms が random=NaN を finite ガードしない** — 根拠 `src/services/retry.rs:109` / R16-RA06 / 重大度 low / medium
 - [ ] **attachment_admission が max_bytes=0 の files/images 扱いを未定義** — 根拠 `src/ports/attachment_admission.rs:86-109` / R16-RA08 / 重大度 low / medium
 - [ ] **FileSystem::read_window が limit=usize::MAX で全行保持し bounded reads を迂回** — 根拠 `src/services/fs.rs:193-204` / R16-RA09 / 重大度 medium / medium
-- [ ] **JobError::MaxConcurrent 分岐がテスト未固定** — 根拠 `src/services/jobs.rs:135,199` / R16-DUAL01 / 重大度 medium / high
+- [x] **JobError::MaxConcurrent 分岐がテスト未固定** — 2026-11-24 修正（owner ごとの並列上限到達・文言・settle 後のスロット解放・他 owner の独立予算を固定する回帰テスト追加、R16 指摘反映）。
 - [ ] **GPUI SwitchErrorKind::Preset が cordis-rs のエラー文言に依存** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_permission_ui.rs:193` / R16-DUAL02 / 重大度 low / medium
 - [ ] **GPUI agent UI が ToolError 文字列 contains 判定で cordis-rs 文言変更に脆弱** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_agent_ui.rs:382,550` / R16-DUAL03 / 重大度 medium / high
 - [ ] **GPUI に ToolOutput::is_error()==true の回帰テストが無い** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_agent_ui.rs:367,531` / R16-DUAL04 / 重大度 low / high

@@ -7034,3 +7034,29 @@ fn pruner_rejects_near_max_config_without_overflow() {
         PruneError::InvalidConfig
     );
 }
+
+#[test]
+fn job_registry_enforces_max_concurrent_per_owner() {
+    use cordis_rs::core_services::{JobError, JobRegistry, JobStatus};
+
+    let jobs = JobRegistry::new(1, 1024);
+    let first = jobs.start(Some("agent-1".to_string())).unwrap();
+    let error = match jobs.start(Some("agent-1".to_string())) {
+        Err(error) => error,
+        Ok(_) => panic!("second job exceeded max_concurrent"),
+    };
+    assert_eq!(
+        error,
+        JobError::MaxConcurrent {
+            owner: Some("agent-1".to_string()),
+            max: 1
+        }
+    );
+    assert!(error.to_string().contains("already has 1 active jobs"));
+
+    // A settled job frees the slot; a different owner has its own budget.
+    first.settle(JobStatus::Succeeded);
+    let second = jobs.start(Some("agent-1".to_string())).unwrap();
+    let other = jobs.start(Some("agent-2".to_string())).unwrap();
+    assert_ne!(second.id(), other.id());
+}
