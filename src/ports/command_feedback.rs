@@ -132,14 +132,18 @@ impl crate::Plugin for CommandFeedback {
 
 /// Mount with a session for feedback recording.
 pub async fn mount(ctx: &Context, session: Session) -> Result<CommandRegistry> {
-    let commands = crate::core_services::provide_commands(ctx).await?;
-    let _ = crate::Fiber::mount_retained(
+    let (commands, disposer) = crate::core_services::provide_commands_with_disposer(ctx).await?;
+    let fiber = crate::Fiber::mount_retained(
         ctx,
         Box::new(CommandFeedback {
             session: Some(session),
         }),
     )
-    .await?;
+    .await;
+    if let Err(error) = fiber {
+        disposer.dispose().await?;
+        return Err(error);
+    }
     Ok(commands)
 }
 

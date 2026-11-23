@@ -332,7 +332,7 @@ status: current
 - [x] **RetryPolicy::should_retry の retry>=max_retries 境界が doc/テスト未固定** — 2026-11-23 修正（既存テストが retry=3=max_retries で Stop を固定済みと確認、doc に予算枯渇条件を明記、R14 指摘反映）。
 - [x] **EventObserver が append_with_seq で発火しない契約が未テスト** — 2026-11-23 修正（append は observer 発火、append_with_seq は発火しないことを対で固定する回帰テスト追加、JSONL restore の二重追記防止を担保、R14 指摘反映）。
 
-- [ ] **rollback 修正が command_goal のみで同型 mount helper が未修正** — 根拠 `src/ports/command_feedback.rs:134-143`, `tool_session_query.rs:156-162`, `skill_filesystem.rs:146-153` / R15-AS01 / 重大度 medium / high
+- [x] **rollback 修正が command_goal のみで同型 mount helper が未修正** — 2026-11-23 修正（command_feedback / tool_session_query / skill_filesystem の3 mount に command_goal と同じ Disposer rollback を横展開、provide_session_query / provide_skills に with_disposer を追加し既存 provide は adapter 維持、host 所有 service は対象外、R15 指摘反映）。
 - [x] **fs edit_text の previous 取得と reserve_version が別ロックで rollback 値が誤り得る** — 2026-11-23 修正（reserve_version が (previous, next) を単一 write guard 内で返すように変更、write_text / edit_text の両呼び出し側を更新し失敗時 rollback 値を原子的に確定、R15 指摘反映）。
 - [x] **fs write_text が version guard 無しで既存 version を直接上書き** — 2026-11-23 修正（write_text_checked を追加して expected_version を渡せるようにし、既存 write_text は unguarded adapter として維持、stale version 拒否の回帰テスト、R15 指摘反映）。
 - [x] **JSONL poison が append のみで read / restore が古い文件内容を返す** — 2026-11-23 修正（check_not_poisoned ヘルパーを追加し read / read_recovered の冒頭でチェック、restore_with は read 経由で間接的に遮断、poison 後の全 read 経路が Corrupt を返す回帰テスト、R15 指摘反映）。

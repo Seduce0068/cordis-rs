@@ -155,9 +155,21 @@ impl crate::Plugin for ToolSessionQuery {
 /// Mount with the shared tools and sessionQuery seams.
 pub async fn mount(ctx: &Context, config: ToolSessionQueryConfig) -> Result<ToolRegistry> {
     let tools = ctx.require::<ToolRegistry>("tools").await?;
-    if ctx.get_untyped("sessionQuery").is_none() {
-        crate::core_services::provide_session_query(ctx).await?;
+    let disposer = if ctx.get_untyped("sessionQuery").is_none() {
+        Some(
+            crate::core_services::provide_session_query_with_disposer(ctx)
+                .await?
+                .1,
+        )
+    } else {
+        None
+    };
+    let fiber = crate::Fiber::mount_retained(ctx, Box::new(ToolSessionQuery { config })).await;
+    if let Err(error) = fiber {
+        if let Some(disposer) = disposer {
+            disposer.dispose().await?;
+        }
+        return Err(error);
     }
-    let _ = crate::Fiber::mount_retained(ctx, Box::new(ToolSessionQuery { config })).await?;
     Ok((*tools).clone())
 }

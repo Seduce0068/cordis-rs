@@ -359,6 +359,7 @@ pub mod core_services {
     };
     pub use crate::services::session_query::{
         SessionHit, SessionQueryEngine, provide as provide_session_query,
+        provide_with_disposer as provide_session_query_with_disposer,
     };
     pub use crate::services::session_reference::{
         MAX_REFERENCE_PAYLOAD_LEN, SESSION_REFERENCE_SCHEME, SessionReference, SessionReferences,
@@ -378,7 +379,7 @@ pub mod core_services {
     };
     pub use crate::services::skills::{
         Skill, SkillCatalog, SkillProvider, SkillProviderFailure, SkillRegistry,
-        provide as provide_skills,
+        provide as provide_skills, provide_with_disposer as provide_skills_with_disposer,
     };
     pub use crate::services::storage::{
         DomainSpec, MemoryBackend, StorageError, StorageHub, provide as provide_storage,

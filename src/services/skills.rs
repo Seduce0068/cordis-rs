@@ -126,7 +126,15 @@ impl SkillRegistry {
 }
 
 pub async fn provide(ctx: &crate::Context) -> Result<SkillRegistry> {
+    provide_with_disposer(ctx)
+        .await
+        .map(|(registry, _)| registry)
+}
+
+pub async fn provide_with_disposer(
+    ctx: &crate::Context,
+) -> Result<(SkillRegistry, crate::Disposer)> {
     let registry = SkillRegistry::default();
-    ctx.provide("skills", registry.clone()).await?;
-    Ok(registry)
+    let disposer = ctx.provide("skills", registry.clone()).await?;
+    Ok((registry, disposer))
 }

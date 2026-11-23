@@ -143,7 +143,13 @@ impl SessionQueryEngine {
 }
 
 pub async fn provide(ctx: &crate::Context) -> crate::Result<SessionQueryEngine> {
+    provide_with_disposer(ctx).await.map(|(engine, _)| engine)
+}
+
+pub async fn provide_with_disposer(
+    ctx: &crate::Context,
+) -> crate::Result<(SessionQueryEngine, crate::Disposer)> {
     let engine = SessionQueryEngine::new();
-    ctx.provide("sessionQuery", engine.clone()).await?;
-    Ok(engine)
+    let disposer = ctx.provide("sessionQuery", engine.clone()).await?;
+    Ok((engine, disposer))
 }

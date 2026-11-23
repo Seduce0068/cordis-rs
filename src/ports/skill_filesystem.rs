@@ -144,11 +144,18 @@ impl crate::Plugin for SkillFilesystem {
 
 /// Mount with the shared skills seam.
 pub async fn mount(ctx: &Context, config: SkillFsConfig) -> Result<SkillRegistry> {
-    let registry = if let Some(existing) = ctx.get::<SkillRegistry>("skills") {
-        (*existing).clone()
+    let (registry, disposer) = if let Some(existing) = ctx.get::<SkillRegistry>("skills") {
+        ((*existing).clone(), None)
     } else {
-        crate::core_services::provide_skills(ctx).await?
+        let (registry, disposer) = crate::core_services::provide_skills_with_disposer(ctx).await?;
+        (registry, Some(disposer))
     };
-    let _ = crate::Fiber::mount_retained(ctx, Box::new(SkillFilesystem { config })).await?;
+    let fiber = crate::Fiber::mount_retained(ctx, Box::new(SkillFilesystem { config })).await;
+    if let Err(error) = fiber {
+        if let Some(disposer) = disposer {
+            disposer.dispose().await?;
+        }
+        return Err(error);
+    }
     Ok(registry)
 }
