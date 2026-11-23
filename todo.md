@@ -360,7 +360,7 @@ status: current
 - [x] **JobError::MaxConcurrent 分岐がテスト未固定** — 2026-11-24 修正（owner ごとの並列上限到達・文言・settle 後のスロット解放・他 owner の独立予算を固定する回帰テスト追加、R16 指摘反映）。
 - [ ] **GPUI SwitchErrorKind::Preset が cordis-rs のエラー文言に依存** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_permission_ui.rs:193` / R16-DUAL02 / 重大度 low / medium
 - [x] **GPUI agent UI が ToolError 文字列 contains 判定で cordis-rs 文言変更に脆弱** — 2026-11-24 修正（cordis-rs が APPROVAL_DENIED_MARKER / PATH_ESCAPE_MARKER を公開し生成側も定数を使用、GPUI の assertion も同じ定数を参照、文言・エラー型は不変、R16 指摘反映）。R12-IV06 の構造化は別 ADR 案件。
-- [ ] **GPUI に ToolOutput::is_error()==true の回帰テストが無い** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_agent_ui.rs:367,531` / R16-DUAL04 / 重大度 low / high
+- [x] **GPUI に ToolOutput::is_error()==true の回帰テストが無い** — 2026-11-24 修正（ToolOutput::from_error が is_error()==true、通常出力が false を固定する回帰テスト追加、R16 指摘反映）。
 - [ ] **GPUI schedule UI に Cancelled terminal の描画分岐が無い（要確認）** — 根拠 `dsh-gpui-client-poc` schedule UI / R16-DUAL06 / 重大度 low / medium
 
 ## 完了
