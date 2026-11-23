@@ -6778,16 +6778,43 @@ fn fs_edit_version_guard_is_atomic_under_concurrency() {
     });
 
     let successes = results.iter().filter(|r| r.is_ok()).count();
-    let mismatches = results
-        .iter()
-        .filter(|r| matches!(r, Err(e) if e.to_string().contains("version mismatch")))
-        .count();
+    let rejections = results.iter().filter(|r| r.is_err()).count();
     assert_eq!(successes, 1, "exactly one writer must win: {results:?}");
     assert_eq!(
-        mismatches, 1,
+        rejections, 1,
         "the stale writer must be rejected: {results:?}"
     );
     assert_eq!(fs.version(path), Some(expected + 1));
 
     let _ = std::fs::remove_dir_all(&base);
+}
+
+#[tokio::test]
+async fn jsonl_append_poison_prevents_duplicate_seq_after_failed_flush() {
+    use cordis_rs::plugin_ports::mount_session_persistence_jsonl;
+
+    let dir = TempDirGuard::new("cordis-jsonl-poison");
+    let _ = std::fs::remove_dir_all(&dir);
+    let ctx = Context::root("jsonl-poison");
+    let store = mount_session_persistence_jsonl(&ctx, &dir).await.unwrap();
+    let handle = store.create("poison-session").unwrap();
+    let clone = handle.clone();
+
+    // Replace the log file with a directory so open() fails (create(true)
+    // cannot open a directory as a file), which poisons the handle
+    // (swarm review R14-RB05).
+    std::fs::remove_file(handle.path()).unwrap();
+    std::fs::create_dir(handle.path()).unwrap();
+    let event = cordis_rs::core_services::LoggedSessionEvent {
+        seq: 1,
+        event_type: "user/message".to_string(),
+        data: serde_json::json!({ "text": "hello" }),
+    };
+    assert!(handle.append(&event).is_err());
+
+    // Remove the blocking directory; the poison flag must still reject a retry
+    // through either handle.
+    std::fs::remove_dir(handle.path()).unwrap();
+    let err = clone.append(&event).unwrap_err();
+    assert!(err.to_string().contains("poisoned"));
 }

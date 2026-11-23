@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
 use crate::services::sessions::{Session, SessionEvent as LoggedSessionEvent};
@@ -67,6 +68,9 @@ fn validate_session_id(id: &str) -> std::result::Result<(), PersistenceError> {
 pub struct JsonlSessionHandle {
     id: String,
     path: PathBuf,
+    /// Set when a write/flush fails: further appends are rejected so a retry
+    /// cannot create a duplicate seq line (swarm review R14-RB05).
+    poisoned: Arc<AtomicBool>,
 }
 
 impl JsonlSessionHandle {
@@ -79,19 +83,35 @@ impl JsonlSessionHandle {
     }
 
     pub fn append(&self, event: &LoggedSessionEvent) -> Result<()> {
-        let mut file = OpenOptions::new()
+        if self.poisoned.load(Ordering::Acquire) {
+            return Err(Error::Other(
+                "session log is poisoned after a failed flush".to_string(),
+            ));
+        }
+        let opened = OpenOptions::new()
             .create(true)
             .append(true)
             .open(&self.path)
-            .map_err(|error| Error::Other(error.to_string()))?;
+            .map_err(|error| Error::Other(error.to_string()));
+        let mut file = match opened {
+            Ok(file) => file,
+            Err(error) => {
+                self.poisoned.store(true, Ordering::Release);
+                return Err(error);
+            }
+        };
         let line = serde_json::json!({
             "seq": event.seq,
             "type": event.event_type,
             "data": event.data,
         });
-        writeln!(file, "{}", line).map_err(|error| Error::Other(error.to_string()))?;
-        file.flush()
-            .map_err(|error| Error::Other(error.to_string()))
+        let written = writeln!(file, "{}", line)
+            .and_then(|_| file.flush())
+            .map_err(|error| Error::Other(error.to_string()));
+        if written.is_err() {
+            self.poisoned.store(true, Ordering::Release);
+        }
+        written
     }
 
     /// Decode one persisted line with strict schema checks. Missing or
@@ -246,7 +266,11 @@ impl JsonlPersistence {
                     reason: format!("cannot create session log: {error}"),
                 },
             })?;
-        let handle = JsonlSessionHandle { id, path };
+        let handle = JsonlSessionHandle {
+            id,
+            path,
+            poisoned: Arc::new(AtomicBool::new(false)),
+        };
         self.state
             .write()
             .expect("persistence state poisoned")
@@ -271,6 +295,7 @@ impl JsonlPersistence {
         let handle = JsonlSessionHandle {
             id: id.to_string(),
             path,
+            poisoned: Arc::new(AtomicBool::new(false)),
         };
         guard.handles.insert(id.to_string(), handle.clone());
         Ok(handle)
