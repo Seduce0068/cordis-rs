@@ -6656,3 +6656,15 @@ fn working_directory_set_resolves_relative_paths_to_absolute() {
     assert!(nested.is_absolute());
     assert!(nested.ends_with("subdir/child"));
 }
+
+#[test]
+fn job_handle_read_clamps_out_of_range_offsets() {
+    use cordis_rs::core_services::JobRegistry;
+
+    let registry = JobRegistry::new(2, 1024);
+    let handle = registry.start(None).unwrap();
+    handle.append(b"hello");
+
+    assert_eq!(handle.read(0), ("hello".to_string(), 5));
+    assert_eq!(handle.read(usize::MAX), (String::new(), 5));
+}

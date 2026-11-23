@@ -95,7 +95,9 @@ impl JobHandle {
         guard.ring.append(chunk.as_ref());
     }
 
-    /// Read output from an absolute byte offset; returns text and the new end.
+    /// Read output from an absolute byte offset; returns text and the current
+    /// end. An offset beyond the retained bytes is clamped, so it yields an
+    /// empty string together with the current end (swarm review R14-ST04).
     pub fn read(&self, offset: usize) -> (String, usize) {
         let guard = self.record.read().expect("job record poisoned");
         guard.ring.read(offset)
