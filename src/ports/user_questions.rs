@@ -29,14 +29,18 @@ pub enum UserQuestionError {
     /// code). No construction path yet; kept for public code-set stability
     /// (swarm review R2-ER06).
     CallerNotLive,
-    /// Reserved for phase-2 delegated-call handling.
+    /// Reserved for phase-2 delegated-call handling; never emitted. Kept
+    /// in `code()` for public code-set stability (swarm review R18-ER03).
     DelegatedCaller,
-    /// Reserved for phase-2 steer intent validation.
+    /// Reserved for phase-2 steer intent validation; never emitted. Kept
+    /// in `code()` for public code-set stability (swarm review R18-ER03).
     BadIntent,
     EmptyQuestions,
-    /// Reserved for phase-2 answer validation.
+    /// Reserved for phase-2 answer validation; never emitted. Kept in
+    /// `code()` for public code-set stability (swarm review R18-ER03).
     BadAnswer,
-    /// Reserved for phase-2 reply queuing.
+    /// Reserved for phase-2 reply queuing; never emitted. Kept in
+    /// `code()` for public code-set stability (swarm review R18-ER03).
     ReplyQueued,
     ProviderError,
 }

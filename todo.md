@@ -385,7 +385,7 @@ status: current
 - [x] **retry should_retry_message が error_code() を経由するか未固定** — 2026-11-24 修正（Runtime Proof で経由を確認し、ラベル付き HTTP コードは Retry／「retry in 500ms」は Stop を固定する回帰テスト追加、R18 指摘反映）。
 - [x] **PruneError::RemovalNotFound が生成箇所ゼロのデッド契約** — 2026-11-24 修正（reserved／現在は未 emit を doc 明記、バリアント削除による後方互換破壊は回避、R18 指摘反映）。
 - [x] **ApprovalError::Cancelled が生成箇所ゼロのデッド契約** — 2026-11-24 修正（reserved／現在は未 emit を doc 明記、バリアント削除による後方互換破壊は回避、R18 指摘反映）。
-- [ ] **UserQuestionError の phase-2 予約4バリアントが code()/Display に漏れる** — 根拠 `src/ports/user_questions.rs:30-63` / R18-ER03 / 重大度 low / small
+- [x] **UserQuestionError の phase-2 予約4バリアントが code()/Display に漏れる** — 2026-11-24 修正（code()  containing は R2-ER06 の public code-set stability で意図的と確認、4バリアントに「never emitted / kept for stability」を doc 明記、既存 code 固定テストは不変、R18 指摘反映）。
 - [ ] **ShellError の TimedOut 系が timeout_ms を Display で落とす** — 根拠 `src/services/shell.rs:84-110` / R18-ER04 / 重大度 low / small
 - [x] **FsError の PartialEq が cause を無視する契約が doc 未明記** — 2026-11-24 修正（安定した分類フィールドのみで比較し cause は除外する意図を doc 明記、別 Arc インスタンスが等しい回帰テスト追加、R18 指摘反映）。
 - [x] **RawTodo::new が検証を to_todo_list に遅延する旨が doc 未明記** — 2026-11-24 修正（検証遅延の契約を doc 明記、不正値が constructor を通り to_todo_list で拒否される回帰テスト追加、R18 指摘反映）。
