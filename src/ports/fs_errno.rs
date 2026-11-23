@@ -47,6 +47,9 @@ impl FsError {
     }
 }
 
+/// Equality is intentionally based only on the stable classification fields;
+/// the underlying `cause` is excluded so callers can compare errors without
+/// depending on the host `io::Error` (swarm review R18-ER05).
 impl PartialEq for FsError {
     fn eq(&self, other: &Self) -> bool {
         self.code == other.code && self.message == other.message

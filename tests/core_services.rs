@@ -7300,3 +7300,24 @@ fn tool_execution_agent_normalises_empty_name() {
     assert_eq!(ToolExecution::agent(" a ").agent.as_deref(), Some(" a "));
     assert_eq!(ToolExecution::anonymous().agent, None);
 }
+
+#[test]
+fn fs_error_equality_ignores_cause() {
+    use cordis_rs::plugin_ports::{FsError, FsErrorCode, fs_error_from_errno};
+
+    let make = || {
+        fs_error_from_errno(
+            "read",
+            "/tmp/x",
+            &std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied"),
+        )
+    };
+    let first = make();
+    let second = make();
+    // Separate `Arc` instances compare equal because only the classification
+    // fields participate (swarm review R18-ER05).
+    assert_eq!(first, second);
+    assert_eq!(first.code, FsErrorCode::PermissionDenied);
+    assert_eq!(first.message, second.message);
+    let _ = FsError::cause; // keep the public accessor referenced
+}

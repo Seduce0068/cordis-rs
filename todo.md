@@ -387,7 +387,7 @@ status: current
 - [x] **ApprovalError::Cancelled が生成箇所ゼロのデッド契約** — 2026-11-24 修正（reserved／現在は未 emit を doc 明記、バリアント削除による後方互換破壊は回避、R18 指摘反映）。
 - [ ] **UserQuestionError の phase-2 予約4バリアントが code()/Display に漏れる** — 根拠 `src/ports/user_questions.rs:30-63` / R18-ER03 / 重大度 low / small
 - [ ] **ShellError の TimedOut 系が timeout_ms を Display で落とす** — 根拠 `src/services/shell.rs:84-110` / R18-ER04 / 重大度 low / small
-- [ ] **FsError の PartialEq が cause を無視する契約が doc 未明記** — 根拠 `src/ports/fs_errno.rs:50-62` / R18-ER05 / 重大度 low / small
+- [x] **FsError の PartialEq が cause を無視する契約が doc 未明記** — 2026-11-24 修正（安定した分類フィールドのみで比較し cause は除外する意図を doc 明記、別 Arc インスタンスが等しい回帰テスト追加、R18 指摘反映）。
 - [ ] **RawTodo::new が検証を to_todo_list に遅延する旨が doc 未明記** — 根拠 `src/ports/tool_todo.rs:127-134` / R18-BD01 / 重大度 low / small
 - [x] **ToolExecution::agent("") が空名を受理し anonymous と区別される** — 2026-11-24 修正（空／空白名を None に正規化し anonymous と同一視、正常名は前後空白含めて不変、回帰テスト追加、R18 指摘反映）。
 - [ ] **PresetSpec が pub フィールドで register が内容を検証しない** — 根拠 `src/services/permission_presets.rs:93-99,193-218` / R18-BD03 / 重大度 low / small
