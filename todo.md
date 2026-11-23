@@ -342,7 +342,7 @@ status: current
 - [x] **fs tmp ファイル名が pid+nanos で並列 write が衝突し得る** — 2026-11-23 修正（FsState に write_seq を追加し tmp 名に採番を含めて同一プロセスの並列 write でもユニークに、R15 指摘反映）。
 - [x] **fs create_dir_all 失敗時に created_dirs を rollback しない** — 2026-11-23 修正（rollback_dirs ヘルパーを抽出し、create_dir_all 失敗時と write 失敗時の両分岐から深い順の remove_dir を実行、R15 指摘反映）。
 - [x] **fs reserve_version の next = current+1 が u64 overflow unchecked** — 2026-11-23 修正（checked_add(1) に変更し overflow 時に file version overflow エラーを返す、debug panic / release wrap を防止、R15 指摘反映）。
-- [ ] **SessionTitles max_chars=0 が黙って 1 に丸められる（contract 未検証）** — 根拠 `src/services/session_titles.rs:74,87` / R15-ST01 / 重大度 low / high
+- [x] **SessionTitles max_chars=0 が黙って 1 に丸められる（contract 未検証）** — 2026-11-23 修正（set_generated / derive_from_messages の doc に「0 は 1 として扱う」と明記し、両メソッドで 1 文字になる回帰テスト追加、R15 指摘反映）。
 - [ ] **JobRegistry::new の max_concurrent / retain_bytes 下限 clamp が untested** — 根拠 `src/services/jobs.rs:176-177` / R15-ST02 / 重大度 low / high
 - [ ] **AgentLoop::with_max_steps(0) が 1 に丸められる契約が untested** — 根拠 `src/services/agent_loop.rs:135-137` / R15-ST03 / 重大度 low / high
 - [ ] **NativeToolExecutor::with_max_parallel(0) の 1 丸めが untested** — 根拠 `src/ports/native_tool_executor.rs:116` / R15-ST04 / 重大度 low / high

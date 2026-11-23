@@ -6891,3 +6891,25 @@ async fn compaction_automation_rejects_non_finite_and_boundary_pressure() {
         );
     }
 }
+
+#[test]
+fn session_titles_zero_max_chars_is_treated_as_one() {
+    use cordis_rs::core_services::SessionTitles;
+
+    let titles = SessionTitles::default();
+    assert!(titles.set_generated("s1", "hello world", 0));
+    let stored: Vec<_> = titles
+        .list()
+        .into_iter()
+        .filter(|(id, _)| id == "s1")
+        .collect();
+    assert_eq!(stored[0].1, "h");
+
+    titles.derive_from_messages("s2", &["fallback title".to_string()], 0);
+    let stored: Vec<_> = titles
+        .list()
+        .into_iter()
+        .filter(|(id, _)| id == "s2")
+        .collect();
+    assert_eq!(stored[0].1, "f");
+}

@@ -66,6 +66,7 @@ impl SessionTitles {
 
     /// Store a title from an LLM provider, truncating to the CJK character
     /// target when needed. Empty output is ignored (provider did not answer).
+    /// `max_chars = 0` is treated as 1 (swarm review R15-ST01).
     pub fn set_generated(&self, session_id: &str, text: &str, max_chars: usize) -> bool {
         let first = text.lines().find(|line| !line.trim().is_empty());
         let Some(line) = first else {
@@ -80,6 +81,7 @@ impl SessionTitles {
     }
 
     /// Deterministic fallback: first human message, shortened to `max_chars`.
+    /// `max_chars = 0` is treated as 1 (swarm review R15-ST01).
     pub fn derive_from_messages(&self, session_id: &str, messages: &[String], max_chars: usize) {
         let Some(first) = messages.iter().find(|text| !text.trim().is_empty()) else {
             return;
