@@ -25,6 +25,15 @@ pub enum WriteOperation {
     Update,
 }
 
+/// Remove directories created by a failed write, deepest first. `remove_dir`
+/// is a no-op when a concurrent process put something inside, so another
+/// writer's files survive (swarm review R14-RB03 / R15-AS09).
+fn rollback_dirs(dirs: &[std::path::PathBuf]) {
+    for dir in dirs.iter().rev() {
+        let _ = std::fs::remove_dir(dir);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct FsWriteOutcome {
     pub operation: WriteOperation,
@@ -241,6 +250,9 @@ impl FileSystem {
                 }
             }
             if let Err(error) = std::fs::create_dir_all(parent) {
+                // create_dir_all may have partially succeeded; roll back the
+                // ancestors we recorded (swarm review R15-AS09).
+                rollback_dirs(&created_dirs);
                 return Some(error.to_string());
             }
         }
@@ -260,11 +272,7 @@ impl FileSystem {
             std::fs::write(&temp, content).and_then(|_| std::fs::rename(&temp, resolved));
         if let Err(error) = write_result {
             let _ = std::fs::remove_file(&temp);
-            // Deepest-first; remove_dir is a no-op if a concurrent process
-            // created something inside, so another writer's files survive.
-            for dir in created_dirs {
-                let _ = std::fs::remove_dir(dir);
-            }
+            rollback_dirs(&created_dirs);
             return Some(error.to_string());
         }
         let _ = existed;

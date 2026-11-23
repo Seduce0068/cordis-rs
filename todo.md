@@ -340,7 +340,7 @@ status: current
 - [ ] **mcp_resources が effect 登録自体の失敗時に service が残る** — 根拠 `src/ports/mcp_resources.rs:264-304` / R15-AS06 / 重大度 low / medium
 - [ ] **GoalStore copy-swap が events Vec を毎回 deep copy（性能）** — 根拠 `src/services/goals.rs:185-195` / R15-AS07 / 重大度 low / medium
 - [ ] **fs tmp ファイル名が pid+nanos で並列 write が衝突し得る** — 根拠 `src/services/fs.rs:249-260` / R15-AS08 / 重大度 medium / medium
-- [ ] **fs create_dir_all 失敗時に created_dirs を rollback しない** — 根拠 `src/services/fs.rs:232-248` / R15-AS09 / 重大度 medium / high
+- [x] **fs create_dir_all 失敗時に created_dirs を rollback しない** — 2026-11-23 修正（rollback_dirs ヘルパーを抽出し、create_dir_all 失敗時と write 失敗時の両分岐から深い順の remove_dir を実行、R15 指摘反映）。
 - [ ] **fs reserve_version の next = current+1 が u64 overflow unchecked** — 根拠 `src/services/fs.rs:286` / R15-AS10 / 重大度 low / low
 - [ ] **SessionTitles max_chars=0 が黙って 1 に丸められる（contract 未検証）** — 根拠 `src/services/session_titles.rs:74,87` / R15-ST01 / 重大度 low / high
 - [ ] **JobRegistry::new の max_concurrent / retain_bytes 下限 clamp が untested** — 根拠 `src/services/jobs.rs:176-177` / R15-ST02 / 重大度 low / high
