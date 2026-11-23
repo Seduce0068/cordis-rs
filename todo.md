@@ -391,7 +391,7 @@ status: current
 - [ ] **RawTodo::new が検証を to_todo_list に遅延する旨が doc 未明記** — 根拠 `src/ports/tool_todo.rs:127-134` / R18-BD01 / 重大度 low / small
 - [ ] **ToolExecution::agent("") が空名を受理し anonymous と区別される** — 根拠 `src/ports/tool_todo.rs:146-156` / R18-BD02 / 重大度 low / small
 - [ ] **PresetSpec が pub フィールドで register が内容を検証しない** — 根拠 `src/services/permission_presets.rs:93-99,193-218` / R18-BD03 / 重大度 low / small
-- [ ] **TokenMeter::new が budget=0 を 1 に丸める意図が doc 未明記** — 根拠 `src/services/token_meter.rs:34-39` / R18-BD04 / 重大度 low / small
+- [x] **TokenMeter::new が budget=0 を 1 に丸める意図が doc 未明記** — 2026-11-24 修正（0 → 1 の丸めが pressure を有限にし fail-closed にする意図を doc 明記、finite 性の回帰テスト追加、R18 指摘反映）。
 - [x] **acknowledge の doc 冒頭が実装と逆だった（DUAL3-02 修正済みの記録）** — R18-DUAL3-02 / 完了済み（2026-11-24、ドキュメント＋clamp テスト）
 
 ## 完了

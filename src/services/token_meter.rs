@@ -32,6 +32,10 @@ pub struct TokenMeter {
 }
 
 impl TokenMeter {
+    /// Create a meter with the given token budget. A zero budget is raised to
+    /// 1 rather than disabling the meter: it keeps `pressure` finite and fails
+    /// closed (immediate compaction) instead of dividing by zero (swarm review
+    /// R18-BD04).
     pub fn new(budget: usize) -> Self {
         Self {
             budget: budget.max(1),

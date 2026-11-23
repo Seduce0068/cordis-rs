@@ -7275,3 +7275,17 @@ fn fs_read_window_total_lines_counts_beyond_clamped_window() {
     assert_eq!(window.total_lines, total);
     let _ = std::fs::remove_dir_all(&base);
 }
+
+#[test]
+fn token_meter_zero_budget_is_finite() {
+    use cordis_rs::core_services::{Session, TokenMeter};
+
+    // budget=0 is raised to 1 so pressure stays finite instead of dividing by
+    // zero (swarm review R18-BD04).
+    let meter = TokenMeter::new(0);
+    let session = Session::new("zero-budget", None);
+    session.append("user/message", serde_json::json!({ "text": "hello" }));
+    let measured = meter.measure(&session);
+    assert!(measured.pressure.is_finite());
+    assert!(measured.pressure > 1.0);
+}
