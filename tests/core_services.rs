@@ -7147,3 +7147,17 @@ fn attachment_zero_max_bytes_allows_only_empty_file() {
             .is_err()
     );
 }
+
+#[test]
+fn has_utc_offset_handles_multibyte_chars_without_panic() {
+    use cordis_rs::core_services::has_utc_offset;
+
+    // A multibyte character inside the trailing six bytes used to make the
+    // byte slices offset[1..3] / offset[4..6] land off a char boundary.
+    assert!(!has_utc_offset("X+あ:00"));
+    assert!(!has_utc_offset("あ+12:あ0"));
+    // Normal offsets still work.
+    assert!(has_utc_offset("2026-11-24T00:00:00+09:00"));
+    assert!(has_utc_offset("2026-11-24T00:00:00Z"));
+    assert!(!has_utc_offset("2026-11-24T00:00:00"));
+}

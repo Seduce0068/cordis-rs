@@ -51,9 +51,15 @@ pub fn has_utc_offset(value: &str) -> bool {
         return false;
     };
     matches!(bytes[bytes.len() - 6], b'+' | b'-')
-        && offset.as_bytes()[3] == b':'
-        && offset[1..3].chars().all(|ch| ch.is_ascii_digit())
-        && offset[4..6].chars().all(|ch| ch.is_ascii_digit())
+        && offset.as_bytes().get(3) == Some(&b':')
+        && offset
+            .as_bytes()
+            .get(1..3)
+            .is_some_and(|digits| digits.iter().all(u8::is_ascii_digit))
+        && offset
+            .as_bytes()
+            .get(4..6)
+            .is_some_and(|digits| digits.iter().all(u8::is_ascii_digit))
 }
 
 #[derive(Debug, Clone)]
