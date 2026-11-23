@@ -334,7 +334,7 @@ status: current
 
 - [ ] **rollback 修正が command_goal のみで同型 mount helper が未修正** — 根拠 `src/ports/command_feedback.rs:134-143`, `tool_session_query.rs:156-162`, `skill_filesystem.rs:146-153` / R15-AS01 / 重大度 medium / high
 - [x] **fs edit_text の previous 取得と reserve_version が別ロックで rollback 値が誤り得る** — 2026-11-23 修正（reserve_version が (previous, next) を単一 write guard 内で返すように変更、write_text / edit_text の両呼び出し側を更新し失敗時 rollback 値を原子的に確定、R15 指摘反映）。
-- [ ] **fs write_text が version guard 無しで既存 version を直接上書き** — 根拠 `src/services/fs.rs:209-226` / R15-AS03 / 重大度 low / medium
+- [x] **fs write_text が version guard 無しで既存 version を直接上書き** — 2026-11-23 修正（write_text_checked を追加して expected_version を渡せるようにし、既存 write_text は unguarded adapter として維持、stale version 拒否の回帰テスト、R15 指摘反映）。
 - [x] **JSONL poison が append のみで read / restore が古い文件内容を返す** — 2026-11-23 修正（check_not_poisoned ヘルパーを追加し read / read_recovered の冒頭でチェック、restore_with は read 経由で間接的に遮断、poison 後の全 read 経路が Corrupt を返す回帰テスト、R15 指摘反映）。
 - [x] **tool_bash が shell provide の Disposer を捨て mount 失敗で shell が残る** — 2026-11-23 修正（shell provide の Disposer を保持し Fiber mount 失敗時に dispose、host 提供の shell は所有権尊重で対象外、R14-RB08 の approval 順序も維持、R15 指摘反映）。
 - [x] **mcp_resources が effect 登録自体の失敗時に service が残る** — 2026-11-23 修正（effect の Result を inspect し、disposer が scope に渡る前に失敗した場合は明示 dispose、R14-RB06 の scope 登録と併せて全失敗経路をカバー、R15 指摘反映）。

@@ -6984,3 +6984,32 @@ async fn agent_loop_zero_max_steps_is_clamped() {
     let run = loop_.run("start").await.unwrap();
     assert_eq!(run.steps.len(), 1);
 }
+
+#[test]
+fn fs_write_text_checked_rejects_stale_version() {
+    use cordis_rs::core_services::FileSystem;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let base = std::env::temp_dir().join(format!("cordis-fs-checked-{unique}"));
+    std::fs::create_dir_all(&base).unwrap();
+    let fs = FileSystem::scoped(&base);
+    let path = "checked.txt";
+    let first = fs.write_text(path, "first").unwrap();
+
+    let error = fs
+        .write_text_checked(path, "second", Some(first.version + 1))
+        .unwrap_err();
+    assert!(error.to_string().contains("version mismatch"));
+    assert_eq!(fs.read_text(path).unwrap(), "first");
+    assert_eq!(fs.version(path), Some(first.version));
+
+    let second = fs
+        .write_text_checked(path, "second", Some(first.version))
+        .unwrap();
+    assert_eq!(second.version, first.version + 1);
+    let _ = std::fs::remove_dir_all(&base);
+}

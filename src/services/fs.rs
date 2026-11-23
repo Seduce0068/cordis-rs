@@ -218,9 +218,20 @@ impl FileSystem {
     }
 
     pub fn write_text(&self, path: &str, content: &str) -> Result<FsWriteOutcome> {
+        self.write_text_checked(path, content, None)
+    }
+
+    /// Write with an optional optimistic version guard. `write_text` is the
+    /// unguarded adapter (swarm review R15-AS03).
+    pub fn write_text_checked(
+        &self,
+        path: &str,
+        content: &str,
+        expected_version: Option<u64>,
+    ) -> Result<FsWriteOutcome> {
         let resolved = self.resolve(path)?;
         let existed = resolved.exists();
-        let (previous, version) = self.reserve_version(&resolved, None)?;
+        let (previous, version) = self.reserve_version(&resolved, expected_version)?;
         if let Some(error) = self.write_text_inner(&resolved, content) {
             self.restore_version(&resolved, previous);
             return Err(Error::Other(error));
