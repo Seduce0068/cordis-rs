@@ -317,7 +317,7 @@ status: current
 - [x] **generation-guard disposer の二重 dispose 冪等性が未テスト** — 2026-11-23 修正（ToolRegistry 側を R13-ST01 の回帰テストで固定。commands 側は同種実装で既存テストあり）。
 
 - [x] **Fiber refresh の dispose_effects 失敗で retiring=true / Unloading が残る** — 2026-11-23 修正（dispose 失敗時に retiring をクリアし Failed へ戻して Error::Plugin を伝播、正常系の Pending 遷移は不変、R1 指摘反映）。
-- [ ] **Fiber::mount 失敗時に登録済み observer が解除されず蓄積** — 根拠 `src/plugin.rs:159-179` / R14-RB02 / 重大度 medium / high
+- [x] **Fiber::mount 失敗時に登録済み observer が解除されず蓄積** — R6 Runtime Proof で誤検知と判定（register_fiber は Arc::downgrade した Weak のみ登録、mount 失敗時は strong Arc が drop され strong_count()==0 となり dependent_fibers の retain で次回通知時に prune、蓄積なし）。修正不要。
 - [x] **FileSystem::write_text が create_dir_all 後の write 失敗で親ディレクトリを残す** — 2026-11-23 修正（既存の tmp+rename パターンを再利用し部分ファイルを防止、失敗時に新規作成した親を remove_dir で rollback（失敗は無視、remove_dir_all 不使用）、回帰テスト、R1 指摘反映）。
 - [x] **FileSystem::edit_text の version guard が read→write 間で TOCTOU** — 2026-11-23 修正（version を単一 write guard で予約（check＋increment）し I/O 直前に実行、失敗時は旧値に rollback、write_text も同じ予約経路に統一、並行 edit が片方だけ成功する回帰テスト、R1 指摘反映）。
 - [x] **JSONL append が flush 失敗で部分永続化し再試行で seq 重複** — 2026-11-23 修正（JsonlSessionHandle に clone 間共有の poison フラグを追加、open/write/flush 失敗で poison を立て再試行を拒否し重複 seq 行の生成を防止、回帰テスト、R1 指摘反映）。
