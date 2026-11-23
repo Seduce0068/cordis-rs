@@ -6720,3 +6720,37 @@ fn goal_commit_rejected_event_leaves_state_unchanged() {
     assert_eq!(current.objective, "first objective");
     assert_eq!(current.revision, goal.revision);
 }
+
+#[test]
+fn fs_write_text_uses_temp_and_reports_operations() {
+    use cordis_rs::core_services::{FileSystem, WriteOperation};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let base = std::env::temp_dir().join(format!("cordis-fs-test-{unique}"));
+    std::fs::create_dir_all(&base).unwrap();
+    let fs = FileSystem::scoped(&base);
+    let target = "deep/nested/file.txt";
+
+    let first = fs.write_text(target, "first").unwrap();
+    assert_eq!(first.operation, WriteOperation::Create);
+    assert_eq!(fs.read_text(target).unwrap(), "first");
+
+    let second = fs.write_text(target, "second").unwrap();
+    assert_eq!(second.operation, WriteOperation::Update);
+    assert_eq!(second.version, first.version + 1);
+
+    // The sibling temp file must not survive a successful write.
+    let abs = base.join(target);
+    let leftover: Vec<_> = std::fs::read_dir(abs.parent().unwrap())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_name().to_string_lossy().ends_with(".tmp"))
+        .collect();
+    assert!(leftover.is_empty(), "temp file left behind: {leftover:?}");
+
+    let _ = std::fs::remove_dir_all(&base);
+}

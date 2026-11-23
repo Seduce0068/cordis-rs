@@ -209,10 +209,42 @@ impl FileSystem {
     pub fn write_text(&self, path: &str, content: &str) -> Result<FsWriteOutcome> {
         let resolved = self.resolve(path)?;
         let existed = resolved.exists();
+        // Record ancestors that do not exist yet so a failed write can remove
+        // them again (swarm review R14-RB03). Existing ones are never touched.
+        let mut created_dirs: Vec<std::path::PathBuf> = Vec::new();
         if let Some(parent) = resolved.parent() {
+            let mut cursor = parent.to_path_buf();
+            while !cursor.as_os_str().is_empty() && !cursor.exists() {
+                created_dirs.push(cursor.clone());
+                if !cursor.pop() {
+                    break;
+                }
+            }
             std::fs::create_dir_all(parent).map_err(|error| Error::Other(error.to_string()))?;
         }
-        std::fs::write(&resolved, content).map_err(|error| Error::Other(error.to_string()))?;
+        // Write a sibling temp then rename: a failure never leaves a partial
+        // target file (same pattern as sessions.rs / loader.rs).
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let temp = resolved.with_file_name(format!(
+            ".{}.{}.{}.tmp",
+            resolved.file_name().unwrap_or_default().to_string_lossy(),
+            std::process::id(),
+            nanos
+        ));
+        let write_result =
+            std::fs::write(&temp, content).and_then(|_| std::fs::rename(&temp, &resolved));
+        if let Err(error) = write_result {
+            let _ = std::fs::remove_file(&temp);
+            // Deepest-first; remove_dir is a no-op if a concurrent process
+            // created something inside, so another writer's files survive.
+            for dir in created_dirs {
+                let _ = std::fs::remove_dir(dir);
+            }
+            return Err(Error::Other(error.to_string()));
+        }
         let version = {
             let mut guard = self.state.write().expect("fs state poisoned");
             let entry = guard.versions.entry(resolved.clone()).or_insert(0);
