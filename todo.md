@@ -361,7 +361,7 @@ status: current
 - [x] **GPUI SwitchErrorKind::Preset が cordis-rs のエラー文言に依存** — R6 Runtime Proof で誤検知と判定（GPUI は cordis-rs の文言を contains／parse せず `e.to_string()` を保持するだけ、grep 参照0件。R16-DUAL03 の contains 依存とは別类别で定数追加不要）。
 - [x] **GPUI agent UI が ToolError 文字列 contains 判定で cordis-rs 文言変更に脆弱** — 2026-11-24 修正（cordis-rs が APPROVAL_DENIED_MARKER / PATH_ESCAPE_MARKER を公開し生成側も定数を使用、GPUI の assertion も同じ定数を参照、文言・エラー型は不変、R16 指摘反映）。R12-IV06 の構造化は別 ADR 案件。
 - [x] **GPUI に ToolOutput::is_error()==true の回帰テストが無い** — 2026-11-24 修正（ToolOutput::from_error が is_error()==true、通常出力が false を固定する回帰テスト追加、R16 指摘反映）。
-- [ ] **GPUI schedule UI に Cancelled terminal の描画分岐が無い（要確認）** — 根拠 `dsh-gpui-client-poc` schedule UI / R16-DUAL06 / 重大度 low / medium
+- [x] **GPUI schedule UI に Cancelled terminal の描画分岐が無い（要確認）** — R6 Runtime Proof で誤検知と判定（GPUI src/bin に schedule UI 自体が存在せず `ScheduleStatus` / `provide_schedule` 参照0件。描画分岐の有無を問う前提が成立しない。新規 schedule UI が必要なら別タスクとして起票）。
 
 ## 完了
 
