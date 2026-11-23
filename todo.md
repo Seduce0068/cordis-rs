@@ -364,7 +364,7 @@ status: current
 - [x] **GPUI schedule UI に Cancelled terminal の描画分岐が無い（要確認）** — R6 Runtime Proof で誤検知と判定（GPUI src/bin に schedule UI 自体が存在せず `ScheduleStatus` / `provide_schedule` 参照0件。描画分岐の有無を問う前提が成立しない。新規 schedule UI が必要なら別タスクとして起票）。
 
 - [ ] **PlanMode::set / enter が空 session_id で panic（try_set のみ安全）** — 根拠 `src/services/plan_mode.rs:71-85` / R17-PN02 / 重大度 low / low
-- [ ] **StorageHub::write が required_fields[0] を直接 index（現状到達不能だが脆い）** — 根拠 `src/services/storage.rs:234-243` / R17-PN03 / 重大度 low / low
+- [x] **StorageHub::write が required_fields[0] を直接 index** — 2026-11-24 修正（first().cloned().unwrap_or_default() に変更し、ガード変更時に index out of bounds 化する脆さを除去、R17 指摘反映）。
 - [x] **OutputRing::append の drain が UTF-8 境界を越えて多バイト文字を lossy 化** — 2026-11-24 修正（drain 位置を UTF-8 境界まで前進、多バイト文字列で U+FFFD が出ない回帰テスト、R17 指摘反映）。
 - [x] **loader split_top_level の depth が i32 で負に転落し区切りを認識しなくなる** — 2026-11-24 修正（split_top_level / split_flow の depth を saturating_add/sub に変更、不正な閉じ括弧でも depth==0 の区切り判定が維持される、R17 指摘反映）。
 - [ ] **loader evaluate_expression の再帰上限が入力長/64 依存で高密度入れ子に弱い** — 根拠 `src/loader.rs:682-694` / R17-PN07 / 重大度 low / medium

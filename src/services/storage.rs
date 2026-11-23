@@ -239,7 +239,7 @@ impl StorageHub {
             .as_object()
             .ok_or_else(|| StorageError::InvalidRecord {
                 domain: domain.to_string(),
-                missing: spec.required_fields[0].clone(),
+                missing: spec.required_fields.first().cloned().unwrap_or_default(),
             })?;
         for field in &spec.required_fields {
             if !map.contains_key(field) {
