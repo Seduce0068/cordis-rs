@@ -370,7 +370,7 @@ status: current
 - [ ] **loader evaluate_expression の再帰上限が入力長/64 依存で高密度入れ子に弱い** — 根拠 `src/loader.rs:682-694` / R17-PN07 / 重大度 low / medium
 - [ ] **loader ${...} 補間が入れ子 '}' を考慮せず最初で終端** — 根拠 `src/loader.rs:1639-1661` / R17-PN08 / 重大度 medium / small
 - [ ] **fs read_window が巨大な1行を丸ごと String 保持し DoS 耐性が残る** — 根拠 `src/services/fs.rs:203-207` / R17-PN09 / 重大度 medium / medium
-- [ ] **JobRegistry::wait が timeout_ms を clamp せず実質無限待ちを作れる** — 根拠 `src/services/jobs.rs:341-346` / R17-PN10 / 重大度 medium / small
+- [x] **JobRegistry::wait が timeout_ms を clamp せず実質無限待ちを作れる** — 2026-11-24 修正（service 側 wait も tool_jobs::MAX_WAIT_TIMEOUT_MS で clamp、tool 経由のガードを直接呼び出しでも迂回不可に、R17 指摘反映）。
 - [ ] **GPUI ACP 起動エラー4分岐が文字列のみでテスト未固定** — 根拠 `dsh-gpui-client-poc/src/bin/acp_stream_ui.rs:425,437,451,457` / R17-DUAL2-01 / 重大度 low / small
 - [ ] **title_from_output の *, **, *** と nested 拒否が doc/テスト未固定** — 根拠 `cordis-rs/src/services/session_titles.rs:161-178` / R17-DUAL2-02 / 重大度 low / small
 - [ ] **GPUI TitlePanel::apply_build_result の Err で旧 rows を捨てる契約が doc 未明記** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_title_ui.rs:89-104` / R17-DUAL2-03 / 重大度 low / small

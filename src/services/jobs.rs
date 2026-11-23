@@ -348,6 +348,9 @@ impl JobRegistry {
         if *settled {
             return Ok(true);
         }
+        // Clamp here as well as in tool_jobs: a direct caller must not be able
+        // to create an effectively unbounded wait (swarm review R17-PN10).
+        let timeout_ms = timeout_ms.min(crate::ports::tool_jobs::MAX_WAIT_TIMEOUT_MS);
         let (guard, timeout_result) = cvar
             .wait_timeout_while(
                 settled,
