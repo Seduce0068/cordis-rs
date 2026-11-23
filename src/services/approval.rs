@@ -89,6 +89,9 @@ pub type Answerer = Arc<dyn Fn(&ApprovalRequest) -> Option<ApprovalDecision> + S
 #[derive(Debug, Clone, PartialEq)]
 pub enum ApprovalError {
     Unavailable,
+    /// Reserved for a future cancellation path; the current answerer only
+    /// yields `Unavailable`, so this variant is never emitted (swarm review
+    /// R18-ER02).
     Cancelled,
 }
 

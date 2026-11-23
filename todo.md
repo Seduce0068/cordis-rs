@@ -384,7 +384,7 @@ status: current
 - [x] **fs read_window の clamp が total_lines に効くか未固定** — 2026-11-24 修正（clamp は保持行のみに効き total_lines は全行を数える契約を doc 明記、READ_LIMIT 超のファイルで固定する回帰テスト追加、R18 指摘反映）。
 - [x] **retry should_retry_message が error_code() を経由するか未固定** — 2026-11-24 修正（Runtime Proof で経由を確認し、ラベル付き HTTP コードは Retry／「retry in 500ms」は Stop を固定する回帰テスト追加、R18 指摘反映）。
 - [x] **PruneError::RemovalNotFound が生成箇所ゼロのデッド契約** — 2026-11-24 修正（reserved／現在は未 emit を doc 明記、バリアント削除による後方互換破壊は回避、R18 指摘反映）。
-- [ ] **ApprovalError::Cancelled が生成箇所ゼロのデッド契約** — 根拠 `src/services/approval.rs:90-102` / R18-ER02 / 重大度 low / small
+- [x] **ApprovalError::Cancelled が生成箇所ゼロのデッド契約** — 2026-11-24 修正（reserved／現在は未 emit を doc 明記、バリアント削除による後方互換破壊は回避、R18 指摘反映）。
 - [ ] **UserQuestionError の phase-2 予約4バリアントが code()/Display に漏れる** — 根拠 `src/ports/user_questions.rs:30-63` / R18-ER03 / 重大度 low / small
 - [ ] **ShellError の TimedOut 系が timeout_ms を Display で落とす** — 根拠 `src/services/shell.rs:84-110` / R18-ER04 / 重大度 low / small
 - [ ] **FsError の PartialEq が cause を無視する契約が doc 未明記** — 根拠 `src/ports/fs_errno.rs:50-62` / R18-ER05 / 重大度 low / small
