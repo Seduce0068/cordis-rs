@@ -308,13 +308,13 @@ status: current
 - [ ] **ProjectionFold の stateful fold 契約（Arc の Mutex capture）が doc 未明記** — 根拠 `src/services/sessions.rs:256,304-320` / R13-OW08 / 重大度 low / low
 - [ ] **AgentLoop::with_call_parser / with_checkpoint の古い hook cleanup 未呼び出しが doc 未明記** — 根拠 `src/services/agent_loop.rs:48-61,140-143,182-185` / R13-OW09 / 重大度 low / medium
 - [ ] **FsObservationPolicy の clone が二段マップ全体を共有する契約が doc 未明記** — 根拠 `src/ports/fs_observation_policy.rs:46-48` / R13-OW10 / 重大度 low / medium
-- [ ] **ToolRegistry::register の generation-guard 回帰テストが未固定** — 根拠 `src/services/tools.rs:189-209` / R13-ST01 / 重大度 low / confirmed
+- [x] **ToolRegistry::register の generation-guard 回帰テストが未固定** — 2026-11-23 修正（同名2登録→旧 disposer が新定義を消さない、二重 dispose が no-op を固定する回帰テスト追加、R13 指摘反映）。
 - [ ] **DeepSeekLlmApiExtensions::register の bool 拒否分岐が未テスト** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:45-68` / R13-ST02 / 重大度 low / confirmed
 - [x] **SessionTitleFirstPromptLlm::generate の空 messages → Ok(false) が未テスト** — 2026-11-23 修正（有効 config で空 messages を渡し Ok(false) を返す early return を固定する回帰テスト追加、R13 指摘反映）。
 - [ ] **ScheduleService::create が空 title/prompt を受理（検証なし）** — 根拠 `src/services/schedule.rs:73-84` / R13-ST04 / 重大度 low / medium
-- [ ] **ToolRegistry::names のソート契約が未テスト** — 根拠 `src/services/tools.rs:212-218` / R13-ST05 / 重大度 low / confirmed
+- [x] **ToolRegistry::names のソート契約が未テスト** — 根拠 `src/services/tools.rs:212-218` / R13-ST05 / 重大度 low / confirmed → 上記 R13-ST01/07 の回帰テストに統合して固定済み。
 - [ ] **PluginInventory::list の宣言順保持が未テスト** — 根拠 `src/services/plugin_inventory.rs:58-70` / R13-ST06 / 重大度 low / medium
-- [ ] **generation-guard disposer の二重 dispose 冪等性が未テスト** — 根拠 `src/services/tools.rs:199-209`, `src/services/commands.rs` / R13-ST07 / 重大度 low / confirmed
+- [x] **generation-guard disposer の二重 dispose 冪等性が未テスト** — 2026-11-23 修正（ToolRegistry 側を R13-ST01 の回帰テストで固定。commands 側は同種実装で既存テストあり）。
 
 ## 完了
 

@@ -6511,3 +6511,48 @@ async fn first_prompt_title_empty_messages_returns_false() {
             .unwrap()
     );
 }
+
+#[tokio::test]
+async fn tool_registry_names_sorted_and_disposer_generation_guarded() {
+    use cordis_rs::core_services::{ToolDefinition, ToolHandler, ToolRegistry};
+    use std::sync::Arc;
+
+    let registry = ToolRegistry::default();
+    let handler: ToolHandler = Arc::new(|_args, _exec| {
+        Box::pin(async { Ok(cordis_rs::core_services::ToolOutput::text("ok")) })
+    });
+
+    // Register in reverse order; names() must return sorted order.
+    let d_zeta = registry.register(ToolDefinition::new("zeta", "z", handler.clone()));
+    let d_alpha = registry.register(ToolDefinition::new("alpha", "a", handler.clone()));
+    let d_mid = registry.register(ToolDefinition::new("mid", "m", handler));
+    assert_eq!(registry.names(), vec!["alpha", "mid", "zeta"]);
+
+    // A stale disposer must not remove a newer registration with the same name
+    // (generation guard), and disposing twice is a no-op.
+    let old = registry.register(ToolDefinition::new("dup", "old", d_alpha_handler()));
+    let new = registry.register(ToolDefinition::new("dup", "new", d_alpha_handler()));
+    old.dispose().await.unwrap();
+    assert!(
+        registry.get("dup").is_some(),
+        "stale disposer removed newer entry"
+    );
+    old.dispose().await.unwrap();
+    assert!(
+        registry.get("dup").is_some(),
+        "second dispose was not a no-op"
+    );
+    new.dispose().await.unwrap();
+    assert!(registry.get("dup").is_none());
+
+    // Cleanup of unrelated tools.
+    d_zeta.dispose().await.unwrap();
+    d_alpha.dispose().await.unwrap();
+    d_mid.dispose().await.unwrap();
+}
+
+fn d_alpha_handler() -> cordis_rs::core_services::ToolHandler {
+    Arc::new(|_args, _exec| {
+        Box::pin(async { Ok(cordis_rs::core_services::ToolOutput::text("ok")) })
+    })
+}
