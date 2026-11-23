@@ -51,7 +51,12 @@ impl OutputRing {
         let mut guard = self.bytes.lock().expect("job output poisoned");
         guard.extend_from_slice(chunk);
         if guard.len() > self.retain_bytes {
-            let drop_count = guard.len() - self.retain_bytes;
+            let mut drop_count = guard.len() - self.retain_bytes;
+            // Never cut in the middle of a UTF-8 sequence: the retained tail
+            // would decode with U+FFFD forever (swarm review R17-PN04).
+            while drop_count < guard.len() && std::str::from_utf8(&guard[drop_count..]).is_err() {
+                drop_count += 1;
+            }
             guard.drain(..drop_count);
         }
     }

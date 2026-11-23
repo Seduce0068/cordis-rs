@@ -7161,3 +7161,19 @@ fn has_utc_offset_handles_multibyte_chars_without_panic() {
     assert!(has_utc_offset("2026-11-24T00:00:00Z"));
     assert!(!has_utc_offset("2026-11-24T00:00:00"));
 }
+
+#[test]
+fn job_output_retain_boundary_is_utf8_safe() {
+    use cordis_rs::core_services::JobRegistry;
+
+    // JobRegistry clamps retain_bytes to 1024, so append enough three-byte
+    // characters that the trim point lands inside one of them (R17-PN04).
+    let registry = JobRegistry::new(2, 4);
+    let handle = registry.start(None).unwrap();
+    let chunk = "あ".repeat(342); // 1026 bytes; trim would drop 2 bytes
+    handle.append(chunk.as_bytes());
+    let (text, end) = handle.read(0);
+    assert!(!text.contains('\u{fffd}'), "lossy decode: {text:?}");
+    assert_eq!(text, "あ".repeat(341));
+    assert_eq!(end, 1023);
+}
