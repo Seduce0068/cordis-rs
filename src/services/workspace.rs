@@ -108,7 +108,9 @@ impl WorkspaceRegistry {
             .collect()
     }
 
-    /// Attach a session id to a workspace (idempotent).
+    /// Attach a session id to a workspace (idempotent). Archived records are
+    /// still returned by `get`/`list` for display, but all mutations
+    /// (including this one) are rejected (swarm review R17-DUAL2-05).
     pub fn attach(
         &self,
         workspace_id: &str,

@@ -1629,6 +1629,10 @@ async fn workspace_registry_orders_and_attaches_sessions() {
         registry.attach("w1", "s3"),
         Err(WorkspaceError::Archived(_))
     ));
+    // Archived records remain visible for display but reject mutations
+    // (swarm review R17-DUAL2-05).
+    assert!(registry.get("w1").is_some());
+    assert!(registry.get("w1").unwrap().archived);
 }
 
 #[tokio::test]
