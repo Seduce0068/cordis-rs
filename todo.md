@@ -309,7 +309,7 @@ status: current
 - [x] **AgentLoop::with_call_parser / with_checkpoint の古い hook cleanup 未呼び出しが doc 未明記** — 2026-11-23 修正（旧 hook は単に drop され cleanup は呼ばれない旨を各 builder の doc 明記、R13 指摘反映）。
 - [x] **FsObservationPolicy の clone が二段マップ全体を共有する契約が doc 未明記** — 2026-11-23 修正（clone が owner→path マップ全体を共有し独立コピーでない旨を型 doc 明記、R13 指摘反映）。
 - [x] **ToolRegistry::register の generation-guard 回帰テストが未固定** — 2026-11-23 修正（同名2登録→旧 disposer が新定義を消さない、二重 dispose が no-op を固定する回帰テスト追加、R13 指摘反映）。
-- [ ] **DeepSeekLlmApiExtensions::register の bool 拒否分岐が未テスト** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:45-68` / R13-ST02 / 重大度 low / confirmed
+- [x] **DeepSeekLlmApiExtensions::register の bool 拒否分岐が未テスト** — 2026-11-23 修正（空／前後空白／重複で false、正常で true、unregister が true→false を固定する回帰テスト追加、R13 指摘反映）。
 - [x] **SessionTitleFirstPromptLlm::generate の空 messages → Ok(false) が未テスト** — 2026-11-23 修正（有効 config で空 messages を渡し Ok(false) を返す early return を固定する回帰テスト追加、R13 指摘反映）。
 - [ ] **ScheduleService::create が空 title/prompt を受理（検証なし）** — 根拠 `src/services/schedule.rs:73-84` / R13-ST04 / 重大度 low / medium
 - [x] **ToolRegistry::names のソート契約が未テスト** — 根拠 `src/services/tools.rs:212-218` / R13-ST05 / 重大度 low / confirmed → 上記 R13-ST01/07 の回帰テストに統合して固定済み。

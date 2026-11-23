@@ -6556,3 +6556,19 @@ fn d_alpha_handler() -> cordis_rs::core_services::ToolHandler {
         Box::pin(async { Ok(cordis_rs::core_services::ToolOutput::text("ok")) })
     })
 }
+
+#[test]
+fn deepseek_extension_register_rejects_blank_trimmed_and_duplicate() {
+    use cordis_rs::plugin_ports::{DeepSeekLlmApiExtensionRegistry, ExtensionProvider};
+    use std::sync::Arc;
+
+    let registry = DeepSeekLlmApiExtensionRegistry::new();
+    let provider: ExtensionProvider = Arc::new(|_value| Ok(None));
+
+    assert!(!registry.register("", provider.clone()));
+    assert!(!registry.register(" padded ", provider.clone()));
+    assert!(registry.register("valid", provider.clone()));
+    assert!(!registry.register("valid", provider));
+    assert!(registry.unregister("valid"));
+    assert!(!registry.unregister("valid"));
+}
