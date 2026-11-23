@@ -7321,3 +7321,14 @@ fn fs_error_equality_ignores_cause() {
     assert_eq!(first.message, second.message);
     let _ = FsError::cause; // keep the public accessor referenced
 }
+
+#[test]
+fn raw_todo_validation_is_deferred_to_to_todo_list() {
+    use cordis_rs::plugin_ports::{RawTodo, to_todo_list};
+
+    // The constructor stores invalid fields verbatim (swarm review R18-BD01).
+    let raw = RawTodo::new("", "bogus");
+    assert_eq!(raw.content, "");
+    assert_eq!(raw.status, "bogus");
+    assert!(to_todo_list(&[raw], false).is_err());
+}

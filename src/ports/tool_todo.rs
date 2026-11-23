@@ -125,6 +125,9 @@ pub struct RawTodo {
 }
 
 impl RawTodo {
+    /// Store the fields verbatim; validation (non-empty content, known status,
+    /// duplicates, parallel cap) is deliberately deferred to `to_todo_list`
+    /// (swarm review R18-BD01).
     pub fn new(content: impl Into<String>, status: impl Into<String>) -> Self {
         Self {
             content: content.into(),
