@@ -6816,7 +6816,11 @@ async fn jsonl_append_poison_prevents_duplicate_seq_after_failed_flush() {
     // through either handle.
     std::fs::remove_dir(handle.path()).unwrap();
     let err = clone.append(&event).unwrap_err();
-    assert!(err.to_string().contains("poisoned"));
+    let message = err.to_string();
+    assert!(message.contains("poisoned"), "{message}");
+    // The shared poison helper yields the same Category-tagged error as
+    // read/read_recovered (swarm review R16-RA01).
+    assert!(message.contains("persistence"), "{message}");
 }
 
 #[tokio::test]

@@ -94,11 +94,9 @@ impl JsonlSessionHandle {
     }
 
     pub fn append(&self, event: &LoggedSessionEvent) -> Result<()> {
-        if self.poisoned.load(Ordering::Acquire) {
-            return Err(Error::Other(
-                "session log is poisoned after a failed flush".to_string(),
-            ));
-        }
+        // Use the same poison check as read/read_recovered so every access
+        // path reports the same error kind (swarm review R16-RA01).
+        self.check_not_poisoned().map_err(Error::from)?;
         let opened = OpenOptions::new()
             .create(true)
             .append(true)
