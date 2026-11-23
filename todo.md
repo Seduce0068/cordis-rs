@@ -371,7 +371,7 @@ status: current
 - [x] **loader ${...} 補間が入れ子 } を考慮せず最初で終端** — 2026-11-24 修正（入れ子検出時に InvalidExpression("nested interpolation is not supported") を返し、誤解を招く UnresolvedReference を防止。非入れ子補間は不変、回帰テスト追加、R17 指摘反映）。
 - [x] **fs read_window が巨大な1行を丸ごと String 保持し DoS 耐性が残る** — 2026-11-24 記録（R1 Runtime Proof で「返す String は既に max_line_length に clamp 済み、ピーク削減には chunk スキャン（large）が必要」と判定。既知制約をコード doc に明記、完全対応は別 ADR 案件として残す）。
 - [x] **JobRegistry::wait が timeout_ms を clamp せず実質無限待ちを作れる** — 2026-11-24 修正（service 側 wait も tool_jobs::MAX_WAIT_TIMEOUT_MS で clamp、tool 経由のガードを直接呼び出しでも迂回不可に、R17 指摘反映）。
-- [ ] **GPUI ACP 起動エラー4分岐が文字列のみでテスト未固定** — 根拠 `dsh-gpui-client-poc/src/bin/acp_stream_ui.rs:425,437,451,457` / R17-DUAL2-01 / 重大度 low / small
+- [x] **GPUI ACP 起動エラー4分岐が文字列のみでテスト未固定** — 2026-11-24 修正（4分岐の prefix を StartupErrorKind 定数＋message ヘルパーに集約、外部 dsh なしで prefix 生成を検証する回帰テスト追加、status 文言は不変、R17 指摘反映）。
 - [x] **title_from_output の * / ** / *** と nested 拒否を doc/テスト固定** — 2026-11-24 修正（3幅の emphasis と nested 時の verbatim 保持を doc 明記＋回帰テスト追加、R17 指摘反映）。
 - [x] **GPUI TitlePanel::apply_build_result の Err で旧 rows を捨てる契約が doc 未明記** — 2026-11-24 修正（失敗時に旧 rows を消して古いデータを表示しない契約を doc 明記、既存テストが空 rows を固定済み、R17 指摘反映）。
 - [x] **GPUI SwitchErrorKind::Service が preset エラーを含む境界が未固定** — 2026-11-24 処理（「Service が preset エラーを含む」は実装上 false で誤検知、残余の「分岐境界が未固定」を classify_error ヘルパー＋テストで固定、R17 指摘反映）。
