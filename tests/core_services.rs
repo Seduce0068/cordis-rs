@@ -6615,3 +6615,25 @@ fn file_mention_quoted_directory_omits_trailing_quote() {
         Some("@\"my docs\"".to_string())
     );
 }
+
+#[test]
+fn append_with_seq_does_not_notify_observers() {
+    use cordis_rs::core_services::Session;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let session = Session::new("observer-replay", None);
+    let calls = Arc::new(AtomicUsize::new(0));
+    let counter = calls.clone();
+    session.observe(Arc::new(move |_id, _event| {
+        counter.fetch_add(1, Ordering::SeqCst);
+    }));
+
+    // Normal append notifies.
+    session.append("normal", serde_json::json!({}));
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+
+    // Restore replay must not notify (otherwise JSONL would double-write).
+    assert!(session.append_with_seq(2, "replayed", serde_json::json!({})));
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+}
