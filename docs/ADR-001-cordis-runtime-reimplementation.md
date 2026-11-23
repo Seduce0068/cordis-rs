@@ -46,7 +46,7 @@ DSH を GPUI で再実装するにあたり、最大の障壁はプラグイン�
 
 ## 結果
 
-- 全 346 テスト通過（統合 342 ＋ unit 4）、CI green（タグ `v0.1.0` 〜 `v0.261.0`）。
+- 全 347 テスト通過（統合 343 ＋ unit 4）、CI green（タグ `v0.1.0` 〜 `v0.261.0`）。
 - コアサービス 38 個を提供（`tools` / `sessions` / `llm` / `agentLoop` /
   `fs` / `jobs` / `shell` / `goals` / `systemPrompt` / `compaction` /
   `approval` / `storage` / `agents` / `otel` / `retry` / `sessionTitles` / `schedule` / `planMode` / `credentials` / `timeoutPolicy` / `pluginInventory` / `timeContext` / `sessionReferences` / `fileReferences` / `fileSearch` / `tmuxContext` / `repeatReminder` ほか）。

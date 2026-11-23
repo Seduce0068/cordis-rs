@@ -6868,3 +6868,26 @@ fn message_feedback_rejects_zero_note_bytes() {
     }
     assert!(MessageFeedback::new(MessageFeedbackConfig::default()).is_ok());
 }
+
+#[tokio::test]
+async fn compaction_automation_rejects_non_finite_and_boundary_pressure() {
+    use cordis_rs::core_services::{TokenMeter, provide_compaction, provide_sessions};
+    use cordis_rs::plugin_ports::{CompactionAutomationConfig, mount_compaction_automation};
+
+    let ctx = Context::root("compaction-pressure-boundary");
+    let _ = provide_sessions(&ctx).await.unwrap();
+    provide_compaction(&ctx, TokenMeter::new(100))
+        .await
+        .unwrap();
+
+    for bad in [f64::NAN, f64::INFINITY, 0.0, -1.0, 1.5] {
+        let config = CompactionAutomationConfig {
+            pressure_threshold: bad,
+            ..Default::default()
+        };
+        assert!(
+            mount_compaction_automation(&ctx, config).await.is_err(),
+            "threshold {bad} must be rejected"
+        );
+    }
+}
