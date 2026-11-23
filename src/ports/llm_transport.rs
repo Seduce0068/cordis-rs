@@ -118,6 +118,10 @@ pub fn handler_from_transport(
 }
 
 /// In-memory transport: records every request and replays queued responses.
+///
+/// TEST ONLY: this transport never performs real I/O and fails closed with
+/// "no queued response" if used in production. Wire `handler_from_transport`
+/// with a real `LlmTransport` for deployed hosts (swarm review R13-OW07).
 #[derive(Clone, Default)]
 pub struct FakeTransport {
     requests: Arc<RwLock<Vec<HttpRequest>>>,

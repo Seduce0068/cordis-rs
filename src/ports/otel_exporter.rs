@@ -126,6 +126,9 @@ impl OTelExporter for RedactingExporter {
 }
 
 /// In-memory collector for local verification: records every exported batch.
+///
+/// TEST ONLY: this collector never sends telemetry anywhere. Use a real
+/// `OTelExporter` implementation in deployed hosts (swarm review R13-OW07).
 #[derive(Clone, Default)]
 pub struct FakeCollector {
     batches: Arc<RwLock<Vec<Vec<EventRecord>>>>,
