@@ -299,7 +299,7 @@ status: current
 - [x] **HookProtocol の matcher 不正時のログ有無が doc／テスト未固定** — 2026-11-23 修正（CompiledMatcher::Never のコンパイル失敗はサイレントで config load 時の matcher_diagnostic が診断を担う旨を doc 明記、既存 non-match テストで固定済み、R12 指摘反映）。
 
 - [x] **ToolResultPruner / CompactionEngine の設定加算が unchecked で巨大設定で panic** — 2026-11-23 修正（pruner は saturating + 明示 overflow 拒否で InvalidConfig、compaction は閾値オーバーフローを明示 Err、既定値は不変、回帰テスト、R1 指摘反映）。
-- [ ] **LlmService::register の disposer が名前ベースで default 所有権が弱い** — 根拠 `src/services/llm.rs:116-149` / R13-OW02 / 重大度 medium / medium
+- [x] **LlmService::register の disposer が名前ベースで default 所有権が弱い** — 2026-11-23 修正（default を (provider_id, name) に変更、disposer は id 比較で自分が所有する default のみクリア、set_default(&str) は名前→id adapter として不変、回帰テスト、R1 指摘反映）。
 - [x] **AgentLoop::with_session の Session 共有（Arc）が doc 未明記** — 2026-11-23 修正（Session が Arc ハンドルで clone がログを共有し独立コピーでない旨を builder doc 明記、R13 指摘反映）。
 - [ ] **ToolOutput の deep clone が observer 経路で繰り返される** — 根拠 `src/services/tools.rs:83-110,423`, `src/services/agent_loop.rs:312` / R13-OW04 / 重大度 low / medium
 - [ ] **Event の Arc 值与値保持がサービスごとに一貫しない** — 根拠 `src/events.rs:355-368`, `src/ports/user_questions.rs:141-145` / R13-OW05 / 重大度 low / low

@@ -97,19 +97,13 @@ impl LlmProvider {
 struct RegistryState {
     providers: Vec<(u64, LlmProvider)>,
     next_id: u64,
-    default: Option<String>,
+    default: Option<(u64, String)>,
 }
 
 /// The shared LLM registry.
 #[derive(Default, Clone)]
 pub struct LlmService {
     state: Arc<RwLock<RegistryState>>,
-}
-
-/// Read the current default provider name (used by the disposer to detect
-/// removal of the default).
-fn guard_default_name(state: &std::sync::Arc<std::sync::RwLock<RegistryState>>) -> Option<String> {
-    state.read().expect("llm registry poisoned").default.clone()
 }
 
 impl LlmService {
@@ -119,28 +113,20 @@ impl LlmService {
         let id = guard.next_id;
         guard.next_id += 1;
         if guard.default.is_none() {
-            guard.default = Some(provider.name().to_string());
+            guard.default = Some((id, provider.name().to_string()));
         }
         guard.providers.push((id, provider));
         drop(guard);
 
-        let default_name = guard_default_name(&state);
         Disposer::new(move || {
             let state = state.clone();
-            let default_name = default_name.clone();
             async move {
                 let mut guard = state.write().expect("llm registry poisoned");
                 guard.providers.retain(|(current, _)| *current != id);
-                // If the removed provider was the default, clear the stale
-                // name so resolve(None) falls back to no provider rather than
-                // always returning None from a dangling lookup (swarm review
-                // R5-LL01). Hosts can set_default() an alternative.
-                if guard.default.as_deref() == default_name.as_deref()
-                    && !guard
-                        .providers
-                        .iter()
-                        .any(|(_, p)| Some(p.name()) == default_name.as_deref())
-                {
+                // Own the default by provider id, not by name: a same-named
+                // newer registration must not be invalidated by this
+                // disposer (swarm review R13-OW02).
+                if guard.default.as_ref().map(|(default_id, _)| *default_id) == Some(id) {
                     guard.default = None;
                 }
                 Ok(())
@@ -150,8 +136,10 @@ impl LlmService {
 
     pub fn set_default(&self, name: &str) -> bool {
         let mut guard = self.state.write().expect("llm registry poisoned");
-        if guard.providers.iter().any(|(_, p)| p.name() == name) {
-            guard.default = Some(name.to_string());
+        // Keep the public name-based API but resolve the id so ownership is
+        // unambiguous (swarm review R13-OW02).
+        if let Some((id, _)) = guard.providers.iter().find(|(_, p)| p.name() == name) {
+            guard.default = Some((*id, name.to_string()));
             true
         } else {
             false
@@ -171,7 +159,7 @@ impl LlmService {
     /// Resolve a provider by name, or the default one when `None`.
     pub fn resolve(&self, name: Option<&str>) -> Option<LlmProvider> {
         let guard = self.state.read().expect("llm registry poisoned");
-        let selected = name.or(guard.default.as_deref())?;
+        let selected = name.or(guard.default.as_ref().map(|(_, n)| n.as_str()))?;
         guard
             .providers
             .iter()

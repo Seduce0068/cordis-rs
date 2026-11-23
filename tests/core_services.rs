@@ -6668,3 +6668,37 @@ fn job_handle_read_clamps_out_of_range_offsets() {
     assert_eq!(handle.read(0), ("hello".to_string(), 5));
     assert_eq!(handle.read(usize::MAX), (String::new(), 5));
 }
+
+#[tokio::test]
+async fn llm_default_is_owned_by_provider_id_not_name() {
+    use cordis_rs::core_services::{LlmProvider, LlmService};
+    use std::sync::Arc;
+
+    let service = LlmService::default();
+    let handler = |model: &'static str| {
+        Arc::new(move |_request| {
+            let model = model;
+            Box::pin(futures::stream::iter(vec![
+                cordis_rs::core_services::StreamChunk::Text(model.to_string()),
+            ]))
+                as std::pin::Pin<
+                    Box<dyn futures::Stream<Item = cordis_rs::core_services::StreamChunk> + Send>,
+                >
+        })
+    };
+
+    let p1 = service.register(LlmProvider::new("same", "first", handler("first")));
+    assert!(service.set_default("same"));
+    let p2 = service.register(LlmProvider::new("same", "second", handler("second")));
+
+    // set_default("same") resolves to the first matching provider id, so p1
+    // owns the default. Disposing the newer same-named registration must not
+    // clear it (swarm review R13-OW02).
+    p2.dispose().await.unwrap();
+    let resolved = service.resolve(None).expect("default p1 must survive");
+    assert_eq!(resolved.name(), "same");
+
+    // Disposing the owner clears the default.
+    p1.dispose().await.unwrap();
+    assert!(service.resolve(None).is_none());
+}
