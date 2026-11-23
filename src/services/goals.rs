@@ -81,7 +81,7 @@ enum GoalEvent {
     Clear,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct GoalState {
     goal: Option<Goal>,
     next_revision: u64,
@@ -184,8 +184,13 @@ impl GoalStore {
 
     fn commit(&self, event: GoalEvent) -> std::result::Result<(), GoalError> {
         let mut state = self.state.write().expect("goal state poisoned");
-        Self::apply(&mut state, &event)?;
-        state.events.push(event);
+        // Apply against a copy and swap only on success: a future `apply`
+        // that mutates before validating cannot leave a half-updated state
+        // without a matching event (swarm review R14-RB09).
+        let mut next = state.clone();
+        Self::apply(&mut next, &event)?;
+        next.events.push(event);
+        *state = next;
         Ok(())
     }
 

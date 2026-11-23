@@ -6702,3 +6702,21 @@ async fn llm_default_is_owned_by_provider_id_not_name() {
     p1.dispose().await.unwrap();
     assert!(service.resolve(None).is_none());
 }
+
+#[test]
+fn goal_commit_rejected_event_leaves_state_unchanged() {
+    use cordis_rs::core_services::{GoalError, GoalStore};
+
+    let store = GoalStore::new();
+    let goal = store.set("first objective", 3).unwrap();
+    assert_eq!(store.event_count(), 1);
+
+    // A rejected commit must not advance state or append an event (swarm
+    // review R14-RB09).
+    let rejected = store.set("", 3);
+    assert!(matches!(rejected, Err(GoalError::EmptyObjective)));
+    assert_eq!(store.event_count(), 1);
+    let current = store.get().unwrap();
+    assert_eq!(current.objective, "first objective");
+    assert_eq!(current.revision, goal.revision);
+}
