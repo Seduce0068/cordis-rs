@@ -113,14 +113,32 @@ impl crate::Plugin for CommandGoal {
 
 /// Mount with the shared commands and goals seams.
 pub async fn mount(ctx: &Context) -> Result<GoalStore> {
-    let store = if let Some(existing) = ctx.get::<GoalStore>("goals") {
-        (*existing).clone()
+    // Only services newly created by this mount are ours to roll back; an
+    // existing goals store belongs to the host (swarm review R14-RB07).
+    let (store, goals_disposer) = if let Some(existing) = ctx.get::<GoalStore>("goals") {
+        ((*existing).clone(), None)
     } else {
-        crate::core_services::provide_goals(ctx).await?
+        let (store, disposer) = crate::core_services::provide_goals_with_disposer(ctx).await?;
+        (store, Some(disposer))
     };
-    if ctx.get_untyped("commands").is_none() {
-        crate::core_services::provide_commands(ctx).await?;
+    let commands_disposer = if ctx.get_untyped("commands").is_none() {
+        Some(
+            crate::core_services::provide_commands_with_disposer(ctx)
+                .await?
+                .1,
+        )
+    } else {
+        None
+    };
+    let fiber = crate::Fiber::mount_retained(ctx, Box::new(CommandGoal)).await;
+    if let Err(error) = fiber {
+        if let Some(disposer) = commands_disposer {
+            disposer.dispose().await?;
+        }
+        if let Some(disposer) = goals_disposer {
+            disposer.dispose().await?;
+        }
+        return Err(error);
     }
-    let _ = crate::Fiber::mount_retained(ctx, Box::new(CommandGoal)).await?;
     Ok(store)
 }

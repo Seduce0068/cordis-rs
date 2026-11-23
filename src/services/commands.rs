@@ -176,7 +176,17 @@ impl CommandRegistry {
 }
 
 pub async fn provide(ctx: &crate::Context) -> Result<CommandRegistry> {
+    provide_with_disposer(ctx)
+        .await
+        .map(|(registry, _)| registry)
+}
+
+/// Register the service and return its disposer so callers can roll back a
+/// partially completed mount (swarm review R14-RB07).
+pub async fn provide_with_disposer(
+    ctx: &crate::Context,
+) -> Result<(CommandRegistry, crate::Disposer)> {
     let registry = CommandRegistry::default();
-    ctx.provide("commands", registry.clone()).await?;
-    Ok(registry)
+    let disposer = ctx.provide("commands", registry.clone()).await?;
+    Ok((registry, disposer))
 }

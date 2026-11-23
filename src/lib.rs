@@ -297,7 +297,7 @@ pub mod core_services {
     };
     pub use crate::services::commands::{
         CommandDefinition, CommandHandler, CommandInvocation, CommandRegistry, CommandResult,
-        provide as provide_commands,
+        provide as provide_commands, provide_with_disposer as provide_commands_with_disposer,
     };
     pub use crate::services::compaction::{
         CompactionConfig, CompactionEngine, CompactionResult, CompactionTrigger,
@@ -322,6 +322,7 @@ pub mod core_services {
     };
     pub use crate::services::goals::{
         Goal, GoalError, GoalStatus, GoalStore, provide as provide_goals,
+        provide_with_disposer as provide_goals_with_disposer,
     };
     pub use crate::services::hook_protocol::{
         CompiledMatcher, HookOutput, MergedDecision, MergedHookOutcome, is_match_all,

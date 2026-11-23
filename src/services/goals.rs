@@ -254,7 +254,13 @@ impl GoalStore {
 }
 
 pub async fn provide(ctx: &crate::Context) -> Result<GoalStore> {
+    provide_with_disposer(ctx).await.map(|(store, _)| store)
+}
+
+/// Register the service and return its disposer so callers can roll back a
+/// partially completed mount (swarm review R14-RB07).
+pub async fn provide_with_disposer(ctx: &crate::Context) -> Result<(GoalStore, crate::Disposer)> {
     let store = GoalStore::new();
-    ctx.provide("goals", store.clone()).await?;
-    Ok(store)
+    let disposer = ctx.provide("goals", store.clone()).await?;
+    Ok((store, disposer))
 }
