@@ -7060,3 +7060,30 @@ fn job_registry_enforces_max_concurrent_per_owner() {
     let other = jobs.start(Some("agent-2".to_string())).unwrap();
     assert_ne!(second.id(), other.id());
 }
+
+#[test]
+fn fs_read_window_clamps_huge_limit() {
+    use cordis_rs::core_services::FileSystem;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let base = std::env::temp_dir().join(format!("cordis-fs-window-{unique}"));
+    std::fs::create_dir_all(&base).unwrap();
+    let path = base.join("lines.txt");
+    let mut content = String::new();
+    for i in 0..50 {
+        content.push_str(&format!("line {i}\n"));
+    }
+    std::fs::write(&path, content).unwrap();
+
+    let fs = FileSystem::scoped(&base);
+    let window = fs.read_window("lines.txt", 1, usize::MAX, 100).unwrap();
+    // A direct caller cannot bypass the bounded-read guarantee: the whole
+    // 50-line file would previously be retained (swarm review R16-RA09).
+    assert!(window.lines_returned <= cordis_rs::plugin_ports::READ_LIMIT);
+    assert_eq!(window.lines_returned, 50);
+    let _ = std::fs::remove_dir_all(&base);
+}

@@ -167,7 +167,9 @@ impl FileSystem {
         std::fs::read_to_string(&resolved).map_err(|error| Error::Other(error.to_string()))
     }
 
-    /// Read a bounded window of lines (1-based offset and limit).
+    /// Read a bounded window of lines (1-based offset and limit). `limit` is
+    /// clamped to the tool's default read limit so a direct caller cannot
+    /// bypass the bounded-read guarantee (swarm review R16-RA09).
     pub fn read_window(
         &self,
         path: &str,
@@ -180,6 +182,7 @@ impl FileSystem {
                 "offset and limit must be positive".to_string(),
             ));
         }
+        let limit = limit.min(crate::ports::tool_fs::READ_LIMIT);
         // Stream lines one at a time: never materialise the whole file. Only
         // the requested window is retained; every other line is counted then
         // dropped (swarm review R3-IV06). BufReader::lines() matches
