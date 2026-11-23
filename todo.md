@@ -349,6 +349,20 @@ status: current
 - [x] **MessageFeedbackConfig::max_note_bytes=0 の拒否時挙動が doc 未記載** — 2026-11-23 修正（new() が max_note_bytes=0 を fail-fast で拒否する旨を doc 明記、回帰テスト追加、R15 指摘反映）。
 - [x] **CompactionAutomationConfig の pressure_threshold > 1.0 / NaN 扱いが untested** — 2026-11-23 修正（mount 側の is_finite / (0,1] 検証は実装済みと Runtime Proof で確認、NaN / inf / 0 / -1 / 1.5 を拒否する境界テストを追加、R15 指摘の未テスト部分を反映）。
 
+- [ ] **JsonlSessionHandle::append が poison helper を使わず Error::Other を返す（read と非対称）** — 根拠 `src/ports/session_persistence_jsonl.rs:97` / R16-RA01 / 重大度 low / high
+- [ ] **ToolResultPruner::new が MAX 近傍で head_tail + marker_len overflow** — 根拠 `src/services/pruner.rs:77` / R16-RA02 / 重大度 medium / high
+- [ ] **fs write_seq が wrapping_add で一意性保証が方針と割れている** — 根拠 `src/services/fs.rs:277-288` / R16-RA03 / 重大度 low / low
+- [ ] **GoalStore::commit の view が events: Vec::new() で apply に渡す契約変化が未明記** — 根拠 `src/services/goals.rs:185-199` / R16-RA04 / 重大度 low / low
+- [ ] **CredentialProvider::with_env が self を consume し doc との接続が弱い** — 根拠 `src/services/credentials.rs:66-83` / R16-RA05 / 重大度 low / low
+- [ ] **RetryPolicy::backoff_ms が random=NaN を finite ガードしない** — 根拠 `src/services/retry.rs:109` / R16-RA06 / 重大度 low / medium
+- [ ] **attachment_admission が max_bytes=0 の files/images 扱いを未定義** — 根拠 `src/ports/attachment_admission.rs:86-109` / R16-RA08 / 重大度 low / medium
+- [ ] **FileSystem::read_window が limit=usize::MAX で全行保持し bounded reads を迂回** — 根拠 `src/services/fs.rs:193-204` / R16-RA09 / 重大度 medium / medium
+- [ ] **JobError::MaxConcurrent 分岐がテスト未固定** — 根拠 `src/services/jobs.rs:135,199` / R16-DUAL01 / 重大度 medium / high
+- [ ] **GPUI SwitchErrorKind::Preset が cordis-rs のエラー文言に依存** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_permission_ui.rs:193` / R16-DUAL02 / 重大度 low / medium
+- [ ] **GPUI agent UI が ToolError 文字列 contains 判定で cordis-rs 文言変更に脆弱** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_agent_ui.rs:382,550` / R16-DUAL03 / 重大度 medium / high
+- [ ] **GPUI に ToolOutput::is_error()==true の回帰テストが無い** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_agent_ui.rs:367,531` / R16-DUAL04 / 重大度 low / high
+- [ ] **GPUI schedule UI に Cancelled terminal の描画分岐が無い（要確認）** — 根拠 `dsh-gpui-client-poc` schedule UI / R16-DUAL06 / 重大度 low / medium
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -389,3 +403,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-23、round 242）**: specialist 2体（cordis-researcher / plugin-ports）から17件取得。R6 で path:line を Runtime Proof で確認し17件を追記。観点を「Send/Sync・所有権・clone の深さ」と「未固定の公開 API 契約」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-23、round 253）**: specialist 2体から16件取得。R6 で path:line を Runtime Proof で確認し、1件を誤検知として除外（ST01f-01 は next_seq 初期値が0で seq=1 受理）、15件を追記。観点を「エラーパスの部分状態」と「doc/実装の矛盾」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-23、round 266）**: specialist 2体から16件取得。R6 で path:line を Runtime Proof で確認し16件を追記。観点を「直近ロールバック／原子化修正周辺の非対称」と「入力検証・境界値の未固定」に絞った再走。
+- **swarm コンボ R6 集約（2026-11-24、round 297）**: specialist 2体から16件取得。R6 で path:line を Runtime Proof で確認し、3件を除外（RA07 は前回 doc 明記済み、RA10 は実害なし、DUAL05 は前回対処済み）し13件を追記。観点を「直近修正ラッシュの残余非対称」と「片側だけ更新されたエラー型・状態」に絞った再走。
