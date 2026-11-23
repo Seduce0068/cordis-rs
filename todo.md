@@ -316,7 +316,7 @@ status: current
 - [x] **PluginInventory::list の宣言順保持が未テスト** — R6 Runtime Proof で誤検知と判定（既存 plugin_inventory_projects_composition_entries が宣言順 a,b と enabled override の両方を検証済み）。
 - [x] **generation-guard disposer の二重 dispose 冪等性が未テスト** — 2026-11-23 修正（ToolRegistry 側を R13-ST01 の回帰テストで固定。commands 側は同種実装で既存テストあり）。
 
-- [ ] **Fiber refresh の dispose_effects 失敗で retiring=true / Unloading が残る** — 根拠 `src/plugin.rs:105-115` / R14-RB01 / 重大度 high / confirmed
+- [x] **Fiber refresh の dispose_effects 失敗で retiring=true / Unloading が残る** — 2026-11-23 修正（dispose 失敗時に retiring をクリアし Failed へ戻して Error::Plugin を伝播、正常系の Pending 遷移は不変、R1 指摘反映）。
 - [ ] **Fiber::mount 失敗時に登録済み observer が解除されず蓄積** — 根拠 `src/plugin.rs:159-179` / R14-RB02 / 重大度 medium / high
 - [ ] **FileSystem::write_text が create_dir_all 後の write 失敗で親ディレクトリを残す** — 根拠 `src/services/fs.rs:209-221` / R14-RB03 / 重大度 medium / high
 - [ ] **FileSystem::edit_text の version guard が read→write 間で TOCTOU** — 根拠 `src/services/fs.rs:251-280` / R14-RB04 / 重大度 medium / high

@@ -106,7 +106,15 @@ impl FiberInner {
             self.retiring
                 .store(true, std::sync::atomic::Ordering::SeqCst);
             self.ctx.set_lifecycle(Lifecycle::Unloading);
-            self.ctx.dispose_effects().await?;
+            if let Err(error) = self.ctx.dispose_effects().await {
+                // A failed teardown must not leave retiring set or the fiber
+                // stuck in Unloading: clear the guard and fail closed (swarm
+                // review R14-RB01).
+                self.retiring
+                    .store(false, std::sync::atomic::Ordering::SeqCst);
+                self.set_both(Lifecycle::Failed);
+                return Err(Error::Plugin(self.name.clone(), Box::new(error)));
+            }
             // Teardown is complete: the fiber is now waiting to reload, not
             // unloading itself. Clear the re-entry guard so drain_dependent_fibers
             // no longer skips it (R2-BV01). Explicit unload() keeps it set.
