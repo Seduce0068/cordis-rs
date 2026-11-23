@@ -75,11 +75,17 @@ impl CredentialProvider {
     }
 
     /// Supply ambient environment values without mutating the process env.
+    /// Builder form; use [`Self::set_env`] to update after registration
+    /// (swarm review R16-RA05).
     pub fn with_env(self, env: BTreeMap<String, String>) -> Self {
-        // Update shared state so clones (including the one registered in ctx)
-        // observe the same environment (swarm review R13-OW06).
-        *self.env.write().expect("credentials env poisoned") = env;
+        self.set_env(env);
         self
+    }
+
+    /// Replace the ambient environment for every clone sharing this provider,
+    /// including one already registered in a context.
+    pub fn set_env(&self, env: BTreeMap<String, String>) {
+        *self.env.write().expect("credentials env poisoned") = env;
     }
 
     /// Store a non-empty value in the writable source.

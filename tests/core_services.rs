@@ -7106,3 +7106,25 @@ fn retry_backoff_treats_nan_random_as_midpoint() {
         policy.backoff_ms(1, 0.5)
     );
 }
+
+#[test]
+fn credential_set_env_updates_existing_clones() {
+    use cordis_rs::core_services::{CredentialProvider, credential_ref};
+    use std::collections::BTreeMap;
+
+    let original = CredentialProvider::new();
+    let clone = original.clone();
+    let reference = credential_ref("$SHARED_KEY").unwrap();
+
+    let mut env = BTreeMap::new();
+    env.insert("SHARED_KEY".to_string(), "first".to_string());
+    let original = original.with_env(env);
+    assert_eq!(clone.resolve(&reference).unwrap().value, "first");
+
+    // set_env works through a shared reference, so a provider already stored
+    // in a context can be updated without moving its owner (R16-RA05).
+    let mut env = BTreeMap::new();
+    env.insert("SHARED_KEY".to_string(), "second".to_string());
+    original.set_env(env);
+    assert_eq!(clone.resolve(&reference).unwrap().value, "second");
+}
