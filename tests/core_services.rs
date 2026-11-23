@@ -7203,3 +7203,12 @@ fn llm_resolve_none_on_empty_registry_is_none() {
     assert!(service.resolve(None).is_none());
     assert!(service.resolve(Some("missing")).is_none());
 }
+
+#[test]
+#[should_panic(expected = "session_id must not be empty")]
+fn plan_mode_set_panics_on_empty_session_id() {
+    use cordis_rs::core_services::PlanMode;
+
+    let plan = PlanMode::new();
+    let _ = plan.set("", true);
+}

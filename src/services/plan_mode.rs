@@ -71,6 +71,10 @@ impl PlanMode {
     /// Append a plan/mode event. Last event wins when folding. An empty
     /// `session_id` is rejected (fail-closed); use [`Self::try_set`] to handle
     /// that case without panicking (swarm review R10-IV05).
+    ///
+    /// `set`, `enter`, and `exit` panic on an empty or whitespace-only
+    /// `session_id`; callers must validate or use `try_set` / `try_enter` /
+    /// `try_exit` (swarm review R17-PN02).
     pub fn set(&self, session_id: &str, active: bool) -> PlanModeEvent {
         self.try_set(session_id, active)
             .expect("session_id must not be empty")
