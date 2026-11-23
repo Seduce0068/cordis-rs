@@ -6754,3 +6754,40 @@ fn fs_write_text_uses_temp_and_reports_operations() {
 
     let _ = std::fs::remove_dir_all(&base);
 }
+
+#[test]
+fn fs_edit_version_guard_is_atomic_under_concurrency() {
+    use cordis_rs::core_services::FileSystem;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let base = std::env::temp_dir().join(format!("cordis-fs-edit-{unique}"));
+    std::fs::create_dir_all(&base).unwrap();
+    let fs = FileSystem::scoped(&base);
+    let path = "concurrent.txt";
+    fs.write_text(path, "first").unwrap();
+    let expected = fs.version(path).unwrap();
+
+    let results = std::thread::scope(|scope| {
+        let a = scope.spawn(|| fs.edit_text(path, "first", "second", false, Some(expected)));
+        let b = scope.spawn(|| fs.edit_text(path, "first", "third", false, Some(expected)));
+        [a.join().unwrap(), b.join().unwrap()]
+    });
+
+    let successes = results.iter().filter(|r| r.is_ok()).count();
+    let mismatches = results
+        .iter()
+        .filter(|r| matches!(r, Err(e) if e.to_string().contains("version mismatch")))
+        .count();
+    assert_eq!(successes, 1, "exactly one writer must win: {results:?}");
+    assert_eq!(
+        mismatches, 1,
+        "the stale writer must be rejected: {results:?}"
+    );
+    assert_eq!(fs.version(path), Some(expected + 1));
+
+    let _ = std::fs::remove_dir_all(&base);
+}

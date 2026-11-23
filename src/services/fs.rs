@@ -209,6 +209,26 @@ impl FileSystem {
     pub fn write_text(&self, path: &str, content: &str) -> Result<FsWriteOutcome> {
         let resolved = self.resolve(path)?;
         let existed = resolved.exists();
+        let previous = self.version(path);
+        let version = self.reserve_version(&resolved, None)?;
+        if let Some(error) = self.write_text_inner(&resolved, content) {
+            self.restore_version(&resolved, previous);
+            return Err(Error::Other(error));
+        }
+        Ok(FsWriteOutcome {
+            operation: if existed {
+                WriteOperation::Update
+            } else {
+                WriteOperation::Create
+            },
+            version,
+        })
+    }
+
+    /// File I/O only (tmp+rename + ancestor rollback). Returns the new version
+    /// reserved by the caller and an error message when the write failed.
+    fn write_text_inner(&self, resolved: &std::path::Path, content: &str) -> Option<String> {
+        let existed = resolved.exists();
         // Record ancestors that do not exist yet so a failed write can remove
         // them again (swarm review R14-RB03). Existing ones are never touched.
         let mut created_dirs: Vec<std::path::PathBuf> = Vec::new();
@@ -220,7 +240,9 @@ impl FileSystem {
                     break;
                 }
             }
-            std::fs::create_dir_all(parent).map_err(|error| Error::Other(error.to_string()))?;
+            if let Err(error) = std::fs::create_dir_all(parent) {
+                return Some(error.to_string());
+            }
         }
         // Write a sibling temp then rename: a failure never leaves a partial
         // target file (same pattern as sessions.rs / loader.rs).
@@ -235,7 +257,7 @@ impl FileSystem {
             nanos
         ));
         let write_result =
-            std::fs::write(&temp, content).and_then(|_| std::fs::rename(&temp, &resolved));
+            std::fs::write(&temp, content).and_then(|_| std::fs::rename(&temp, resolved));
         if let Err(error) = write_result {
             let _ = std::fs::remove_file(&temp);
             // Deepest-first; remove_dir is a no-op if a concurrent process
@@ -243,22 +265,39 @@ impl FileSystem {
             for dir in created_dirs {
                 let _ = std::fs::remove_dir(dir);
             }
-            return Err(Error::Other(error.to_string()));
+            return Some(error.to_string());
         }
-        let version = {
-            let mut guard = self.state.write().expect("fs state poisoned");
-            let entry = guard.versions.entry(resolved.clone()).or_insert(0);
-            *entry += 1;
-            *entry
-        };
-        Ok(FsWriteOutcome {
-            operation: if existed {
-                WriteOperation::Update
-            } else {
-                WriteOperation::Create
-            },
-            version,
-        })
+        let _ = existed;
+        None
+    }
+
+    /// Atomically check the expected version and reserve the next one under a
+    /// single write guard (swarm review R14-RB04).
+    fn reserve_version(&self, resolved: &std::path::Path, expected: Option<u64>) -> Result<u64> {
+        let mut guard = self.state.write().expect("fs state poisoned");
+        let current = guard.versions.get(resolved).copied();
+        if let (Some(expected), Some(current)) = (expected, current)
+            && expected != current
+        {
+            return Err(Error::Other(format!(
+                "version mismatch: expected {expected}, found {current}"
+            )));
+        }
+        let next = current.unwrap_or(0) + 1;
+        guard.versions.insert(resolved.to_path_buf(), next);
+        Ok(next)
+    }
+
+    fn restore_version(&self, resolved: &std::path::Path, previous: Option<u64>) {
+        let mut guard = self.state.write().expect("fs state poisoned");
+        match previous {
+            Some(version) => {
+                guard.versions.insert(resolved.to_path_buf(), version);
+            }
+            None => {
+                guard.versions.remove(resolved);
+            }
+        }
     }
 
     /// Literal edit with a version guard: `expected_version` must match the
@@ -280,20 +319,6 @@ impl FileSystem {
             ));
         }
         let resolved = self.resolve(path)?;
-        let current_version = self
-            .state
-            .read()
-            .expect("fs state poisoned")
-            .versions
-            .get(&resolved)
-            .copied();
-        if let (Some(expected), Some(current)) = (expected_version, current_version)
-            && expected != current
-        {
-            return Err(Error::Other(format!(
-                "version mismatch: expected {expected}, found {current}"
-            )));
-        }
         let text = self.read_text(path)?;
         let count = text.matches(old).count();
         if !replace_all && count != 1 {
@@ -309,9 +334,17 @@ impl FileSystem {
         } else {
             text.replacen(old, new, 1)
         };
-        let outcome = self.write_text(path, &updated)?;
+        // Reserve the version immediately before writing so a concurrent
+        // writer cannot slip between the check and the increment (swarm review
+        // R14-RB04).
+        let previous = self.version(path);
+        let version = self.reserve_version(&resolved, expected_version)?;
+        if let Some(error) = self.write_text_inner(&resolved, &updated) {
+            self.restore_version(&resolved, previous);
+            return Err(Error::Other(error));
+        }
         Ok(FsEditOutcome {
-            version: outcome.version,
+            version,
             replacements: if replace_all { count } else { 1 },
         })
     }
