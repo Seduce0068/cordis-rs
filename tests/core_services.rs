@@ -6913,3 +6913,20 @@ fn session_titles_zero_max_chars_is_treated_as_one() {
         .collect();
     assert_eq!(stored[0].1, "f");
 }
+
+#[test]
+fn job_registry_clamps_zero_limits_to_safe_minimums() {
+    use cordis_rs::core_services::JobRegistry;
+
+    // zero max_concurrent is clamped to 1: a job can still start.
+    let registry = JobRegistry::new(0, 0);
+    let handle = registry.start(None).unwrap();
+    assert!(handle.id() > 0);
+
+    // zero retain_bytes is clamped to 1024: appending 1100 bytes retains the
+    // last 1024 rather than dropping everything.
+    handle.append(vec![b'x'; 1100]);
+    let (text, end) = handle.read(0);
+    assert_eq!(end, 1024);
+    assert_eq!(text.len(), 1024);
+}
