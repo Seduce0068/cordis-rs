@@ -382,7 +382,7 @@ status: current
 - [ ] **SessionQueryEngine::trace の 'in seq order' が seq 飛び時に保証されない** — 根拠 `src/services/session_query.rs:74-79` / R18-DUAL3-03 / 重大度 low / small
 - [ ] **GPUI resolve_patch_path の非 UTF-8 パス扱いが未定義** — 根拠 `dsh-gpui-client-poc/src/bin/acp_llm_probe.rs:170-180` / R18-DUAL3-04 / 重大度 low / small
 - [ ] **fs read_window の clamp が total_lines に効くか未固定** — 根拠 `src/services/fs.rs:168-182` / R18-DUAL3-05 / 重大度 low / small
-- [ ] **retry should_retry_message が error_code() を経由するか未固定** — 根拠 `src/services/retry.rs:54-58` / R18-DUAL3-06 / 重大度 medium / small
+- [x] **retry should_retry_message が error_code() を経由するか未固定** — 2026-11-24 修正（Runtime Proof で経由を確認し、ラベル付き HTTP コードは Retry／「retry in 500ms」は Stop を固定する回帰テスト追加、R18 指摘反映）。
 - [ ] **PruneError::RemovalNotFound が生成箇所ゼロのデッド契約** — 根拠 `src/services/pruner.rs:37,44` / R18-ER01 / 重大度 low / small
 - [ ] **ApprovalError::Cancelled が生成箇所ゼロのデッド契約** — 根拠 `src/services/approval.rs:90-102` / R18-ER02 / 重大度 low / small
 - [ ] **UserQuestionError の phase-2 予約4バリアントが code()/Display に漏れる** — 根拠 `src/ports/user_questions.rs:30-63` / R18-ER03 / 重大度 low / small

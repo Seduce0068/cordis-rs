@@ -7230,3 +7230,21 @@ fn job_acknowledge_clamps_through_to_notice_count() {
     registry.acknowledge(usize::MAX);
     assert!(registry.pending_notices().is_empty());
 }
+
+#[test]
+fn retry_should_retry_message_goes_through_error_code() {
+    use cordis_rs::core_services::{RetryDecision, RetryPolicy};
+
+    let policy = RetryPolicy::default();
+    // A labelled HTTP code reaches error_code and is retryable.
+    assert_eq!(
+        policy.should_retry_message("HTTP 503 unavailable", 0),
+        RetryDecision::Retry
+    );
+    // A bare 3-digit run is ignored by error_code, so no retry is triggered
+    // (swarm review R3-IV03, R18-DUAL3-06).
+    assert_eq!(
+        policy.should_retry_message("retry in 500ms", 0),
+        RetryDecision::Stop
+    );
+}
