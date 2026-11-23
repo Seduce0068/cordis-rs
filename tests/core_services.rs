@@ -7087,3 +7087,22 @@ fn fs_read_window_clamps_huge_limit() {
     assert_eq!(window.lines_returned, 50);
     let _ = std::fs::remove_dir_all(&base);
 }
+
+#[test]
+fn retry_backoff_treats_nan_random_as_midpoint() {
+    use cordis_rs::core_services::RetryPolicy;
+
+    let policy = RetryPolicy::default();
+    // f64::clamp passes NaN through; the explicit finite guard maps it to the
+    // midpoint instead of distorting jitter (swarm review R16-RA06).
+    assert_eq!(policy.backoff_ms(1, f64::NAN), policy.backoff_ms(1, 0.5));
+    // Non-finite values (including infinities) also fall back to the midpoint.
+    assert_eq!(
+        policy.backoff_ms(1, f64::INFINITY),
+        policy.backoff_ms(1, 0.5)
+    );
+    assert_eq!(
+        policy.backoff_ms(1, f64::NEG_INFINITY),
+        policy.backoff_ms(1, 0.5)
+    );
+}

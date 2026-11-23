@@ -354,7 +354,7 @@ status: current
 - [ ] **fs write_seq が wrapping_add で一意性保証が方針と割れている** — 根拠 `src/services/fs.rs:277-288` / R16-RA03 / 重大度 low / low
 - [ ] **GoalStore::commit の view が events: Vec::new() で apply に渡す契約変化が未明記** — 根拠 `src/services/goals.rs:185-199` / R16-RA04 / 重大度 low / low
 - [ ] **CredentialProvider::with_env が self を consume し doc との接続が弱い** — 根拠 `src/services/credentials.rs:66-83` / R16-RA05 / 重大度 low / low
-- [ ] **RetryPolicy::backoff_ms が random=NaN を finite ガードしない** — 根拠 `src/services/retry.rs:109` / R16-RA06 / 重大度 low / medium
+- [x] **RetryPolicy::backoff_ms が random=NaN を finite ガードしない** — 2026-11-24 修正（random が非有限値なら中央値 0.5 にフォールバック、NaN 等が jitter を歪めないようにし回帰テスト追加、R16 指摘反映）。
 - [ ] **attachment_admission が max_bytes=0 の files/images 扱いを未定義** — 根拠 `src/ports/attachment_admission.rs:86-109` / R16-RA08 / 重大度 low / medium
 - [x] **FileSystem::read_window が limit=usize::MAX で全行保持し bounded reads を迂回** — 2026-11-24 修正（read_window が tool_fs::READ_LIMIT で limit を clamp、doc 明記、巨大 limit の回帰テスト、R16 指摘反映）。
 - [x] **JobError::MaxConcurrent 分岐がテスト未固定** — 2026-11-24 修正（owner ごとの並列上限到達・文言・settle 後のスロット解放・他 owner の独立予算を固定する回帰テスト追加、R16 指摘反映）。

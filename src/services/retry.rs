@@ -106,7 +106,13 @@ impl RetryPolicy {
             .initial_delay_ms
             .saturating_mul(1u64 << exponent.min(20))
             .min(self.max_delay_ms);
-        let clamped = random.clamp(0.0, 1.0);
+        // f64::clamp passes NaN through; fall back to the midpoint so a bad
+        // random source cannot silently distort jitter (swarm review R16-RA06).
+        let clamped = if random.is_finite() {
+            random.clamp(0.0, 1.0)
+        } else {
+            0.5
+        };
         // Guard against NaN / out-of-range jitter_ratio: a negative jitter
         // would cast to 0 and produce a busy retry loop (swarm review R3-CF06).
         let ratio = if self.jitter_ratio.is_finite() {
