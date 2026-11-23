@@ -327,7 +327,7 @@ status: current
 - [ ] **GoalStore::commit に rollback 境界が無い（将来の不整合リスク）** — 根拠 `src/services/goals.rs:183-188` / R14-RB09 / 重大度 low / low
 - [ ] **RepeatToolReminder::observe が状態更新を発行より前に実施** — 根拠 `src/services/repeat_reminder.rs:104-141` / R14-RB10 / 重大度 low / low
 - [x] **format_file_mention の Directory quoted 分岐が doc/テスト未固定** — 2026-11-23 修正（Directory の quoted mention が末尾引用符を省略する grammar を doc 明記、File との対比を固定する回帰テスト追加、R14 指摘反映）。
-- [ ] **WorkingDirectory::set の「絶対パスを返す」(doc) が未検証** — 根拠 `src/services/working_directory.rs:41-60` / R14-ST03 / 重大度 low / medium
+- [x] **WorkingDirectory::set の「絶対パスを返す」(doc) が未検証** — 2026-11-23 修正（相対 path が保存済み cwd に対して絶対化されること、後続の相対 path がその cwd 基準で解決されることを固定する回帰テスト追加、R14 指摘反映）。
 - [ ] **JobHandle::read の offset 範囲外挙動が doc/テスト未定義** — 根拠 `src/services/jobs.rs:98-102` / R14-ST04 / 重大度 low / medium
 - [x] **RetryPolicy::should_retry の retry>=max_retries 境界が doc/テスト未固定** — 2026-11-23 修正（既存テストが retry=3=max_retries で Stop を固定済みと確認、doc に予算枯渇条件を明記、R14 指摘反映）。
 - [x] **EventObserver が append_with_seq で発火しない契約が未テスト** — 2026-11-23 修正（append は observer 発火、append_with_seq は発火しないことを対で固定する回帰テスト追加、JSONL restore の二重追記防止を担保、R14 指摘反映）。

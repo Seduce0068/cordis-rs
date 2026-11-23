@@ -6637,3 +6637,22 @@ fn append_with_seq_does_not_notify_observers() {
     assert!(session.append_with_seq(2, "replayed", serde_json::json!({})));
     assert_eq!(calls.load(Ordering::SeqCst), 1);
 }
+
+#[test]
+fn working_directory_set_resolves_relative_paths_to_absolute() {
+    use cordis_rs::core_services::WorkingDirectory;
+
+    let dirs = WorkingDirectory::default();
+    let returned = dirs.set("agent-a", "subdir").unwrap();
+    assert!(
+        returned.is_absolute(),
+        "set() must return an absolute path: {returned:?}"
+    );
+    assert_eq!(dirs.get("agent-a"), Some(returned.clone()));
+    assert_eq!(returned.file_name().unwrap(), "subdir");
+
+    // A subsequent relative path resolves against the stored absolute cwd.
+    let nested = dirs.set("agent-a", "child").unwrap();
+    assert!(nested.is_absolute());
+    assert!(nested.ends_with("subdir/child"));
+}
