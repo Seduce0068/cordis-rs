@@ -363,6 +363,21 @@ status: current
 - [x] **GPUI に ToolOutput::is_error()==true の回帰テストが無い** — 2026-11-24 修正（ToolOutput::from_error が is_error()==true、通常出力が false を固定する回帰テスト追加、R16 指摘反映）。
 - [x] **GPUI schedule UI に Cancelled terminal の描画分岐が無い（要確認）** — R6 Runtime Proof で誤検知と判定（GPUI src/bin に schedule UI 自体が存在せず `ScheduleStatus` / `provide_schedule` 参照0件。描画分岐の有無を問う前提が成立しない。新規 schedule UI が必要なら別タスクとして起票）。
 
+- [ ] **PlanMode::set / enter が空 session_id で panic（try_set のみ安全）** — 根拠 `src/services/plan_mode.rs:71-85` / R17-PN02 / 重大度 low / low
+- [ ] **StorageHub::write が required_fields[0] を直接 index（現状到達不能だが脆い）** — 根拠 `src/services/storage.rs:234-243` / R17-PN03 / 重大度 low / low
+- [ ] **OutputRing::append の drain が UTF-8 境界を越えて多バイト文字を lossy 化** — 根拠 `src/services/jobs.rs:50-63` / R17-PN04 / 重大度 medium / medium
+- [ ] **loader split_top_level の depth が i32 で負に転落し区切りを認識しなくなる** — 根拠 `src/loader.rs:869-884` / R17-PN06 / 重大度 medium / small
+- [ ] **loader evaluate_expression の再帰上限が入力長/64 依存で高密度入れ子に弱い** — 根拠 `src/loader.rs:682-694` / R17-PN07 / 重大度 low / medium
+- [ ] **loader ${...} 補間が入れ子 '}' を考慮せず最初で終端** — 根拠 `src/loader.rs:1639-1661` / R17-PN08 / 重大度 medium / small
+- [ ] **fs read_window が巨大な1行を丸ごと String 保持し DoS 耐性が残る** — 根拠 `src/services/fs.rs:203-207` / R17-PN09 / 重大度 medium / medium
+- [ ] **JobRegistry::wait が timeout_ms を clamp せず実質無限待ちを作れる** — 根拠 `src/services/jobs.rs:341-346` / R17-PN10 / 重大度 medium / small
+- [ ] **GPUI ACP 起動エラー4分岐が文字列のみでテスト未固定** — 根拠 `dsh-gpui-client-poc/src/bin/acp_stream_ui.rs:425,437,451,457` / R17-DUAL2-01 / 重大度 low / small
+- [ ] **title_from_output の *, **, *** と nested 拒否が doc/テスト未固定** — 根拠 `cordis-rs/src/services/session_titles.rs:161-178` / R17-DUAL2-02 / 重大度 low / small
+- [ ] **GPUI TitlePanel::apply_build_result の Err で旧 rows を捨てる契約が doc 未明記** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_title_ui.rs:89-104` / R17-DUAL2-03 / 重大度 low / small
+- [ ] **GPUI SwitchErrorKind::Service が preset エラーを含む境界が未固定** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_permission_ui.rs:164-167` / R17-DUAL2-04 / 重大度 low / small
+- [ ] **WorkspaceRegistry archived の get=Some / attach=Err 非対称が doc 未明記** — 根拠 `cordis-rs/src/services/workspace.rs:92-126` / R17-DUAL2-05 / 重大度 low / small
+- [ ] **LlmService::resolve(None) が default 未設定で None を返す分岐が未テスト** — 根拠 `cordis-rs/src/services/llm.rs:160` / R17-DUAL2-06 / 重大度 low / small
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -404,3 +419,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-23、round 253）**: specialist 2体から16件取得。R6 で path:line を Runtime Proof で確認し、1件を誤検知として除外（ST01f-01 は next_seq 初期値が0で seq=1 受理）、15件を追記。観点を「エラーパスの部分状態」と「doc/実装の矛盾」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-23、round 266）**: specialist 2体から16件取得。R6 で path:line を Runtime Proof で確認し16件を追記。観点を「直近ロールバック／原子化修正周辺の非対称」と「入力検証・境界値の未固定」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-24、round 297）**: specialist 2体から16件取得。R6 で path:line を Runtime Proof で確認し、3件を除外（RA07 は前回 doc 明記済み、RA10 は実害なし、DUAL05 は前回対処済み）し13件を追記。観点を「直近修正ラッシュの残余非対称」と「片側だけ更新されたエラー型・状態」に絞った再走。
+- **swarm コンボ R6 集約（2026-11-24、round 311）**: specialist 2体から16件取得。PN01 は即修正、PN05 は Runtime Proof で panic 経路なしとして除外、残り14件を追記（追記処理の欠落を round 312 で検出して補完）。観点を「公開 API の panic 経路」と「未固定の Err/None 分岐」に絞った再走。
