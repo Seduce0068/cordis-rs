@@ -6930,3 +6930,57 @@ fn job_registry_clamps_zero_limits_to_safe_minimums() {
     assert_eq!(end, 1024);
     assert_eq!(text.len(), 1024);
 }
+
+#[tokio::test]
+async fn native_executor_zero_max_parallel_is_clamped() {
+    use cordis_rs::core_services::{ToolExecContext, ToolPipeline, ToolRegistry};
+    use cordis_rs::plugin_ports::{NativeToolExecutor, ToolCallSpec};
+
+    let registry = ToolRegistry::default();
+    let _ = registry.register(echo_tool());
+    let executor = NativeToolExecutor::new(registry, ToolPipeline::default()).with_max_parallel(0);
+    let outcomes = executor
+        .execute(
+            vec![ToolCallSpec {
+                name: "echo".to_string(),
+                args: serde_json::json!({"text": "hello"}),
+            }],
+            ToolExecContext::anonymous(),
+        )
+        .await;
+    assert_eq!(outcomes.len(), 1);
+    assert!(
+        outcomes[0].result.is_ok(),
+        "clamped parallelism must run the call"
+    );
+}
+
+#[tokio::test]
+async fn agent_loop_zero_max_steps_is_clamped() {
+    use cordis_rs::core_services::{
+        AgentLoop, LlmProvider, LlmService, StreamChunk, ToolRegistry, provide_tools,
+    };
+    use std::sync::Arc as StdArc;
+
+    let ctx = Context::root("agent-max-steps");
+    let _ = provide_tools(&ctx).await.unwrap();
+    let registry = (*ctx.get::<ToolRegistry>("tools").unwrap()).clone();
+    let llm = LlmService::default();
+    let provider = LlmProvider::new(
+        "scripted",
+        "scripted-1",
+        StdArc::new(move |_request| {
+            Box::pin(futures::stream::iter(vec![
+                StreamChunk::Text("done".to_string()),
+                StreamChunk::Done,
+            ]))
+        }),
+    );
+    let _ = llm.register(provider);
+    assert!(llm.set_default("scripted"));
+
+    // max_steps(0) is clamped to 1: the loop must terminate after one step.
+    let loop_ = AgentLoop::new(llm, registry).with_max_steps(0);
+    let run = loop_.run("start").await.unwrap();
+    assert_eq!(run.steps.len(), 1);
+}
