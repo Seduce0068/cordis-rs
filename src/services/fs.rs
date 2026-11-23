@@ -185,6 +185,10 @@ impl FileSystem {
         // the requested window is retained; every other line is counted then
         // dropped (swarm review R3-IV06). BufReader::lines() matches
         // str::lines() semantics, so total_lines stays identical.
+        // Known limitation: `lines()` allocates one full line before the
+        // max_line_length clamp, so a single huge line is briefly held in
+        // memory. Fully avoiding that needs chunked scanning with an
+        // early stop; tracked separately (swarm review R17-PN09).
         use std::io::BufRead;
         let resolved = self.resolve(path)?;
         let file =
