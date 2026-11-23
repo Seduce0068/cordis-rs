@@ -144,9 +144,14 @@ pub struct ToolExecution {
 }
 
 impl ToolExecution {
+    /// Build an execution context owned by `name`. An empty or whitespace-only
+    /// name is normalised to `None` so it is indistinguishable from
+    /// `anonymous()`; a non-empty name is preserved verbatim (swarm review
+    /// R18-BD02).
     pub fn agent(name: impl Into<String>) -> Self {
+        let name = name.into();
         Self {
-            agent: Some(name.into()),
+            agent: (!name.trim().is_empty()).then_some(name),
         }
     }
 

@@ -7289,3 +7289,14 @@ fn token_meter_zero_budget_is_finite() {
     assert!(measured.pressure.is_finite());
     assert!(measured.pressure > 1.0);
 }
+
+#[test]
+fn tool_execution_agent_normalises_empty_name() {
+    use cordis_rs::plugin_ports::ToolExecution;
+
+    assert_eq!(ToolExecution::agent("").agent, None);
+    assert_eq!(ToolExecution::agent("   ").agent, None);
+    assert_eq!(ToolExecution::agent("a").agent.as_deref(), Some("a"));
+    assert_eq!(ToolExecution::agent(" a ").agent.as_deref(), Some(" a "));
+    assert_eq!(ToolExecution::anonymous().agent, None);
+}
