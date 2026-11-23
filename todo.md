@@ -335,7 +335,7 @@ status: current
 - [ ] **rollback 修正が command_goal のみで同型 mount helper が未修正** — 根拠 `src/ports/command_feedback.rs:134-143`, `tool_session_query.rs:156-162`, `skill_filesystem.rs:146-153` / R15-AS01 / 重大度 medium / high
 - [ ] **fs edit_text の previous 取得と reserve_version が別ロックで rollback 値が誤り得る** — 根拠 `src/services/fs.rs:340-343` / R15-AS02 / 重大度 medium / high
 - [ ] **fs write_text が version guard 無しで既存 version を直接上書き** — 根拠 `src/services/fs.rs:209-226` / R15-AS03 / 重大度 low / medium
-- [ ] **JSONL poison が append のみで read / restore が古い文件内容を返す** — 根拠 `src/ports/session_persistence_jsonl.rs:73-112,133-369` / R15-AS04 / 重大度 medium / high
+- [x] **JSONL poison が append のみで read / restore が古い文件内容を返す** — 2026-11-23 修正（check_not_poisoned ヘルパーを追加し read / read_recovered の冒頭でチェック、restore_with は read 経由で間接的に遮断、poison 後の全 read 経路が Corrupt を返す回帰テスト、R15 指摘反映）。
 - [ ] **tool_bash が shell provide の Disposer を捨て mount 失敗で shell が残る** — 根拠 `src/ports/tool_bash.rs:204-219` / R15-AS05 / 重大度 medium / high
 - [ ] **mcp_resources が effect 登録自体の失敗時に service が残る** — 根拠 `src/ports/mcp_resources.rs:264-304` / R15-AS06 / 重大度 low / medium
 - [ ] **GoalStore copy-swap が events Vec を毎回 deep copy（性能）** — 根拠 `src/services/goals.rs:185-195` / R15-AS07 / 重大度 low / medium

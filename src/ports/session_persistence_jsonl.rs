@@ -74,6 +74,17 @@ pub struct JsonlSessionHandle {
 }
 
 impl JsonlSessionHandle {
+    fn check_not_poisoned(&self) -> std::result::Result<(), PersistenceError> {
+        if self.poisoned.load(Ordering::Acquire) {
+            Err(PersistenceError::Corrupt {
+                path: self.path.to_string_lossy().to_string(),
+                reason: "session log is poisoned after a failed flush".to_string(),
+            })
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn id(&self) -> &str {
         &self.id
     }
@@ -149,6 +160,7 @@ impl JsonlSessionHandle {
     }
 
     pub fn read(&self) -> std::result::Result<Vec<PersistedEvent>, PersistenceError> {
+        self.check_not_poisoned()?;
         let file =
             File::open(&self.path).map_err(|_| PersistenceError::NotFound(self.id.clone()))?;
         let mut events = Vec::new();
@@ -181,6 +193,7 @@ impl JsonlSessionHandle {
     /// failing. The truncation point is always reported so callers cannot
     /// silently continue with an incomplete log. This never modifies the file.
     pub fn read_recovered(&self) -> std::result::Result<RecoveryReport, PersistenceError> {
+        self.check_not_poisoned()?;
         let file =
             File::open(&self.path).map_err(|_| PersistenceError::NotFound(self.id.clone()))?;
         let mut events = Vec::new();

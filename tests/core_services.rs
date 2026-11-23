@@ -6818,3 +6818,41 @@ async fn jsonl_append_poison_prevents_duplicate_seq_after_failed_flush() {
     let err = clone.append(&event).unwrap_err();
     assert!(err.to_string().contains("poisoned"));
 }
+
+#[tokio::test]
+async fn jsonl_poison_blocks_reads_and_restore() {
+    use cordis_rs::plugin_ports::{PersistenceError, mount_session_persistence_jsonl};
+
+    let dir = TempDirGuard::new("cordis-jsonl-poison-read");
+    let _ = std::fs::remove_dir_all(&dir);
+    let ctx = Context::root("jsonl-poison-read");
+    let store = mount_session_persistence_jsonl(&ctx, &dir).await.unwrap();
+    let handle = store.create("poison-read").unwrap();
+
+    // Force an append failure via a blocking directory at the log path.
+    std::fs::remove_file(handle.path()).unwrap();
+    std::fs::create_dir(handle.path()).unwrap();
+    let event = cordis_rs::core_services::LoggedSessionEvent {
+        seq: 1,
+        event_type: "user/message".to_string(),
+        data: serde_json::json!({"text": "x"}),
+    };
+    assert!(handle.append(&event).is_err());
+
+    // All read paths must refuse to serve the possibly partial log (swarm
+    // review R15-AS04).
+    assert!(matches!(
+        handle.read(),
+        Err(PersistenceError::Corrupt { .. })
+    ));
+    assert!(matches!(
+        handle.read_recovered(),
+        Err(PersistenceError::Corrupt { .. })
+    ));
+    assert!(matches!(
+        store.restore("poison-read", None),
+        Err(PersistenceError::Corrupt { .. })
+    ));
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
