@@ -145,6 +145,10 @@ impl AgentLoop {
     }
 
     /// Record turn/step events on this session and derive messages from it.
+    /// `Session` is an Arc-backed handle: passing `session.clone()` shares the
+    /// same log with the caller rather than making an independent copy. Two
+    /// loops given the same handle will interleave their events (swarm review
+    /// R13-OW03).
     pub fn with_session(mut self, session: Session) -> Self {
         self.session = Some(session);
         self
