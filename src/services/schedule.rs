@@ -70,6 +70,10 @@ impl ScheduleService {
         Self::default()
     }
 
+    /// Create a schedule. `title` and `prompt` are accepted as-is (including
+    /// empty strings): this in-memory registry does not validate display text.
+    /// Hosts requiring non-empty titles should validate before calling
+    /// (swarm review R13-ST04).
     pub fn create(
         &self,
         title: impl Into<String>,

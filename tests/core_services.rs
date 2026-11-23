@@ -6590,3 +6590,14 @@ fn credential_env_is_shared_between_clones() {
     // R13-OW06).
     assert_eq!(provider.resolve(&reference).unwrap().value, "shared-value");
 }
+
+#[test]
+fn schedule_create_accepts_empty_text_without_new_error_variant() {
+    use cordis_rs::core_services::ScheduleService;
+
+    let service = ScheduleService::new();
+    let record = service.create("", "", 0);
+    assert_eq!(record.title, "");
+    assert_eq!(record.prompt, "");
+    assert!(service.get(&record.id).is_some());
+}

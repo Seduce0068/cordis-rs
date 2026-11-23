@@ -311,9 +311,9 @@ status: current
 - [x] **ToolRegistry::register の generation-guard 回帰テストが未固定** — 2026-11-23 修正（同名2登録→旧 disposer が新定義を消さない、二重 dispose が no-op を固定する回帰テスト追加、R13 指摘反映）。
 - [x] **DeepSeekLlmApiExtensions::register の bool 拒否分岐が未テスト** — 2026-11-23 修正（空／前後空白／重複で false、正常で true、unregister が true→false を固定する回帰テスト追加、R13 指摘反映）。
 - [x] **SessionTitleFirstPromptLlm::generate の空 messages → Ok(false) が未テスト** — 2026-11-23 修正（有効 config で空 messages を渡し Ok(false) を返す early return を固定する回帰テスト追加、R13 指摘反映）。
-- [ ] **ScheduleService::create が空 title/prompt を受理（検証なし）** — 根拠 `src/services/schedule.rs:73-84` / R13-ST04 / 重大度 low / medium
+- [x] **ScheduleService::create が空 title/prompt を受理（検証なし）** — 2026-11-23 修正（create が Result でないため enum 変更を避け、空文字をそのまま受理する契約を doc 明記＋回帰テスト固定、R13 指摘反映）。
 - [x] **ToolRegistry::names のソート契約が未テスト** — 根拠 `src/services/tools.rs:212-218` / R13-ST05 / 重大度 low / confirmed → 上記 R13-ST01/07 の回帰テストに統合して固定済み。
-- [ ] **PluginInventory::list の宣言順保持が未テスト** — 根拠 `src/services/plugin_inventory.rs:58-70` / R13-ST06 / 重大度 low / medium
+- [x] **PluginInventory::list の宣言順保持が未テスト** — R6 Runtime Proof で誤検知と判定（既存 plugin_inventory_projects_composition_entries が宣言順 a,b と enabled override の両方を検証済み）。
 - [x] **generation-guard disposer の二重 dispose 冪等性が未テスト** — 2026-11-23 修正（ToolRegistry 側を R13-ST01 の回帰テストで固定。commands 側は同種実装で既存テストあり）。
 
 ## 完了
