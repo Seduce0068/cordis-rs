@@ -367,7 +367,7 @@ status: current
 - [x] **StorageHub::write が required_fields[0] を直接 index** — 2026-11-24 修正（first().cloned().unwrap_or_default() に変更し、ガード変更時に index out of bounds 化する脆さを除去、R17 指摘反映）。
 - [x] **OutputRing::append の drain が UTF-8 境界を越えて多バイト文字を lossy 化** — 2026-11-24 修正（drain 位置を UTF-8 境界まで前進、多バイト文字列で U+FFFD が出ない回帰テスト、R17 指摘反映）。
 - [x] **loader split_top_level の depth が i32 で負に転落し区切りを認識しなくなる** — 2026-11-24 修正（split_top_level / split_flow の depth を saturating_add/sub に変更、不正な閉じ括弧でも depth==0 の区切り判定が維持される、R17 指摘反映）。
-- [ ] **loader evaluate_expression の再帰上限が入力長/64 依存で高密度入れ子に弱い** — 根拠 `src/loader.rs:682-694` / R17-PN07 / 重大度 low / medium
+- [x] **loader evaluate_expression の再帰上限が入力長/64 依存で高密度入れ子に弱い** — 2026-11-24 記録（R1 Runtime Proof で TooDeep による fail-closed が既に機能し機能バグなしと判定、測定根拠なしで上限変更せず現状維持、limits_for の上限式と事例待ち方針を doc 明記、R17 指摘反映）。
 - [x] **loader ${...} 補間が入れ子 } を考慮せず最初で終端** — 2026-11-24 修正（入れ子検出時に InvalidExpression("nested interpolation is not supported") を返し、誤解を招く UnresolvedReference を防止。非入れ子補間は不変、回帰テスト追加、R17 指摘反映）。
 - [x] **fs read_window が巨大な1行を丸ごと String 保持し DoS 耐性が残る** — 2026-11-24 記録（R1 Runtime Proof で「返す String は既に max_line_length に clamp 済み、ピーク削減には chunk スキャン（large）が必要」と判定。既知制約をコード doc に明記、完全対応は別 ADR 案件として残す）。
 - [x] **JobRegistry::wait が timeout_ms を clamp せず実質無限待ちを作れる** — 2026-11-24 修正（service 側 wait も tool_jobs::MAX_WAIT_TIMEOUT_MS で clamp、tool 経由のガードを直接呼び出しでも迂回不可に、R17 指摘反映）。

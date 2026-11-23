@@ -682,6 +682,11 @@ struct Limits {
     max_depth: usize,
 }
 
+/// Recursion budget for `!!js` expressions. The cap scales with input length
+/// (`8..128`) as a simple approximation of nesting depth; exceeding it returns
+/// `TooDeep` (fail-closed, never a stack overflow). A legitimate expression
+/// that hits this cap should be reported with its exact input (swarm review
+/// R17-PN07).
 fn limits_for(input: &str) -> Limits {
     Limits {
         max_depth: (input.len() / 64 + 8).min(128),
