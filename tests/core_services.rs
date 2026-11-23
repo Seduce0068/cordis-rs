@@ -7128,3 +7128,22 @@ fn credential_set_env_updates_existing_clones() {
     original.set_env(env);
     assert_eq!(clone.resolve(&reference).unwrap().value, "second");
 }
+
+#[test]
+fn attachment_zero_max_bytes_allows_only_empty_file() {
+    use cordis_rs::plugin_ports::{AttachmentErrorCode, decode_canonical_base64_limited};
+
+    let empty =
+        decode_canonical_base64_limited("", false, AttachmentErrorCode::InvalidFileBase64, 0)
+            .unwrap();
+    assert!(empty.is_empty());
+
+    assert!(
+        decode_canonical_base64_limited("", true, AttachmentErrorCode::InvalidImageBase64, 0)
+            .is_err()
+    );
+    assert!(
+        decode_canonical_base64_limited("eA==", false, AttachmentErrorCode::InvalidFileBase64, 0)
+            .is_err()
+    );
+}

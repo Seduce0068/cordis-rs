@@ -66,6 +66,10 @@ pub fn decode_canonical_base64(
 /// encoded input longer than `max_bytes / 3 * 4 + 4` cannot fit the budget
 /// (swarm review R3-IV08). The error reuses the existing code; the message
 /// distinguishes a size overflow so callers can surface it.
+///
+/// `max_bytes = 0` permits only an empty payload for files
+/// (`empty_reject = false`); images (`empty_reject = true`) are always
+/// rejected (swarm review R16-RA08).
 pub fn decode_canonical_base64_limited(
     data: &str,
     empty_reject: bool,
