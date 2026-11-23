@@ -203,10 +203,21 @@ impl crate::Plugin for ToolBash {
 /// Mount with the shared tools and shell seams.
 pub async fn mount(ctx: &Context, shell: Shell, config: ToolBashConfig) -> Result<ToolRegistry> {
     let tools = ctx.require::<ToolRegistry>("tools").await?;
-    if ctx.get_untyped("shell").is_none() {
-        ctx.provide("shell", shell).await?;
+    // Own the shell disposer so a failed fiber mount cannot leave an orphan
+    // shell service (swarm review R15-AS05). A host-provided shell is not ours
+    // to remove.
+    let shell_disposer = if ctx.get_untyped("shell").is_none() {
+        Some(ctx.provide("shell", shell).await?)
+    } else {
+        None
+    };
+    let fiber = crate::Fiber::mount_retained(ctx, Box::new(ToolBash { config })).await;
+    if let Err(error) = fiber {
+        if let Some(disposer) = shell_disposer {
+            disposer.dispose().await?;
+        }
+        return Err(error);
     }
-    let _ = crate::Fiber::mount_retained(ctx, Box::new(ToolBash { config })).await?;
     // Gate bash through the tool pipeline's approval check only after every
     // fallible step succeeded: otherwise a failed mount would leave the
     // pipeline fail-closed with no tool registered (swarm review R14-RB08).

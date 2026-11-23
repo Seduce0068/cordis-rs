@@ -336,7 +336,7 @@ status: current
 - [x] **fs edit_text の previous 取得と reserve_version が別ロックで rollback 値が誤り得る** — 2026-11-23 修正（reserve_version が (previous, next) を単一 write guard 内で返すように変更、write_text / edit_text の両呼び出し側を更新し失敗時 rollback 値を原子的に確定、R15 指摘反映）。
 - [ ] **fs write_text が version guard 無しで既存 version を直接上書き** — 根拠 `src/services/fs.rs:209-226` / R15-AS03 / 重大度 low / medium
 - [x] **JSONL poison が append のみで read / restore が古い文件内容を返す** — 2026-11-23 修正（check_not_poisoned ヘルパーを追加し read / read_recovered の冒頭でチェック、restore_with は read 経由で間接的に遮断、poison 後の全 read 経路が Corrupt を返す回帰テスト、R15 指摘反映）。
-- [ ] **tool_bash が shell provide の Disposer を捨て mount 失敗で shell が残る** — 根拠 `src/ports/tool_bash.rs:204-219` / R15-AS05 / 重大度 medium / high
+- [x] **tool_bash が shell provide の Disposer を捨て mount 失敗で shell が残る** — 2026-11-23 修正（shell provide の Disposer を保持し Fiber mount 失敗時に dispose、host 提供の shell は所有権尊重で対象外、R14-RB08 の approval 順序も維持、R15 指摘反映）。
 - [ ] **mcp_resources が effect 登録自体の失敗時に service が残る** — 根拠 `src/ports/mcp_resources.rs:264-304` / R15-AS06 / 重大度 low / medium
 - [ ] **GoalStore copy-swap が events Vec を毎回 deep copy（性能）** — 根拠 `src/services/goals.rs:185-195` / R15-AS07 / 重大度 low / medium
 - [x] **fs tmp ファイル名が pid+nanos で並列 write が衝突し得る** — 2026-11-23 修正（FsState に write_seq を追加し tmp 名に採番を含めて同一プロセスの並列 write でもユニークに、R15 指摘反映）。
