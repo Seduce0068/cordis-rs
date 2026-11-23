@@ -383,7 +383,7 @@ status: current
 - [ ] **GPUI resolve_patch_path の非 UTF-8 パス扱いが未定義** — 根拠 `dsh-gpui-client-poc/src/bin/acp_llm_probe.rs:170-180` / R18-DUAL3-04 / 重大度 low / small
 - [x] **fs read_window の clamp が total_lines に効くか未固定** — 2026-11-24 修正（clamp は保持行のみに効き total_lines は全行を数える契約を doc 明記、READ_LIMIT 超のファイルで固定する回帰テスト追加、R18 指摘反映）。
 - [x] **retry should_retry_message が error_code() を経由するか未固定** — 2026-11-24 修正（Runtime Proof で経由を確認し、ラベル付き HTTP コードは Retry／「retry in 500ms」は Stop を固定する回帰テスト追加、R18 指摘反映）。
-- [ ] **PruneError::RemovalNotFound が生成箇所ゼロのデッド契約** — 根拠 `src/services/pruner.rs:37,44` / R18-ER01 / 重大度 low / small
+- [x] **PruneError::RemovalNotFound が生成箇所ゼロのデッド契約** — 2026-11-24 修正（reserved／現在は未 emit を doc 明記、バリアント削除による後方互換破壊は回避、R18 指摘反映）。
 - [ ] **ApprovalError::Cancelled が生成箇所ゼロのデッド契約** — 根拠 `src/services/approval.rs:90-102` / R18-ER02 / 重大度 low / small
 - [ ] **UserQuestionError の phase-2 予約4バリアントが code()/Display に漏れる** — 根拠 `src/ports/user_questions.rs:30-63` / R18-ER03 / 重大度 low / small
 - [ ] **ShellError の TimedOut 系が timeout_ms を Display で落とす** — 根拠 `src/services/shell.rs:84-110` / R18-ER04 / 重大度 low / small
@@ -392,7 +392,7 @@ status: current
 - [ ] **ToolExecution::agent("") が空名を受理し anonymous と区別される** — 根拠 `src/ports/tool_todo.rs:146-156` / R18-BD02 / 重大度 low / small
 - [ ] **PresetSpec が pub フィールドで register が内容を検証しない** — 根拠 `src/services/permission_presets.rs:93-99,193-218` / R18-BD03 / 重大度 low / small
 - [ ] **TokenMeter::new が budget=0 を 1 に丸める意図が doc 未明記** — 根拠 `src/services/token_meter.rs:34-39` / R18-BD04 / 重大度 low / small
-- [ ] **acknowledge の doc 冒頭が実装と逆だった（DUAL3-02 修正済みの記録）** — R18-DUAL3-02 / 完了済み（2026-11-24、ドキュメント＋clamp テスト）
+- [x] **acknowledge の doc 冒頭が実装と逆だった（DUAL3-02 修正済みの記録）** — R18-DUAL3-02 / 完了済み（2026-11-24、ドキュメント＋clamp テスト）
 
 ## 完了
 

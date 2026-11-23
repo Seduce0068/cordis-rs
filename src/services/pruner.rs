@@ -34,6 +34,9 @@ impl Default for PrunerConfig {
 #[derive(Debug, Clone, PartialEq)]
 pub enum PruneError {
     InvalidConfig,
+    /// Reserved for a future removal-span validation path; `prune_text` is
+    /// currently infallible apart from config errors, so this variant is
+    /// never emitted (swarm review R18-ER01).
     RemovalNotFound,
 }
 
