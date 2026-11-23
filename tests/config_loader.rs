@@ -1518,3 +1518,25 @@ fn validate_with_warnings_reports_nested_undeclared_keys() {
     let (_validated, warnings) = validate_with_warnings(&schema, &raw).unwrap();
     assert_eq!(warnings, vec!["undeclared config key: typo"]);
 }
+
+#[test]
+fn js_nested_interpolation_reports_explicit_error() {
+    use cordis_rs::loader::{Composition, VarTable};
+
+    let vars = VarTable::new();
+    let yaml = r#"
+entries:
+  - id: t
+    plugin: demo/x
+    config:
+      path: !!js `${foo${bar}}`
+"#;
+    let error = Composition::parse_with_vars(yaml, &vars).unwrap_err();
+    let message = error.to_string();
+    assert!(
+        message.contains("nested interpolation"),
+        "unexpected error: {message}"
+    );
+    // The YAML parser echoes the original expression in the error, so the
+    // key assertion is the explicit "nested interpolation" reason above.
+}

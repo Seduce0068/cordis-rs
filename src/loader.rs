@@ -1656,6 +1656,13 @@ fn evaluate_expression(
                     reason: "unterminated ${...}".to_string(),
                 })?;
             let name = &after[..end];
+            if name.contains("${") {
+                return Err(LoaderError::InvalidExpression {
+                    path: path.to_string(),
+                    expression: expression.to_string(),
+                    reason: "nested interpolation is not supported".to_string(),
+                });
+            }
             let value = vars
                 .get(name)
                 .ok_or_else(|| LoaderError::UnresolvedReference {
