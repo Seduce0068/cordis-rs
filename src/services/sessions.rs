@@ -251,7 +251,10 @@ impl SessionStore {
     }
 }
 
-/// A projection fold: derive a current value from one event.
+/// A projection fold: derive a current value from one event. The `Fn` bound
+/// means the fold cannot mutate captured state directly; a stateful fold must
+/// capture shared state through `Arc<Mutex<_>>` / `Arc<RwLock<_>>` (swarm
+/// review R13-OW08).
 pub type ProjectionFold =
     Arc<dyn Fn(serde_json::Value, &SessionEvent) -> serde_json::Value + Send + Sync>;
 
