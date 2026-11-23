@@ -99,6 +99,9 @@ impl GoalStore {
         Self::default()
     }
 
+    /// Apply one event. The caller passes a view with an empty `events` vec,
+    /// so `apply` must not inspect history; the real log is appended by
+    /// `commit` only after validation succeeds (swarm review R16-RA04).
     fn apply(state: &mut GoalState, event: &GoalEvent) -> std::result::Result<(), GoalError> {
         match event {
             GoalEvent::Set {
