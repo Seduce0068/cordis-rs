@@ -379,7 +379,7 @@ status: current
 - [x] **LlmService::resolve(None) が default 未設定で None を返す分岐が未テスト** — 2026-11-24 修正（空 registry で resolve(None) / resolve(Some(missing)) が None を返す回帰テスト追加。provider 登録済み・default 未設定は register が自動 default 化するため到達不能、R17 指摘反映）。
 
 - [x] **TimeoutPolicy::default_timeout_ms の None 意味が service/port で食い違う** — R6 Runtime Proof で誤検知と判定（service の「no timeout」と port の「pass through」は同じ contract、単一の timeout_of に集約され port 側に独自既定なし、None/Some(0)→None は既存テスト固定済み）。
-- [ ] **SessionQueryEngine::trace の 'in seq order' が seq 飛び時に保証されない** — 根拠 `src/services/session_query.rs:74-79` / R18-DUAL3-03 / 重大度 low / small
+- [x] **SessionQueryEngine::trace の 'in seq order' が seq 飛び時に保証されない** — R6 Runtime Proof で誤検知と判定（append_with_seq が seq <= next_seq を拒否し log.events は常に seq 単調、trace はそのまま clone するだけ。「seq order」は昇順の意味で連続の意味ではない、gap 単調は既存 restore テスト固定済み）。
 - [ ] **GPUI resolve_patch_path の非 UTF-8 パス扱いが未定義** — 根拠 `dsh-gpui-client-poc/src/bin/acp_llm_probe.rs:170-180` / R18-DUAL3-04 / 重大度 low / small
 - [x] **fs read_window の clamp が total_lines に効くか未固定** — 2026-11-24 修正（clamp は保持行のみに効き total_lines は全行を数える契約を doc 明記、READ_LIMIT 超のファイルで固定する回帰テスト追加、R18 指摘反映）。
 - [x] **retry should_retry_message が error_code() を経由するか未固定** — 2026-11-24 修正（Runtime Proof で経由を確認し、ラベル付き HTTP コードは Retry／「retry in 500ms」は Stop を固定する回帰テスト追加、R18 指摘反映）。
