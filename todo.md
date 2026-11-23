@@ -332,6 +332,23 @@ status: current
 - [x] **RetryPolicy::should_retry の retry>=max_retries 境界が doc/テスト未固定** — 2026-11-23 修正（既存テストが retry=3=max_retries で Stop を固定済みと確認、doc に予算枯渇条件を明記、R14 指摘反映）。
 - [x] **EventObserver が append_with_seq で発火しない契約が未テスト** — 2026-11-23 修正（append は observer 発火、append_with_seq は発火しないことを対で固定する回帰テスト追加、JSONL restore の二重追記防止を担保、R14 指摘反映）。
 
+- [ ] **rollback 修正が command_goal のみで同型 mount helper が未修正** — 根拠 `src/ports/command_feedback.rs:134-143`, `tool_session_query.rs:156-162`, `skill_filesystem.rs:146-153` / R15-AS01 / 重大度 medium / high
+- [ ] **fs edit_text の previous 取得と reserve_version が別ロックで rollback 値が誤り得る** — 根拠 `src/services/fs.rs:340-343` / R15-AS02 / 重大度 medium / high
+- [ ] **fs write_text が version guard 無しで既存 version を直接上書き** — 根拠 `src/services/fs.rs:209-226` / R15-AS03 / 重大度 low / medium
+- [ ] **JSONL poison が append のみで read / restore が古い文件内容を返す** — 根拠 `src/ports/session_persistence_jsonl.rs:73-112,133-369` / R15-AS04 / 重大度 medium / high
+- [ ] **tool_bash が shell provide の Disposer を捨て mount 失敗で shell が残る** — 根拠 `src/ports/tool_bash.rs:204-219` / R15-AS05 / 重大度 medium / high
+- [ ] **mcp_resources が effect 登録自体の失敗時に service が残る** — 根拠 `src/ports/mcp_resources.rs:264-304` / R15-AS06 / 重大度 low / medium
+- [ ] **GoalStore copy-swap が events Vec を毎回 deep copy（性能）** — 根拠 `src/services/goals.rs:185-195` / R15-AS07 / 重大度 low / medium
+- [ ] **fs tmp ファイル名が pid+nanos で並列 write が衝突し得る** — 根拠 `src/services/fs.rs:249-260` / R15-AS08 / 重大度 medium / medium
+- [ ] **fs create_dir_all 失敗時に created_dirs を rollback しない** — 根拠 `src/services/fs.rs:232-248` / R15-AS09 / 重大度 medium / high
+- [ ] **fs reserve_version の next = current+1 が u64 overflow unchecked** — 根拠 `src/services/fs.rs:286` / R15-AS10 / 重大度 low / low
+- [ ] **SessionTitles max_chars=0 が黙って 1 に丸められる（contract 未検証）** — 根拠 `src/services/session_titles.rs:74,87` / R15-ST01 / 重大度 low / high
+- [ ] **JobRegistry::new の max_concurrent / retain_bytes 下限 clamp が untested** — 根拠 `src/services/jobs.rs:176-177` / R15-ST02 / 重大度 low / high
+- [ ] **AgentLoop::with_max_steps(0) が 1 に丸められる契約が untested** — 根拠 `src/services/agent_loop.rs:135-137` / R15-ST03 / 重大度 low / high
+- [ ] **NativeToolExecutor::with_max_parallel(0) の 1 丸めが untested** — 根拠 `src/ports/native_tool_executor.rs:116` / R15-ST04 / 重大度 low / high
+- [ ] **MessageFeedbackConfig::max_note_bytes=0 の拒否時挙動が doc 未記載** — 根拠 `src/ports/message_feedback.rs:90` / R15-ST05 / 重大度 low / medium
+- [ ] **CompactionAutomationConfig の pressure_threshold > 1.0 / NaN 扱いが untested** — 根拠 `src/ports/compaction_automation.rs:148` / R15-ST06 / 重大度 medium / medium
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -371,3 +388,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-23、round 228）**: specialist 2体（cordis-researcher / plugin-ports）から17件取得。R6 で path:line を Runtime Proof で確認し、1件を誤検知として除外（IV10 は前ラウンドで acknowledge に clamp 追加済み）して16件を追記。観点を「境界値・冪等性」と「doc comment と実装の乖離」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-23、round 242）**: specialist 2体（cordis-researcher / plugin-ports）から17件取得。R6 で path:line を Runtime Proof で確認し17件を追記。観点を「Send/Sync・所有権・clone の深さ」と「未固定の公開 API 契約」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-23、round 253）**: specialist 2体から16件取得。R6 で path:line を Runtime Proof で確認し、1件を誤検知として除外（ST01f-01 は next_seq 初期値が0で seq=1 受理）、15件を追記。観点を「エラーパスの部分状態」と「doc/実装の矛盾」に絞った再走。
+- **swarm コンボ R6 集約（2026-11-23、round 266）**: specialist 2体から16件取得。R6 で path:line を Runtime Proof で確認し16件を追記。観点を「直近ロールバック／原子化修正周辺の非対称」と「入力検証・境界値の未固定」に絞った再走。
