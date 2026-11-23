@@ -103,7 +103,8 @@ impl RepeatToolReminder {
 
     /// Observe one tool call. Returns a reminder when a threshold is crossed.
     pub fn observe(&mut self, name: &str, arguments: &serde_json::Value) -> Option<Reminder> {
-        let key = format!("{name}:{}", canonicalize(arguments));
+        let canonical = canonicalize(arguments);
+        let key = format!("{name}:{canonical}");
         if self.last_key.as_deref() == Some(key.as_str()) {
             self.run_length += 1;
         } else {
@@ -121,10 +122,7 @@ impl RepeatToolReminder {
             return None;
         }
         let detailed = self.run_length != first;
-        let chars: String = canonicalize(arguments)
-            .chars()
-            .take(self.config.max_arg_chars)
-            .collect();
+        let chars: String = canonical.chars().take(self.config.max_arg_chars).collect();
         let text = if detailed {
             format!(
                 "Repeated tool call detected:\n{name} called {} times with: {chars}\nThe repeated calls are not making progress.",

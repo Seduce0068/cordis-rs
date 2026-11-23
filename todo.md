@@ -325,7 +325,7 @@ status: current
 - [ ] **command_goal::mount が goals provide 後に commands 失敗で部分登録** — 根拠 `src/ports/command_goal.rs:115-125` / R14-RB07 / 重大度 low / medium
 - [x] **tool_bash::mount が require_approval 後の失敗で承認要求を残す** — 2026-11-23 修正（require_approval を全 fallible ステップ成功後の最後に移動、failed mount で pipeline だけ fail-closed になる副作用リークを解消、正常系と fail-closed 契約は不変、R1 指摘反映）。
 - [x] **GoalStore::commit に rollback 境界が無い（将来の不整合リスク）** — 2026-11-23 修正（GoalState に Clone を追加し commit を clone→apply→swap に変更、apply が失敗したら元状態を保持、検証エラーで event が増えない回帰テスト、R14 指摘反映）。
-- [ ] **RepeatToolReminder::observe が状態更新を発行より前に実施** — 根拠 `src/services/repeat_reminder.rs:104-141` / R14-RB10 / 重大度 low / low
+- [x] **RepeatToolReminder::observe が状態更新を発行より前に実施** — 2026-11-23 修正（canonicalize(arguments) の二重計算を1回に統合。後続処理が失敗しない現在の実装では状態順序による実害なし、R14 指摘の small 部分を反映）。
 - [x] **format_file_mention の Directory quoted 分岐が doc/テスト未固定** — 2026-11-23 修正（Directory の quoted mention が末尾引用符を省略する grammar を doc 明記、File との対比を固定する回帰テスト追加、R14 指摘反映）。
 - [x] **WorkingDirectory::set の「絶対パスを返す」(doc) が未検証** — 2026-11-23 修正（相対 path が保存済み cwd に対して絶対化されること、後続の相対 path がその cwd 基準で解決されることを固定する回帰テスト追加、R14 指摘反映）。
 - [x] **JobHandle::read の offset 範囲外挙動が doc/テスト未定義** — 2026-11-23 修正（範囲外 offset が clamp され空文字＋現在 end を返す挙動を doc 明記、usize::MAX で固定する回帰テスト追加、R14 指摘反映）。
