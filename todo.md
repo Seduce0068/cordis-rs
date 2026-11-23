@@ -373,7 +373,7 @@ status: current
 - [x] **JobRegistry::wait が timeout_ms を clamp せず実質無限待ちを作れる** — 2026-11-24 修正（service 側 wait も tool_jobs::MAX_WAIT_TIMEOUT_MS で clamp、tool 経由のガードを直接呼び出しでも迂回不可に、R17 指摘反映）。
 - [ ] **GPUI ACP 起動エラー4分岐が文字列のみでテスト未固定** — 根拠 `dsh-gpui-client-poc/src/bin/acp_stream_ui.rs:425,437,451,457` / R17-DUAL2-01 / 重大度 low / small
 - [x] **title_from_output の * / ** / *** と nested 拒否を doc/テスト固定** — 2026-11-24 修正（3幅の emphasis と nested 時の verbatim 保持を doc 明記＋回帰テスト追加、R17 指摘反映）。
-- [ ] **GPUI TitlePanel::apply_build_result の Err で旧 rows を捨てる契約が doc 未明記** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_title_ui.rs:89-104` / R17-DUAL2-03 / 重大度 low / small
+- [x] **GPUI TitlePanel::apply_build_result の Err で旧 rows を捨てる契約が doc 未明記** — 2026-11-24 修正（失敗時に旧 rows を消して古いデータを表示しない契約を doc 明記、既存テストが空 rows を固定済み、R17 指摘反映）。
 - [ ] **GPUI SwitchErrorKind::Service が preset エラーを含む境界が未固定** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_permission_ui.rs:164-167` / R17-DUAL2-04 / 重大度 low / small
 - [x] **WorkspaceRegistry archived の get=Some / attach=Err 非対称が doc 未明記** — 2026-11-24 修正（archived は表示用に get/list で返るが mutation は拒否する契約を doc 明記、既存テストに get=Some を追加固定、R17 指摘反映）。
 - [x] **LlmService::resolve(None) が default 未設定で None を返す分岐が未テスト** — 2026-11-24 修正（空 registry で resolve(None) / resolve(Some(missing)) が None を返す回帰テスト追加。provider 登録済み・default 未設定は register が自動 default 化するため到達不能、R17 指摘反映）。
