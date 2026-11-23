@@ -298,6 +298,24 @@ status: current
 - [x] **SessionQueryEngine::remove が index のみで SessionStore に触れないことを doc 未明記** — 2026-11-23 修正（index のみに影響し SessionStore は不変であることを doc 明記、R12 指摘反映）。
 - [x] **HookProtocol の matcher 不正時のログ有無が doc／テスト未固定** — 2026-11-23 修正（CompiledMatcher::Never のコンパイル失敗はサイレントで config load 時の matcher_diagnostic が診断を担う旨を doc 明記、既存 non-match テストで固定済み、R12 指摘反映）。
 
+- [ ] **ToolResultPruner / CompactionEngine の設定加算が unchecked で巨大設定で panic** — 根拠 `src/services/pruner.rs:63-65`, `src/services/compaction.rs:80-85` / R13-OW01 / 重大度 medium / confirmed
+- [ ] **LlmService::register の disposer が名前ベースで default 所有権が弱い** — 根拠 `src/services/llm.rs:116-149` / R13-OW02 / 重大度 medium / medium
+- [ ] **AgentLoop::with_session の Session 共有（Arc）が doc 未明記** — 根拠 `src/services/agent_loop.rs:145-149` / R13-OW03 / 重大度 low / medium
+- [ ] **ToolOutput の deep clone が observer 経路で繰り返される** — 根拠 `src/services/tools.rs:83-110,423`, `src/services/agent_loop.rs:312` / R13-OW04 / 重大度 low / medium
+- [ ] **Event の Arc 值与値保持がサービスごとに一貫しない** — 根拠 `src/events.rs:355-368`, `src/ports/user_questions.rs:141-145` / R13-OW05 / 重大度 low / low
+- [ ] **CredentialProvider::with_env が既存 clone と env を共有しない** — 根拠 `src/services/credentials.rs:60-75` / R13-OW06 / 重大度 medium / medium
+- [ ] **Fake* テスト用型が本番公開 API に露出し誤配線リスク** — 根拠 `src/ports/llm_transport.rs:120-125`, `src/ports/otel_exporter.rs:128-132` / R13-OW07 / 重大度 low / medium
+- [ ] **ProjectionFold の stateful fold 契約（Arc の Mutex capture）が doc 未明記** — 根拠 `src/services/sessions.rs:256,304-320` / R13-OW08 / 重大度 low / low
+- [ ] **AgentLoop::with_call_parser / with_checkpoint の古い hook cleanup 未呼び出しが doc 未明記** — 根拠 `src/services/agent_loop.rs:48-61,140-143,182-185` / R13-OW09 / 重大度 low / medium
+- [ ] **FsObservationPolicy の clone が二段マップ全体を共有する契約が doc 未明記** — 根拠 `src/ports/fs_observation_policy.rs:46-48` / R13-OW10 / 重大度 low / medium
+- [ ] **ToolRegistry::register の generation-guard 回帰テストが未固定** — 根拠 `src/services/tools.rs:189-209` / R13-ST01 / 重大度 low / confirmed
+- [ ] **DeepSeekLlmApiExtensions::register の bool 拒否分岐が未テスト** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:45-68` / R13-ST02 / 重大度 low / confirmed
+- [ ] **SessionTitleFirstPromptLlm::generate の空 messages → Ok(false) が未テスト** — 根拠 `src/ports/session_title_first_prompt_llm.rs:89-100` / R13-ST03 / 重大度 low / confirmed
+- [ ] **ScheduleService::create が空 title/prompt を受理（検証なし）** — 根拠 `src/services/schedule.rs:73-84` / R13-ST04 / 重大度 low / medium
+- [ ] **ToolRegistry::names のソート契約が未テスト** — 根拠 `src/services/tools.rs:212-218` / R13-ST05 / 重大度 low / confirmed
+- [ ] **PluginInventory::list の宣言順保持が未テスト** — 根拠 `src/services/plugin_inventory.rs:58-70` / R13-ST06 / 重大度 low / medium
+- [ ] **generation-guard disposer の二重 dispose 冪等性が未テスト** — 根拠 `src/services/tools.rs:199-209`, `src/services/commands.rs` / R13-ST07 / 重大度 low / confirmed
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -335,3 +353,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-23、round 199）**: specialist 2体（cordis-researcher / plugin-ports）から16件取得。R6 で path:line を Runtime Proof で確認し17件を追記（IV02 は既出メモのタスク化、うち1件は同根で重複カウント）。観点を「入力検証・エラー契約・トランザクション整合性」と「テスト・ドキュメント・ゲート乖離」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-23、round 215）**: specialist 2体（cordis-researcher / plugin-ports）から20件取得。R6 で path:line を Runtime Proof で確認し、1件を誤検知として除外（RS05 は既に guard を drop してから answerer を呼ぶ実装）して19件を追記。観点を「並行処理・所有権・ロック」と「未使用 API・re-export 漏れ」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-23、round 228）**: specialist 2体（cordis-researcher / plugin-ports）から17件取得。R6 で path:line を Runtime Proof で確認し、1件を誤検知として除外（IV10 は前ラウンドで acknowledge に clamp 追加済み）して16件を追記。観点を「境界値・冪等性」と「doc comment と実装の乖離」に絞った再走。
+- **swarm コンボ R6 集約（2026-11-23、round 242）**: specialist 2体（cordis-researcher / plugin-ports）から17件取得。R6 で path:line を Runtime Proof で確認し17件を追記。観点を「Send/Sync・所有権・clone の深さ」と「未固定の公開 API 契約」に絞った再走。
