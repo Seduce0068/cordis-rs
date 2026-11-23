@@ -338,7 +338,7 @@ status: current
 - [x] **JSONL poison が append のみで read / restore が古い文件内容を返す** — 2026-11-23 修正（check_not_poisoned ヘルパーを追加し read / read_recovered の冒頭でチェック、restore_with は read 経由で間接的に遮断、poison 後の全 read 経路が Corrupt を返す回帰テスト、R15 指摘反映）。
 - [x] **tool_bash が shell provide の Disposer を捨て mount 失敗で shell が残る** — 2026-11-23 修正（shell provide の Disposer を保持し Fiber mount 失敗時に dispose、host 提供の shell は所有権尊重で対象外、R14-RB08 の approval 順序も維持、R15 指摘反映）。
 - [x] **mcp_resources が effect 登録自体の失敗時に service が残る** — 2026-11-23 修正（effect の Result を inspect し、disposer が scope に渡る前に失敗した場合は明示 dispose、R14-RB06 の scope 登録と併せて全失敗経路をカバー、R15 指摘反映）。
-- [ ] **GoalStore copy-swap が events Vec を毎回 deep copy（性能）** — 根拠 `src/services/goals.rs:185-195` / R15-AS07 / 重大度 low / medium
+- [x] **GoalStore copy-swap が events Vec を毎回 deep copy（性能）** — 2026-11-23 修正（commit が goal / next_revision のみを一時 view にコピーして apply し、成功時に書き戻し＋events を in-place push に変更、検証エラー時不変契約は維持、R1 で apply の全分岐が「検証→変更」であることを実証、R15 指摘反映）。
 - [x] **fs tmp ファイル名が pid+nanos で並列 write が衝突し得る** — 2026-11-23 修正（FsState に write_seq を追加し tmp 名に採番を含めて同一プロセスの並列 write でもユニークに、R15 指摘反映）。
 - [x] **fs create_dir_all 失敗時に created_dirs を rollback しない** — 2026-11-23 修正（rollback_dirs ヘルパーを抽出し、create_dir_all 失敗時と write 失敗時の両分岐から深い順の remove_dir を実行、R15 指摘反映）。
 - [x] **fs reserve_version の next = current+1 が u64 overflow unchecked** — 2026-11-23 修正（checked_add(1) に変更し overflow 時に file version overflow エラーを返す、debug panic / release wrap を防止、R15 指摘反映）。

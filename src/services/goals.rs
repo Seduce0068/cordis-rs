@@ -184,13 +184,18 @@ impl GoalStore {
 
     fn commit(&self, event: GoalEvent) -> std::result::Result<(), GoalError> {
         let mut state = self.state.write().expect("goal state poisoned");
-        // Apply against a copy and swap only on success: a future `apply`
-        // that mutates before validating cannot leave a half-updated state
-        // without a matching event (swarm review R14-RB09).
-        let mut next = state.clone();
-        Self::apply(&mut next, &event)?;
-        next.events.push(event);
-        *state = next;
+        // Apply against a copy of just the goal fields, then swap on success:
+        // validation errors leave the store unchanged (swarm review R14-RB09)
+        // without deep-copying the whole event history (R15-AS07).
+        let mut view = GoalState {
+            goal: state.goal.clone(),
+            next_revision: state.next_revision,
+            events: Vec::new(),
+        };
+        Self::apply(&mut view, &event)?;
+        state.goal = view.goal;
+        state.next_revision = view.next_revision;
+        state.events.push(event);
         Ok(())
     }
 
