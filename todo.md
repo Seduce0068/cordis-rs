@@ -321,7 +321,7 @@ status: current
 - [x] **FileSystem::write_text が create_dir_all 後の write 失敗で親ディレクトリを残す** — 2026-11-23 修正（既存の tmp+rename パターンを再利用し部分ファイルを防止、失敗時に新規作成した親を remove_dir で rollback（失敗は無視、remove_dir_all 不使用）、回帰テスト、R1 指摘反映）。
 - [x] **FileSystem::edit_text の version guard が read→write 間で TOCTOU** — 2026-11-23 修正（version を単一 write guard で予約（check＋increment）し I/O 直前に実行、失敗時は旧値に rollback、write_text も同じ予約経路に統一、並行 edit が片方だけ成功する回帰テスト、R1 指摘反映）。
 - [x] **JSONL append が flush 失敗で部分永続化し再試行で seq 重複** — 2026-11-23 修正（JsonlSessionHandle に clone 間共有の poison フラグを追加、open/write/flush 失敗で poison を立て再試行を拒否し重複 seq 行の生成を防止、回帰テスト、R1 指摘反映）。
-- [ ] **mcp_resources::mount が provide 成功後 effect 失敗で registry サービスを残す** — 根拠 `src/ports/mcp_resources.rs:264-300` / R14-RB06 / 重大度 low / medium
+- [x] **mcp_resources::mount が provide 成功後 effect 失敗で registry サービスを残す** — 2026-11-23 修正（provide が返す Disposer を effect scope の on_dispose に登録し、effect 失敗時の既存 child unwind に service も含める、正常系の登録と戻り値は不変、R1 指摘反映）。
 - [ ] **command_goal::mount が goals provide 後に commands 失敗で部分登録** — 根拠 `src/ports/command_goal.rs:115-125` / R14-RB07 / 重大度 low / medium
 - [x] **tool_bash::mount が require_approval 後の失敗で承認要求を残す** — 2026-11-23 修正（require_approval を全 fallible ステップ成功後の最後に移動、failed mount で pipeline だけ fail-closed になる副作用リークを解消、正常系と fail-closed 契約は不変、R1 指摘反映）。
 - [x] **GoalStore::commit に rollback 境界が無い（将来の不整合リスク）** — 2026-11-23 修正（GoalState に Clone を追加し commit を clone→apply→swap に変更、apply が失敗したら元状態を保持、検証エラーで event が増えない回帰テスト、R14 指摘反映）。

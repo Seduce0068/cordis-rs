@@ -264,14 +264,18 @@ impl crate::Plugin for McpResourcesPlugin {
 pub async fn mount(ctx: &Context) -> Result<McpResourceRegistry> {
     let tools = ctx.require::<ToolRegistry>("tools").await?;
     let registry = McpResourceRegistry::new();
-    let _ = ctx.provide(MCP_RESOURCES_SERVICE, registry.clone()).await?;
+    let service_disposer = ctx.provide(MCP_RESOURCES_SERVICE, registry.clone()).await?;
 
     let result_registry = registry.clone();
     let tools_for_effect = tools.clone();
     ctx.effect(move |scope| {
         let tools = tools_for_effect.clone();
         let registry = registry.clone();
+        let service_disposer = service_disposer.clone();
         async move {
+            // Roll the service back together with the tool registrations when
+            // setup fails (swarm review R14-RB06).
+            scope.on_dispose(move || async move { service_disposer.dispose().await });
             let defs = [
                 (
                     LIST_RESOURCES,
