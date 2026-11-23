@@ -6488,3 +6488,26 @@ fn pruner_and_compaction_reject_overflowing_config() {
     // Default config still works.
     assert!(CompactionEngine::new(CompactionConfig::default(), TokenMeter::new(1000)).is_ok());
 }
+
+#[tokio::test]
+async fn first_prompt_title_empty_messages_returns_false() {
+    use cordis_rs::core_services::{LlmService, SessionTitles};
+    use cordis_rs::plugin_ports::{FirstPromptTitleConfig, SessionTitleFirstPromptLlm};
+
+    let generator = SessionTitleFirstPromptLlm::new(FirstPromptTitleConfig {
+        provider: "deepseek".to_string(),
+        model: "deepseek-chat".to_string(),
+        ..Default::default()
+    });
+    let llm = LlmService::default();
+    let titles = SessionTitles::default();
+
+    // No LLM call is needed for the empty-input early return (swarm review
+    // R13-ST03).
+    assert!(
+        !generator
+            .generate(&llm, &titles, "session-1", &[])
+            .await
+            .unwrap()
+    );
+}

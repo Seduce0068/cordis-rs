@@ -310,7 +310,7 @@ status: current
 - [ ] **FsObservationPolicy の clone が二段マップ全体を共有する契約が doc 未明記** — 根拠 `src/ports/fs_observation_policy.rs:46-48` / R13-OW10 / 重大度 low / medium
 - [ ] **ToolRegistry::register の generation-guard 回帰テストが未固定** — 根拠 `src/services/tools.rs:189-209` / R13-ST01 / 重大度 low / confirmed
 - [ ] **DeepSeekLlmApiExtensions::register の bool 拒否分岐が未テスト** — 根拠 `src/ports/deepseek_llm_api_extensions.rs:45-68` / R13-ST02 / 重大度 low / confirmed
-- [ ] **SessionTitleFirstPromptLlm::generate の空 messages → Ok(false) が未テスト** — 根拠 `src/ports/session_title_first_prompt_llm.rs:89-100` / R13-ST03 / 重大度 low / confirmed
+- [x] **SessionTitleFirstPromptLlm::generate の空 messages → Ok(false) が未テスト** — 2026-11-23 修正（有効 config で空 messages を渡し Ok(false) を返す early return を固定する回帰テスト追加、R13 指摘反映）。
 - [ ] **ScheduleService::create が空 title/prompt を受理（検証なし）** — 根拠 `src/services/schedule.rs:73-84` / R13-ST04 / 重大度 low / medium
 - [ ] **ToolRegistry::names のソート契約が未テスト** — 根拠 `src/services/tools.rs:212-218` / R13-ST05 / 重大度 low / confirmed
 - [ ] **PluginInventory::list の宣言順保持が未テスト** — 根拠 `src/services/plugin_inventory.rs:58-70` / R13-ST06 / 重大度 low / medium
