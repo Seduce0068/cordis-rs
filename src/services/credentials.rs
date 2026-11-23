@@ -66,7 +66,7 @@ struct CredentialState {
 #[derive(Default, Clone)]
 pub struct CredentialProvider {
     state: Arc<RwLock<CredentialState>>,
-    env: Arc<BTreeMap<String, String>>,
+    env: Arc<RwLock<BTreeMap<String, String>>>,
 }
 
 impl CredentialProvider {
@@ -75,8 +75,10 @@ impl CredentialProvider {
     }
 
     /// Supply ambient environment values without mutating the process env.
-    pub fn with_env(mut self, env: BTreeMap<String, String>) -> Self {
-        self.env = Arc::new(env);
+    pub fn with_env(self, env: BTreeMap<String, String>) -> Self {
+        // Update shared state so clones (including the one registered in ctx)
+        // observe the same environment (swarm review R13-OW06).
+        *self.env.write().expect("credentials env poisoned") = env;
         self
     }
 
@@ -123,6 +125,8 @@ impl CredentialProvider {
             });
         }
         self.env
+            .read()
+            .expect("credentials env poisoned")
             .get(&reference.name)
             .cloned()
             .filter(|v| !v.is_empty())

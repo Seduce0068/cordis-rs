@@ -303,7 +303,7 @@ status: current
 - [x] **AgentLoop::with_session の Session 共有（Arc）が doc 未明記** — 2026-11-23 修正（Session が Arc ハンドルで clone がログを共有し独立コピーでない旨を builder doc 明記、R13 指摘反映）。
 - [ ] **ToolOutput の deep clone が observer 経路で繰り返される** — 根拠 `src/services/tools.rs:83-110,423`, `src/services/agent_loop.rs:312` / R13-OW04 / 重大度 low / medium
 - [ ] **Event の Arc 值与値保持がサービスごとに一貫しない** — 根拠 `src/events.rs:355-368`, `src/ports/user_questions.rs:141-145` / R13-OW05 / 重大度 low / low
-- [ ] **CredentialProvider::with_env が既存 clone と env を共有しない** — 根拠 `src/services/credentials.rs:60-75` / R13-OW06 / 重大度 medium / medium
+- [x] **CredentialProvider::with_env が既存 clone と env を共有しない** — 2026-11-23 修正（env を Arc の RwLock に変更し with_env が共有状態を更新、resolve は read で参照、シグネチャ不変、clone 間共有の回帰テスト、R1 指摘反映）。
 - [x] **Fake* テスト用型が本番公開 API に露出し誤配線リスク** — 2026-11-23 修正（FakeTransport / FakeCollector の型 doc に TEST ONLY と本番配線先を明記、feature ゲートは公開 API 破壊のため見送り、R13 指摘反映）。
 - [x] **ProjectionFold の stateful fold 契約（Arc の Mutex capture）が doc 未明記** — 2026-11-23 修正（Fn 束縛では状態変更できないため Arc の Mutex/RwLock で捕捉する旨を型 doc 明記、R13 指摘反映）。
 - [x] **AgentLoop::with_call_parser / with_checkpoint の古い hook cleanup 未呼び出しが doc 未明記** — 2026-11-23 修正（旧 hook は単に drop され cleanup は呼ばれない旨を各 builder の doc 明記、R13 指摘反映）。

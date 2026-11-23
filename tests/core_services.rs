@@ -6572,3 +6572,21 @@ fn deepseek_extension_register_rejects_blank_trimmed_and_duplicate() {
     assert!(registry.unregister("valid"));
     assert!(!registry.unregister("valid"));
 }
+
+#[test]
+fn credential_env_is_shared_between_clones() {
+    use cordis_rs::core_services::{CredentialProvider, credential_ref};
+    use std::collections::BTreeMap;
+
+    let provider = CredentialProvider::new();
+    let clone = provider.clone();
+
+    let mut env = BTreeMap::new();
+    env.insert("SHARED_KEY".to_string(), "shared-value".to_string());
+    clone.with_env(env);
+
+    let reference = credential_ref("$SHARED_KEY").unwrap();
+    // The original handle sees the env set through the clone (swarm review
+    // R13-OW06).
+    assert_eq!(provider.resolve(&reference).unwrap().value, "shared-value");
+}
