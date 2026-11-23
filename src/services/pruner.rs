@@ -66,15 +66,11 @@ impl ToolResultPruner {
         // saturated sum can never fit a finite threshold, so InvalidConfig is
         // returned naturally (swarm review R13-OW01).
         let head_tail = config.head_chars.saturating_add(config.tail_chars);
-        // A saturated sum cannot represent "fits within threshold", so reject
-        // it explicitly (swarm review R13-OW01).
-        if config.head_chars == usize::MAX
-            || config.tail_chars == usize::MAX
-            || head_tail == usize::MAX
-        {
+        // checked_add rejects both MAX and near-MAX values that would overflow
+        // once the marker is included (swarm review R16-RA02).
+        let Some(sum) = head_tail.checked_add(marker_len) else {
             return Err(PruneError::InvalidConfig);
-        }
-        let sum = head_tail + marker_len;
+        };
         if sum > config.threshold_chars {
             return Err(PruneError::InvalidConfig);
         }

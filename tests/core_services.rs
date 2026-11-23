@@ -7013,3 +7013,20 @@ fn fs_write_text_checked_rejects_stale_version() {
     assert_eq!(second.version, first.version + 1);
     let _ = std::fs::remove_dir_all(&base);
 }
+
+#[test]
+fn pruner_rejects_near_max_config_without_overflow() {
+    use cordis_rs::core_services::{PruneError, PrunerConfig, ToolResultPruner};
+
+    // head_tail is below usize::MAX but adding the marker would overflow
+    // (swarm review R16-RA02).
+    let near_max = PrunerConfig {
+        head_chars: usize::MAX - 10,
+        tail_chars: 5,
+        threshold_chars: usize::MAX,
+    };
+    assert_eq!(
+        ToolResultPruner::new(near_max).unwrap_err(),
+        PruneError::InvalidConfig
+    );
+}

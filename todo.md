@@ -350,7 +350,7 @@ status: current
 - [x] **CompactionAutomationConfig の pressure_threshold > 1.0 / NaN 扱いが untested** — 2026-11-23 修正（mount 側の is_finite / (0,1] 検証は実装済みと Runtime Proof で確認、NaN / inf / 0 / -1 / 1.5 を拒否する境界テストを追加、R15 指摘の未テスト部分を反映）。
 
 - [ ] **JsonlSessionHandle::append が poison helper を使わず Error::Other を返す（read と非対称）** — 根拠 `src/ports/session_persistence_jsonl.rs:97` / R16-RA01 / 重大度 low / high
-- [ ] **ToolResultPruner::new が MAX 近傍で head_tail + marker_len overflow** — 根拠 `src/services/pruner.rs:77` / R16-RA02 / 重大度 medium / high
+- [x] **ToolResultPruner::new が MAX 近傍で head_tail + marker_len overflow** — 2026-11-24 修正（checked_add に変更し MAX ガードを吸収、MAX 近傍の回帰テスト追加、R16 指摘反映）。
 - [ ] **fs write_seq が wrapping_add で一意性保証が方針と割れている** — 根拠 `src/services/fs.rs:277-288` / R16-RA03 / 重大度 low / low
 - [ ] **GoalStore::commit の view が events: Vec::new() で apply に渡す契約変化が未明記** — 根拠 `src/services/goals.rs:185-199` / R16-RA04 / 重大度 low / low
 - [ ] **CredentialProvider::with_env が self を consume し doc との接続が弱い** — 根拠 `src/services/credentials.rs:66-83` / R16-RA05 / 重大度 low / low
