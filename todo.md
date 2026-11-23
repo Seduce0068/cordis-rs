@@ -329,7 +329,7 @@ status: current
 - [ ] **format_file_mention の Directory quoted 分岐が doc/テスト未固定** — 根拠 `src/services/file_reference.rs:22-45` / R14-ST02 / 重大度 low / high
 - [ ] **WorkingDirectory::set の「絶対パスを返す」(doc) が未検証** — 根拠 `src/services/working_directory.rs:41-60` / R14-ST03 / 重大度 low / medium
 - [ ] **JobHandle::read の offset 範囲外挙動が doc/テスト未定義** — 根拠 `src/services/jobs.rs:98-102` / R14-ST04 / 重大度 low / medium
-- [ ] **RetryPolicy::should_retry の retry>=max_retries 境界が doc/テスト未固定** — 根拠 `src/services/retry.rs:42-50` / R14-ST05 / 重大度 low / high
+- [x] **RetryPolicy::should_retry の retry>=max_retries 境界が doc/テスト未固定** — 2026-11-23 修正（既存テストが retry=3=max_retries で Stop を固定済みと確認、doc に予算枯渇条件を明記、R14 指摘反映）。
 - [ ] **EventObserver が append_with_seq で発火しない契約が未テスト** — 根拠 `src/services/sessions.rs:46,100-128` / R14-ST06 / 重大度 low / high
 
 ## 完了

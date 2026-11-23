@@ -40,6 +40,9 @@ impl RetryPolicy {
     }
 
     /// Decide whether an error code at a given retry count should be retried.
+    /// Stops when `retry >= max_retries` (the retry budget is exhausted), as
+    /// fixed by `retry_policy_decides_and_computes_backoff` (swarm review
+    /// R14-ST05).
     pub fn should_retry(&self, code: u32, retry: u32) -> RetryDecision {
         if retry >= self.max_retries {
             return RetryDecision::Stop;
