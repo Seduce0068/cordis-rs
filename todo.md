@@ -351,7 +351,7 @@ status: current
 
 - [x] **JsonlSessionHandle::append が poison helper を使わず Error::Other を返す（read と非対称）** — 2026-11-24 修正（append も check_not_poisoned() に統一し Domain("persistence") エラーを返す、エラー種別を固定する回帰テスト、R16 指摘反映）。
 - [x] **ToolResultPruner::new が MAX 近傍で head_tail + marker_len overflow** — 2026-11-24 修正（checked_add に変更し MAX ガードを吸収、MAX 近傍の回帰テスト追加、R16 指摘反映）。
-- [ ] **fs write_seq が wrapping_add で一意性保証が方針と割れている** — 根拠 `src/services/fs.rs:277-288` / R16-RA03 / 重大度 low / low
+- [x] **fs write_seq が wrapping_add で一意性保証が方針と割れている** — 2026-11-24 修正（checked_add に変更し overflow 時に write sequence overflow エラー、version カウンタと fail-closed 方針を統一、R16 指摘反映）。
 - [ ] **GoalStore::commit の view が events: Vec::new() で apply に渡す契約変化が未明記** — 根拠 `src/services/goals.rs:185-199` / R16-RA04 / 重大度 low / low
 - [ ] **CredentialProvider::with_env が self を consume し doc との接続が弱い** — 根拠 `src/services/credentials.rs:66-83` / R16-RA05 / 重大度 low / low
 - [x] **RetryPolicy::backoff_ms が random=NaN を finite ガードしない** — 2026-11-24 修正（random が非有限値なら中央値 0.5 にフォールバック、NaN 等が jitter を歪めないようにし回帰テスト追加、R16 指摘反映）。

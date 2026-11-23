@@ -279,8 +279,13 @@ impl FileSystem {
             .unwrap_or(0);
         let seq = {
             let mut guard = self.state.write().expect("fs state poisoned");
-            guard.write_seq = guard.write_seq.wrapping_add(1);
-            guard.write_seq
+            match guard.write_seq.checked_add(1) {
+                Some(next) => {
+                    guard.write_seq = next;
+                    next
+                }
+                None => return Some("write sequence overflow".to_string()),
+            }
         };
         let temp = resolved.with_file_name(format!(
             ".{}.{}.{}.{}.tmp",
