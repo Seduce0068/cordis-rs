@@ -381,7 +381,7 @@ status: current
 - [ ] **TimeoutPolicy::default_timeout_ms の None 意味が service/port で食い違う** — 根拠 `src/services/timeout_policy.rs:25-27` / R18-DUAL3-01 / 重大度 low / small
 - [ ] **SessionQueryEngine::trace の 'in seq order' が seq 飛び時に保証されない** — 根拠 `src/services/session_query.rs:74-79` / R18-DUAL3-03 / 重大度 low / small
 - [ ] **GPUI resolve_patch_path の非 UTF-8 パス扱いが未定義** — 根拠 `dsh-gpui-client-poc/src/bin/acp_llm_probe.rs:170-180` / R18-DUAL3-04 / 重大度 low / small
-- [ ] **fs read_window の clamp が total_lines に効くか未固定** — 根拠 `src/services/fs.rs:168-182` / R18-DUAL3-05 / 重大度 low / small
+- [x] **fs read_window の clamp が total_lines に効くか未固定** — 2026-11-24 修正（clamp は保持行のみに効き total_lines は全行を数える契約を doc 明記、READ_LIMIT 超のファイルで固定する回帰テスト追加、R18 指摘反映）。
 - [x] **retry should_retry_message が error_code() を経由するか未固定** — 2026-11-24 修正（Runtime Proof で経由を確認し、ラベル付き HTTP コードは Retry／「retry in 500ms」は Stop を固定する回帰テスト追加、R18 指摘反映）。
 - [ ] **PruneError::RemovalNotFound が生成箇所ゼロのデッド契約** — 根拠 `src/services/pruner.rs:37,44` / R18-ER01 / 重大度 low / small
 - [ ] **ApprovalError::Cancelled が生成箇所ゼロのデッド契約** — 根拠 `src/services/approval.rs:90-102` / R18-ER02 / 重大度 low / small

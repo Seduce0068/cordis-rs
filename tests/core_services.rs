@@ -7248,3 +7248,30 @@ fn retry_should_retry_message_goes_through_error_code() {
         RetryDecision::Stop
     );
 }
+
+#[test]
+fn fs_read_window_total_lines_counts_beyond_clamped_window() {
+    use cordis_rs::core_services::FileSystem;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let base = std::env::temp_dir().join(format!("cordis-fs-total-{unique}"));
+    std::fs::create_dir_all(&base).unwrap();
+    let total = cordis_rs::plugin_ports::READ_LIMIT + 10;
+    let mut content = String::new();
+    for i in 0..total {
+        content.push_str(&format!("line {i}\n"));
+    }
+    std::fs::write(base.join("lines.txt"), content).unwrap();
+
+    let fs = FileSystem::scoped(&base);
+    let window = fs.read_window("lines.txt", 1, 2, 100).unwrap();
+    // The window is bounded but the counter covers the whole file
+    // (swarm review R18-DUAL3-05).
+    assert_eq!(window.lines_returned, 2);
+    assert_eq!(window.total_lines, total);
+    let _ = std::fs::remove_dir_all(&base);
+}

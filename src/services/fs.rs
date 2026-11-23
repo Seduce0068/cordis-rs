@@ -167,7 +167,9 @@ impl FileSystem {
 
     /// Read a bounded window of lines (1-based offset and limit). `limit` is
     /// clamped to the tool's default read limit so a direct caller cannot
-    /// bypass the bounded-read guarantee (swarm review R16-RA09).
+    /// bypass the bounded-read guarantee (swarm review R16-RA09). The clamp
+    /// bounds only the retained window: `total_lines` still counts the whole
+    /// file (swarm review R18-DUAL3-05).
     pub fn read_window(
         &self,
         path: &str,
