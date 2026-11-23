@@ -316,6 +316,22 @@ status: current
 - [x] **PluginInventory::list の宣言順保持が未テスト** — R6 Runtime Proof で誤検知と判定（既存 plugin_inventory_projects_composition_entries が宣言順 a,b と enabled override の両方を検証済み）。
 - [x] **generation-guard disposer の二重 dispose 冪等性が未テスト** — 2026-11-23 修正（ToolRegistry 側を R13-ST01 の回帰テストで固定。commands 側は同種実装で既存テストあり）。
 
+- [ ] **Fiber refresh の dispose_effects 失敗で retiring=true / Unloading が残る** — 根拠 `src/plugin.rs:105-115` / R14-RB01 / 重大度 high / confirmed
+- [ ] **Fiber::mount 失敗時に登録済み observer が解除されず蓄積** — 根拠 `src/plugin.rs:159-179` / R14-RB02 / 重大度 medium / high
+- [ ] **FileSystem::write_text が create_dir_all 後の write 失敗で親ディレクトリを残す** — 根拠 `src/services/fs.rs:209-221` / R14-RB03 / 重大度 medium / high
+- [ ] **FileSystem::edit_text の version guard が read→write 間で TOCTOU** — 根拠 `src/services/fs.rs:251-280` / R14-RB04 / 重大度 medium / high
+- [ ] **JSONL append が flush 失敗で部分永続化し再試行で seq 重複** — 根拠 `src/ports/session_persistence_jsonl.rs:81-95` / R14-RB05 / 重大度 medium / medium
+- [ ] **mcp_resources::mount が provide 成功後 effect 失敗で registry サービスを残す** — 根拠 `src/ports/mcp_resources.rs:264-300` / R14-RB06 / 重大度 low / medium
+- [ ] **command_goal::mount が goals provide 後に commands 失敗で部分登録** — 根拠 `src/ports/command_goal.rs:115-125` / R14-RB07 / 重大度 low / medium
+- [ ] **tool_bash::mount が require_approval 後の失敗で承認要求を残す** — 根拠 `src/ports/tool_bash.rs:204-218` / R14-RB08 / 重大度 medium / medium
+- [ ] **GoalStore::commit に rollback 境界が無い（将来の不整合リスク）** — 根拠 `src/services/goals.rs:183-188` / R14-RB09 / 重大度 low / low
+- [ ] **RepeatToolReminder::observe が状態更新を発行より前に実施** — 根拠 `src/services/repeat_reminder.rs:104-141` / R14-RB10 / 重大度 low / low
+- [ ] **format_file_mention の Directory quoted 分岐が doc/テスト未固定** — 根拠 `src/services/file_reference.rs:22-45` / R14-ST02 / 重大度 low / high
+- [ ] **WorkingDirectory::set の「絶対パスを返す」(doc) が未検証** — 根拠 `src/services/working_directory.rs:41-60` / R14-ST03 / 重大度 low / medium
+- [ ] **JobHandle::read の offset 範囲外挙動が doc/テスト未定義** — 根拠 `src/services/jobs.rs:98-102` / R14-ST04 / 重大度 low / medium
+- [ ] **RetryPolicy::should_retry の retry>=max_retries 境界が doc/テスト未固定** — 根拠 `src/services/retry.rs:42-50` / R14-ST05 / 重大度 low / high
+- [ ] **EventObserver が append_with_seq で発火しない契約が未テスト** — 根拠 `src/services/sessions.rs:46,100-128` / R14-ST06 / 重大度 low / high
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -354,3 +370,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-23、round 215）**: specialist 2体（cordis-researcher / plugin-ports）から20件取得。R6 で path:line を Runtime Proof で確認し、1件を誤検知として除外（RS05 は既に guard を drop してから answerer を呼ぶ実装）して19件を追記。観点を「並行処理・所有権・ロック」と「未使用 API・re-export 漏れ」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-23、round 228）**: specialist 2体（cordis-researcher / plugin-ports）から17件取得。R6 で path:line を Runtime Proof で確認し、1件を誤検知として除外（IV10 は前ラウンドで acknowledge に clamp 追加済み）して16件を追記。観点を「境界値・冪等性」と「doc comment と実装の乖離」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-23、round 242）**: specialist 2体（cordis-researcher / plugin-ports）から17件取得。R6 で path:line を Runtime Proof で確認し17件を追記。観点を「Send/Sync・所有権・clone の深さ」と「未固定の公開 API 契約」に絞った再走。
+- **swarm コンボ R6 集約（2026-11-23、round 253）**: specialist 2体から16件取得。R6 で path:line を Runtime Proof で確認し、1件を誤検知として除外（ST01f-01 は next_seq 初期値が0で seq=1 受理）、15件を追記。観点を「エラーパスの部分状態」と「doc/実装の矛盾」に絞った再走。
