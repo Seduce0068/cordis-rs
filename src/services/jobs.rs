@@ -239,10 +239,10 @@ impl JobRegistry {
         guard.notices.iter().skip(guard.cursor).cloned().collect()
     }
 
-    /// Advance the notice cursor after a notice has been collected. Acknowledged
-    /// notices are drained and the cursor resets to zero: the index base moves,
-    /// so the logical set of unread notices still shrinks monotonically
-    /// (swarm review R11-RS01).
+    /// Drop the first `through` collected notices (clamped to the number
+    /// present), then rebase the cursor to zero. The index base moves rather
+    /// than being advanced, so the logical set of unread notices still shrinks
+    /// monotonically (swarm review R11-RS01, R18-DUAL3-02).
     pub fn acknowledge(&self, through: usize) {
         let mut guard = self.state.write().expect("job registry poisoned");
         let removed = through.min(guard.notices.len());

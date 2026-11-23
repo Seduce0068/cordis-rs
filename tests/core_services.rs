@@ -7212,3 +7212,21 @@ fn plan_mode_set_panics_on_empty_session_id() {
     let plan = PlanMode::new();
     let _ = plan.set("", true);
 }
+
+#[test]
+fn job_acknowledge_clamps_through_to_notice_count() {
+    use cordis_rs::core_services::JobRegistry;
+
+    let registry = JobRegistry::new(10, 1024);
+    let handle = registry.start(Some("agent".to_string())).unwrap();
+    handle.append(b"one");
+    handle.append(b"two");
+    // Force three notices via terminal transitions (one per state change).
+    handle.settle(cordis_rs::core_services::JobStatus::Succeeded);
+    let count = registry.pending_notices().len();
+    assert!(count > 0);
+
+    // An oversized `through` must drain everything, not panic or wrap.
+    registry.acknowledge(usize::MAX);
+    assert!(registry.pending_notices().is_empty());
+}

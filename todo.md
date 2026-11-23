@@ -378,6 +378,22 @@ status: current
 - [x] **WorkspaceRegistry archived の get=Some / attach=Err 非対称が doc 未明記** — 2026-11-24 修正（archived は表示用に get/list で返るが mutation は拒否する契約を doc 明記、既存テストに get=Some を追加固定、R17 指摘反映）。
 - [x] **LlmService::resolve(None) が default 未設定で None を返す分岐が未テスト** — 2026-11-24 修正（空 registry で resolve(None) / resolve(Some(missing)) が None を返す回帰テスト追加。provider 登録済み・default 未設定は register が自動 default 化するため到達不能、R17 指摘反映）。
 
+- [ ] **TimeoutPolicy::default_timeout_ms の None 意味が service/port で食い違う** — 根拠 `src/services/timeout_policy.rs:25-27` / R18-DUAL3-01 / 重大度 low / small
+- [ ] **SessionQueryEngine::trace の 'in seq order' が seq 飛び時に保証されない** — 根拠 `src/services/session_query.rs:74-79` / R18-DUAL3-03 / 重大度 low / small
+- [ ] **GPUI resolve_patch_path の非 UTF-8 パス扱いが未定義** — 根拠 `dsh-gpui-client-poc/src/bin/acp_llm_probe.rs:170-180` / R18-DUAL3-04 / 重大度 low / small
+- [ ] **fs read_window の clamp が total_lines に効くか未固定** — 根拠 `src/services/fs.rs:168-182` / R18-DUAL3-05 / 重大度 low / small
+- [ ] **retry should_retry_message が error_code() を経由するか未固定** — 根拠 `src/services/retry.rs:54-58` / R18-DUAL3-06 / 重大度 medium / small
+- [ ] **PruneError::RemovalNotFound が生成箇所ゼロのデッド契約** — 根拠 `src/services/pruner.rs:37,44` / R18-ER01 / 重大度 low / small
+- [ ] **ApprovalError::Cancelled が生成箇所ゼロのデッド契約** — 根拠 `src/services/approval.rs:90-102` / R18-ER02 / 重大度 low / small
+- [ ] **UserQuestionError の phase-2 予約4バリアントが code()/Display に漏れる** — 根拠 `src/ports/user_questions.rs:30-63` / R18-ER03 / 重大度 low / small
+- [ ] **ShellError の TimedOut 系が timeout_ms を Display で落とす** — 根拠 `src/services/shell.rs:84-110` / R18-ER04 / 重大度 low / small
+- [ ] **FsError の PartialEq が cause を無視する契約が doc 未明記** — 根拠 `src/ports/fs_errno.rs:50-62` / R18-ER05 / 重大度 low / small
+- [ ] **RawTodo::new が検証を to_todo_list に遅延する旨が doc 未明記** — 根拠 `src/ports/tool_todo.rs:127-134` / R18-BD01 / 重大度 low / small
+- [ ] **ToolExecution::agent("") が空名を受理し anonymous と区別される** — 根拠 `src/ports/tool_todo.rs:146-156` / R18-BD02 / 重大度 low / small
+- [ ] **PresetSpec が pub フィールドで register が内容を検証しない** — 根拠 `src/services/permission_presets.rs:93-99,193-218` / R18-BD03 / 重大度 low / small
+- [ ] **TokenMeter::new が budget=0 を 1 に丸める意図が doc 未明記** — 根拠 `src/services/token_meter.rs:34-39` / R18-BD04 / 重大度 low / small
+- [ ] **acknowledge の doc 冒頭が実装と逆だった（DUAL3-02 修正済みの記録）** — R18-DUAL3-02 / 完了済み（2026-11-24、ドキュメント＋clamp テスト）
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -420,3 +436,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-23、round 266）**: specialist 2体から16件取得。R6 で path:line を Runtime Proof で確認し16件を追記。観点を「直近ロールバック／原子化修正周辺の非対称」と「入力検証・境界値の未固定」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-24、round 297）**: specialist 2体から16件取得。R6 で path:line を Runtime Proof で確認し、3件を除外（RA07 は前回 doc 明記済み、RA10 は実害なし、DUAL05 は前回対処済み）し13件を追記。観点を「直近修正ラッシュの残余非対称」と「片側だけ更新されたエラー型・状態」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-24、round 311）**: specialist 2体から16件取得。PN01 は即修正、PN05 は Runtime Proof で panic 経路なしとして除外、残り14件を追記（追記処理の欠落を round 312 で検出して補完）。観点を「公開 API の panic 経路」と「未固定の Err/None 分岐」に絞った再走。
+- **R18 コンボ（round 327）で DUAL3-02 を修正**: acknowledge の doc 冒頭を実装（drain + cursor rebase）に合わせ、through=usize::MAX の clamp テストを追加（2026-11-24）。
