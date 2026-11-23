@@ -366,7 +366,7 @@ status: current
 - [ ] **PlanMode::set / enter が空 session_id で panic（try_set のみ安全）** — 根拠 `src/services/plan_mode.rs:71-85` / R17-PN02 / 重大度 low / low
 - [ ] **StorageHub::write が required_fields[0] を直接 index（現状到達不能だが脆い）** — 根拠 `src/services/storage.rs:234-243` / R17-PN03 / 重大度 low / low
 - [x] **OutputRing::append の drain が UTF-8 境界を越えて多バイト文字を lossy 化** — 2026-11-24 修正（drain 位置を UTF-8 境界まで前進、多バイト文字列で U+FFFD が出ない回帰テスト、R17 指摘反映）。
-- [ ] **loader split_top_level の depth が i32 で負に転落し区切りを認識しなくなる** — 根拠 `src/loader.rs:869-884` / R17-PN06 / 重大度 medium / small
+- [x] **loader split_top_level の depth が i32 で負に転落し区切りを認識しなくなる** — 2026-11-24 修正（split_top_level / split_flow の depth を saturating_add/sub に変更、不正な閉じ括弧でも depth==0 の区切り判定が維持される、R17 指摘反映）。
 - [ ] **loader evaluate_expression の再帰上限が入力長/64 依存で高密度入れ子に弱い** — 根拠 `src/loader.rs:682-694` / R17-PN07 / 重大度 low / medium
 - [ ] **loader ${...} 補間が入れ子 '}' を考慮せず最初で終端** — 根拠 `src/loader.rs:1639-1661` / R17-PN08 / 重大度 medium / small
 - [ ] **fs read_window が巨大な1行を丸ごと String 保持し DoS 耐性が残る** — 根拠 `src/services/fs.rs:203-207` / R17-PN09 / 重大度 medium / medium

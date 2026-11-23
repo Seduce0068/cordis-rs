@@ -839,8 +839,11 @@ fn split_key_value(text: &str) -> Option<(String, &str)> {
                 in_single = !in_single;
             }
             b'"' if !in_single => in_double = !in_double,
-            b'[' | b'{' if !in_single && !in_double => depth += 1,
-            b']' | b'}' if !in_single && !in_double => depth -= 1,
+            b'[' | b'{' if !in_single && !in_double => depth = depth.saturating_add(1),
+            // An unmatched closing bracket must not drive depth negative;
+            // otherwise the depth==0 separator check never fires again and
+            // malformed input silently becomes one token (R17-PN06).
+            b']' | b'}' if !in_single && !in_double => depth = depth.saturating_sub(1),
             b':' if !in_single && !in_double && depth == 0 => {
                 let rest = &bytes[index + 1..];
                 if rest.is_empty() || rest[0].is_ascii_whitespace() {
@@ -878,8 +881,11 @@ fn split_top_level(text: &str, separator: char) -> Vec<String> {
                 in_single = !in_single;
             }
             b'"' if !in_single => in_double = !in_double,
-            b'[' | b'{' if !in_single && !in_double => depth += 1,
-            b']' | b'}' if !in_single && !in_double => depth -= 1,
+            b'[' | b'{' if !in_single && !in_double => depth = depth.saturating_add(1),
+            // An unmatched closing bracket must not drive depth negative;
+            // otherwise the depth==0 separator check never fires again and
+            // malformed input silently becomes one token (R17-PN06).
+            b']' | b'}' if !in_single && !in_double => depth = depth.saturating_sub(1),
             byte if byte == separator && !in_single && !in_double && depth == 0 => {
                 parts.push(text[start..index].trim().to_string());
                 start = index + 1;
