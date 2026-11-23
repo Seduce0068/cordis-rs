@@ -159,7 +159,9 @@ pub fn frame_messages(messages: &[String], current_title: Option<&str>) -> Strin
 }
 
 /// Extract a title from model output: first non-empty line, stripping whole
-/// line asterisk emphasis such as `**Title**`.
+/// line asterisk emphasis (`***Title***`, `**Title**`, `*Title*`). A line with
+/// a leftover `*` inside the stripped span (e.g. `**a*b**`) is kept verbatim
+/// rather than producing a partial title (swarm review R17-DUAL2-02).
 pub fn title_from_output(text: &str) -> Option<String> {
     let line = text.lines().map(str::trim).find(|line| !line.is_empty())?;
     let stripped = line

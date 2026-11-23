@@ -372,7 +372,7 @@ status: current
 - [ ] **fs read_window が巨大な1行を丸ごと String 保持し DoS 耐性が残る** — 根拠 `src/services/fs.rs:203-207` / R17-PN09 / 重大度 medium / medium
 - [x] **JobRegistry::wait が timeout_ms を clamp せず実質無限待ちを作れる** — 2026-11-24 修正（service 側 wait も tool_jobs::MAX_WAIT_TIMEOUT_MS で clamp、tool 経由のガードを直接呼び出しでも迂回不可に、R17 指摘反映）。
 - [ ] **GPUI ACP 起動エラー4分岐が文字列のみでテスト未固定** — 根拠 `dsh-gpui-client-poc/src/bin/acp_stream_ui.rs:425,437,451,457` / R17-DUAL2-01 / 重大度 low / small
-- [ ] **title_from_output の *, **, *** と nested 拒否が doc/テスト未固定** — 根拠 `cordis-rs/src/services/session_titles.rs:161-178` / R17-DUAL2-02 / 重大度 low / small
+- [x] **title_from_output の * / ** / *** と nested 拒否を doc/テスト固定** — 2026-11-24 修正（3幅の emphasis と nested 時の verbatim 保持を doc 明記＋回帰テスト追加、R17 指摘反映）。
 - [ ] **GPUI TitlePanel::apply_build_result の Err で旧 rows を捨てる契約が doc 未明記** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_title_ui.rs:89-104` / R17-DUAL2-03 / 重大度 low / small
 - [ ] **GPUI SwitchErrorKind::Service が preset エラーを含む境界が未固定** — 根拠 `dsh-gpui-client-poc/src/bin/cordis_permission_ui.rs:164-167` / R17-DUAL2-04 / 重大度 low / small
 - [ ] **WorkspaceRegistry archived の get=Some / attach=Err 非対称が doc 未明記** — 根拠 `cordis-rs/src/services/workspace.rs:92-126` / R17-DUAL2-05 / 重大度 low / small

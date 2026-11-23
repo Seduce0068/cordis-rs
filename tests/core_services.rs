@@ -7177,3 +7177,14 @@ fn job_output_retain_boundary_is_utf8_safe() {
     assert_eq!(text, "あ".repeat(341));
     assert_eq!(end, 1023);
 }
+
+#[test]
+fn title_from_output_handles_all_emphasis_widths() {
+    use cordis_rs::core_services::title_from_output;
+
+    assert_eq!(title_from_output("*T*").as_deref(), Some("T"));
+    assert_eq!(title_from_output("**T**").as_deref(), Some("T"));
+    assert_eq!(title_from_output("***T***").as_deref(), Some("T"));
+    // Nested emphasis is kept verbatim rather than partially stripped.
+    assert_eq!(title_from_output("**a*b**").as_deref(), Some("**a*b**"));
+}
