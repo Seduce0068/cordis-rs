@@ -87,7 +87,7 @@ impl SkillRegistry {
             let guard = self.state.read().expect("skill registry poisoned");
             guard.providers.clone()
         };
-        let mut by_name: BTreeMap<String, (i64, Skill)> = BTreeMap::new();
+        let mut by_name: BTreeMap<String, (i64, u64, Skill)> = BTreeMap::new();
         let mut failures = Vec::new();
         for (id, rank, provider) in providers.iter() {
             let skills = match provider() {
@@ -104,14 +104,16 @@ impl SkillRegistry {
             for skill in skills {
                 let better = by_name
                     .get(&skill.name)
-                    .map(|(current_rank, _)| *rank > *current_rank)
+                    .map(|(current_rank, current_id, _)| {
+                        *rank > *current_rank || (*rank == *current_rank && *id > *current_id)
+                    })
                     .unwrap_or(true);
                 if better {
-                    by_name.insert(skill.name.clone(), (*rank, skill));
+                    by_name.insert(skill.name.clone(), (*rank, *id, skill));
                 }
             }
         }
-        let mut skills: Vec<Skill> = by_name.into_values().map(|(_, skill)| skill).collect();
+        let mut skills: Vec<Skill> = by_name.into_values().map(|(_, _, skill)| skill).collect();
         skills.sort_by(|a, b| a.name.cmp(&b.name));
         SkillCatalog { skills, failures }
     }

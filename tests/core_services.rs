@@ -7508,3 +7508,27 @@ async fn session_query_search_does_not_normalize_accents() {
     assert_eq!(engine.search("CAFÉ").len(), 1);
     assert!(engine.search("cafe").is_empty());
 }
+
+#[tokio::test]
+async fn skill_registry_same_rank_uses_latest_provider() {
+    use cordis_rs::core_services::{Skill, SkillRegistry};
+    use std::sync::Arc;
+
+    let registry = SkillRegistry::default();
+    let make = |source: &'static str| Skill {
+        name: "dup".to_string(),
+        description: String::new(),
+        path: String::new(),
+        source: source.to_string(),
+    };
+    let first = make("first");
+    let second = make("second");
+    registry.register_provider(1, Arc::new(move || Ok(vec![first.clone()])));
+    let latest = registry.register_provider(1, Arc::new(move || Ok(vec![second.clone()])));
+
+    // Same rank must be last-write-wins, matching ToolRegistry/CommandRegistry
+    // (swarm review R20-ID03).
+    assert_eq!(registry.catalog().skills[0].source, "second");
+    latest.dispose().await.unwrap();
+    assert_eq!(registry.catalog().skills[0].source, "first");
+}

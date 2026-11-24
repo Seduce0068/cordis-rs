@@ -410,6 +410,20 @@ status: current
 - [x] **user_questions の serde 必須フィールド契約が doc/テスト未固定** — 2026-11-24 修正（Option 以外のフィールドは deserialize 時に必須という契約を doc 明記、欠落時に Err となる回帰テスト追加、R19 指摘反映）。
 - [x] **ToolRegistry / CommandRegistry が空名を検証せず登録** — 2026-11-24 修正（ToolRegistry に try_register を追加し空名を拒否、既存 register は Disposer/last-write-wins 不変。CommandRegistry 側は CommandDefinition::new が既に construction 時に拒否しており誤検知気味であることを記録、R19 指摘反映）。
 
+- [ ] **OTel channel_names の順序が doc 未明記（実装は Vec で決定的）** — 根拠 `src/services/telemetry.rs:252-260` / R20-ID01 / 重大度 low / small
+- [ ] **SessionQueryEngine 再 index で古い Session ハンドルが divergence する** — 根拠 `src/services/session_query.rs:38-47` / R20-ID02 / 重大度 low / small
+- [ ] **SystemPrompt::section の disposer が name のみで fencing 無し** — 根拠 `src/services/system_prompt.rs:78-99` / R20-ID04 / 重大度 low / small
+- [ ] **LlmService::names が同名 provider の重複を表示する** — 根拠 `src/services/llm.rs:110-124,149-157` / R20-ID05 / 重大度 low / small
+- [ ] **Schedule next_id が overflow で既存 ID と衝突し得る** — 根拠 `src/services/schedule.rs:60,87-89` / R20-ID06 / 重大度 low / small
+- [ ] **ApprovalService が同名 answerer を二重登録できる** — 根拠 `src/services/approval.rs:152-173` / R20-ID07 / 重大度 low / small
+- [ ] **SubagentRegistry が重複登録を検出できない** — 根拠 `src/services/subagents.rs:57-77` / R20-ID08 / 重大度 low / small
+- [ ] **Telemetry event_channel の id overflow で古い disposer が新 channel を消す** — 根拠 `src/services/telemetry.rs:71-72,232-248` / R20-ID09 / 重大度 low / small
+- [ ] **GPUI tag_from_json が未知タグを '<unknown>' に丸めて観測不能** — 根拠 `acp_stream_ui.rs:235-251` / R20-DUAL5-01 / 重大度 low / small
+- [ ] **AskRequest の options / multi_select が必須で upstream 互換性が未確認** — 根拠 `src/ports/user_questions.rs:70-95` / R20-DUAL5-02 / 重大度 medium / small
+- [ ] **Answer が unknown fields を許す（upstream schema と非対称・要確認）** — 根拠 `src/ports/user_questions.rs:98-101` / R20-DUAL5-03 / 重大度 low / small
+- [ ] **型付き Event の externally-tagged wire 形が未固定** — 根拠 `src/events.rs:68,86` / R20-DUAL5-04 / 重大度 low / small
+- [ ] **GPUI entries toggle UI の state 再読込で未知キーの扱いが未固定** — 根拠 `cordis_entries_toggle_ui.rs:843` / R20-DUAL5-05 / 重大度 low / small
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -454,3 +468,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-24、round 311）**: specialist 2体から16件取得。PN01 は即修正、PN05 は Runtime Proof で panic 経路なしとして除外、残り14件を追記（追記処理の欠落を round 312 で検出して補完）。観点を「公開 API の panic 経路」と「未固定の Err/None 分岐」に絞った再走。
 - **R18 コンボ（round 327）で DUAL3-02 を修正**: acknowledge の doc 冒頭を実装（drain + cursor rebase）に合わせ、through=usize::MAX の clamp テストを追加（2026-11-24）。
 - **R19 コンボ（round 342）**: specialist 2体から16件取得。TM04 は即修正（ms→ns 乗算を saturating_mul に）、残り15件を追記。観点を「時刻・期間の単位変換と境界」および「空白・大小文字・serde 既定値の非対称」に絞った再走。
+- **R20 コンボ（round 357）**: specialist 2体から15件取得。ID03 は即修正（同 rank を last-write-wins に統一）、残り14件を追記。観点を「ID/名前の衝突・一意性・順序契約」および「serde 表現安定性と読む側の対応」に絞った再走。ID01/ID10 は Runtime Proof で却下候補。
