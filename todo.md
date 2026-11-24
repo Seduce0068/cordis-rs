@@ -418,7 +418,7 @@ status: current
 - [x] **ApprovalService が同名 answerer を二重登録できる** — 2026-11-24 修正（name は情報ラベルで照合キーでないことを doc 明記、同名 answerer が両方 waterfall に残り後登録が先に呼ばれる回帰テスト追加、R20 指摘反映）。
 - [x] **SubagentRegistry が重複登録を検出できない** — 2026-11-24 修正（DuplicateProvider バリアントと try_register を追加、既存 register の last-write-wins と id fencing は不変、重複拒否の回帰テスト追加、R20 指摘反映）。
 - [x] **Telemetry event_channel の id overflow で古い disposer が新 channel を消す** — 2026-11-24 記録（R1 判定で Result 化は非互換・saturating_add も完全でないため、ID06 と方針を揃え overflow 未ガードを event_channel の doc 明記、R20 指摘反映）。
-- [ ] **GPUI tag_from_json が未知タグを `<unknown>` に丸めて観測不能** — 根拠 `acp_stream_ui.rs:235-251` / R20-DUAL5-01 / 重大度 low / small
+- [x] **GPUI tag_from_json が未知タグを `<unknown>` に丸めて観測不能** — 2026-11-24 修正（未知／非文字列タグが `<unknown>` に、serialization 失敗が `<unserializable: {key}>` になる契約を doc 明記＋回帰テスト追加。カウンタ追加は pure 関数シグネチャを壊すため却下、R20 指摘反映）。
 - [x] **AskRequest の options / multi_select が必須で upstream 互換性が未確認** — 2026-11-24 修正（options と multi_select に #[serde(default)] を付与し最小 payload を受理、既存フィールド埋まり JSON は不変、回帰テスト追加。upstream schema の根拠はローカルに無く未確認として記録、R20 指摘反映）。
 - [x] **Answer が unknown fields を許す（upstream schema と非対称・要確認）** — 2026-11-24 修正（upstream 根拠がローカルに無く推測で後方互換を壊さないため deny_unknown_fields は却下、unknown fields ignored を doc 明記＋回帰テスト追加、R20 指摘反映）。
 - [x] **型付き Event の externally-tagged wire 形が未固定** — 2026-11-24 修正（enum payload が serde の externally tagged 形 `{"Variant":{...}}` で emit→decode 往復することを固定する回帰テスト追加、R20 指摘反映）。
