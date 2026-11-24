@@ -29,13 +29,19 @@ pub type SubagentHandler =
 #[derive(Debug, Clone, PartialEq)]
 pub enum SubagentError {
     UnknownProvider(String),
-    DepthExceeded { max: usize, requested: usize },
+    DepthExceeded {
+        max: usize,
+        requested: usize,
+    },
+    /// A provider with this name is already registered.
+    DuplicateProvider(String),
 }
 
 impl std::fmt::Display for SubagentError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::UnknownProvider(name) => write!(f, "unknown subagent provider: {name}"),
+            Self::DuplicateProvider(name) => write!(f, "duplicate subagent provider: {name}"),
             Self::DepthExceeded { max, requested } => {
                 write!(f, "subagent depth {requested} exceeds max {max}")
             }
@@ -57,6 +63,27 @@ pub struct SubagentRegistry {
 }
 
 impl SubagentRegistry {
+    /// Register a provider, rejecting an existing name. The legacy
+    /// [`Self::register`] keeps its last-write-wins behaviour (swarm review
+    /// R20-ID08).
+    pub fn try_register(
+        &self,
+        name: impl Into<String>,
+        handler: SubagentHandler,
+    ) -> std::result::Result<Disposer, SubagentError> {
+        let name = name.into();
+        if self
+            .state
+            .read()
+            .expect("subagent registry poisoned")
+            .providers
+            .contains_key(&name)
+        {
+            return Err(SubagentError::DuplicateProvider(name));
+        }
+        Ok(self.register(name, handler))
+    }
+
     pub fn register(&self, name: impl Into<String>, handler: SubagentHandler) -> Disposer {
         let name = name.into();
         let state = self.state.clone();

@@ -7630,3 +7630,22 @@ async fn approval_duplicate_answerer_names_are_allowed() {
     assert_eq!(outcome.decision, ApprovalDecision::Deny);
     first.dispose().await.unwrap();
 }
+
+#[tokio::test]
+async fn subagent_try_register_rejects_duplicate_name() {
+    use cordis_rs::core_services::{SubagentError, SubagentRegistry};
+    use std::sync::Arc;
+
+    let subagents = SubagentRegistry::default();
+    let handler: cordis_rs::services::subagents::SubagentHandler =
+        Arc::new(|_| Box::pin(async { "ok".to_string() }));
+    let first = subagents.try_register("worker", handler.clone()).unwrap();
+    let error = match subagents.try_register("worker", handler) {
+        Err(error) => error,
+        Ok(_) => panic!("duplicate subagent registration must be rejected"),
+    };
+    assert!(matches!(error, SubagentError::DuplicateProvider(ref name) if name == "worker"));
+    // The first registration stays active (swarm review R20-ID08).
+    assert!(subagents.names().iter().any(|name| name == "worker"));
+    first.dispose().await.unwrap();
+}

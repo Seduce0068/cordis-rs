@@ -416,7 +416,7 @@ status: current
 - [x] **LlmService::names が同名 provider の重複を表示する** — 2026-11-24 修正（同名重複は R13-OW02 の id 所有の正当な帰結と判定、names() が registration ごとに1件返す契約を doc 明記＋回帰テスト追加、try_register 化は回帰テスト前提を壊すため却下、R20 指摘反映）。
 - [x] **Schedule next_id が overflow で既存 ID と衝突し得る** — 2026-11-24 記録（R1 Runtime Proof で u64::MAX 回の create は物理的に不可能かつ Result 化は後方互換破壊、saturating_add は同一 ID 上書きでむしろ悪化と判定。overflow 未ガードを create の doc 明記、R20 指摘反映）。
 - [x] **ApprovalService が同名 answerer を二重登録できる** — 2026-11-24 修正（name は情報ラベルで照合キーでないことを doc 明記、同名 answerer が両方 waterfall に残り後登録が先に呼ばれる回帰テスト追加、R20 指摘反映）。
-- [ ] **SubagentRegistry が重複登録を検出できない** — 根拠 `src/services/subagents.rs:57-77` / R20-ID08 / 重大度 low / small
+- [x] **SubagentRegistry が重複登録を検出できない** — 2026-11-24 修正（DuplicateProvider バリアントと try_register を追加、既存 register の last-write-wins と id fencing は不変、重複拒否の回帰テスト追加、R20 指摘反映）。
 - [x] **Telemetry event_channel の id overflow で古い disposer が新 channel を消す** — 2026-11-24 記録（R1 判定で Result 化は非互換・saturating_add も完全でないため、ID06 と方針を揃え overflow 未ガードを event_channel の doc 明記、R20 指摘反映）。
 - [ ] **GPUI tag_from_json が未知タグを `<unknown>` に丸めて観測不能** — 根拠 `acp_stream_ui.rs:235-251` / R20-DUAL5-01 / 重大度 low / small
 - [x] **AskRequest の options / multi_select が必須で upstream 互換性が未確認** — 2026-11-24 修正（options と multi_select に #[serde(default)] を付与し最小 payload を受理、既存フィールド埋まり JSON は不変、回帰テスト追加。upstream schema の根拠はローカルに無く未確認として記録、R20 指摘反映）。
