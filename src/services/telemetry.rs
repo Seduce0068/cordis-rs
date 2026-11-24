@@ -221,7 +221,9 @@ impl OTel {
         Self::default()
     }
 
-    /// Create a caller-owned event channel.
+    /// Create a caller-owned event channel. IDs come from a u64 counter;
+    /// overflow after 2^64 creations is not guarded and is unreachable in
+    /// practice (swarm review R20-ID09).
     pub fn event_channel(
         &self,
         name: impl Into<String>,

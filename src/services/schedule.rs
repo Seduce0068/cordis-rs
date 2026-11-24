@@ -76,7 +76,9 @@ impl ScheduleService {
     /// (swarm review R13-ST04).
     /// Create a record due at `next_due_ms` (Unix epoch milliseconds, not
     /// seconds). `due()` takes the same unit for `now_ms` (swarm review
-    /// R19-TM08).
+    /// R19-TM08). IDs come from a u64 counter (`sched-N`); overflow after
+    /// 2^64 creations is not guarded and is unreachable in practice
+    /// (swarm review R20-ID06).
     pub fn create(
         &self,
         title: impl Into<String>,

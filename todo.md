@@ -414,10 +414,10 @@ status: current
 - [ ] **SessionQueryEngine 再 index で古い Session ハンドルが divergence する** — 根拠 `src/services/session_query.rs:38-47` / R20-ID02 / 重大度 low / small
 - [x] **SystemPrompt::section の disposer が name のみで fencing 無し** — 2026-11-24 修正（private state に generation id を追加し disposer が id 一致時のみ削除、Tools/Commands と同じ fencing パターン、古い disposer の再実行で新しい section が消えない回帰テスト追加、R20 指摘反映）。
 - [x] **LlmService::names が同名 provider の重複を表示する** — 2026-11-24 修正（同名重複は R13-OW02 の id 所有の正当な帰結と判定、names() が registration ごとに1件返す契約を doc 明記＋回帰テスト追加、try_register 化は回帰テスト前提を壊すため却下、R20 指摘反映）。
-- [ ] **Schedule next_id が overflow で既存 ID と衝突し得る** — 根拠 `src/services/schedule.rs:60,87-89` / R20-ID06 / 重大度 low / small
+- [x] **Schedule next_id が overflow で既存 ID と衝突し得る** — 2026-11-24 記録（R1 Runtime Proof で u64::MAX 回の create は物理的に不可能かつ Result 化は後方互換破壊、saturating_add は同一 ID 上書きでむしろ悪化と判定。overflow 未ガードを create の doc 明記、R20 指摘反映）。
 - [ ] **ApprovalService が同名 answerer を二重登録できる** — 根拠 `src/services/approval.rs:152-173` / R20-ID07 / 重大度 low / small
 - [ ] **SubagentRegistry が重複登録を検出できない** — 根拠 `src/services/subagents.rs:57-77` / R20-ID08 / 重大度 low / small
-- [ ] **Telemetry event_channel の id overflow で古い disposer が新 channel を消す** — 根拠 `src/services/telemetry.rs:71-72,232-248` / R20-ID09 / 重大度 low / small
+- [x] **Telemetry event_channel の id overflow で古い disposer が新 channel を消す** — 2026-11-24 記録（R1 判定で Result 化は非互換・saturating_add も完全でないため、ID06 と方針を揃え overflow 未ガードを event_channel の doc 明記、R20 指摘反映）。
 - [ ] **GPUI tag_from_json が未知タグを `<unknown>` に丸めて観測不能** — 根拠 `acp_stream_ui.rs:235-251` / R20-DUAL5-01 / 重大度 low / small
 - [x] **AskRequest の options / multi_select が必須で upstream 互換性が未確認** — 2026-11-24 修正（options と multi_select に #[serde(default)] を付与し最小 payload を受理、既存フィールド埋まり JSON は不変、回帰テスト追加。upstream schema の根拠はローカルに無く未確認として記録、R20 指摘反映）。
 - [ ] **Answer が unknown fields を許す（upstream schema と非対称・要確認）** — 根拠 `src/ports/user_questions.rs:98-101` / R20-DUAL5-03 / 重大度 low / small
