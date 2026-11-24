@@ -865,3 +865,36 @@ async fn stale_generation_sync_removal_keeps_newer_service() {
         .unwrap();
     assert_eq!(ctx.get::<u32>("feature").as_deref().copied(), Some(2));
 }
+
+#[tokio::test]
+async fn typed_event_enum_payload_uses_externally_tagged_wire_form() {
+    use std::sync::{Arc, Mutex};
+
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    enum EnumPayload {
+        Text { value: String },
+        Empty,
+    }
+
+    let ctx = Context::root("typed-enum");
+    let seen: Arc<Mutex<Vec<serde_json::Value>>> = Arc::new(Mutex::new(Vec::new()));
+    let capture = seen.clone();
+    let _d = ctx.on("typed-enum", move |args: serde_json::Value| {
+        let capture = capture.clone();
+        Box::pin(async move {
+            capture.lock().unwrap().push(args);
+        })
+    });
+
+    let payload = EnumPayload::Text {
+        value: "hi".to_string(),
+    };
+    // serde's default enum representation is externally tagged; the typed
+    // event macro must preserve it on the wire (swarm review R20-DUAL5-04).
+    let wire = serde_json::to_value(&payload).unwrap();
+    assert_eq!(wire, serde_json::json!({ "Text": { "value": "hi" } }));
+    ctx.emit("typed-enum", wire).await;
+    assert_eq!(seen.lock().unwrap().len(), 1);
+    let decoded: EnumPayload = serde_json::from_value(seen.lock().unwrap()[0].clone()).unwrap();
+    assert_eq!(decoded, payload);
+}

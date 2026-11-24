@@ -421,7 +421,7 @@ status: current
 - [ ] **GPUI tag_from_json が未知タグを `<unknown>` に丸めて観測不能** — 根拠 `acp_stream_ui.rs:235-251` / R20-DUAL5-01 / 重大度 low / small
 - [x] **AskRequest の options / multi_select が必須で upstream 互換性が未確認** — 2026-11-24 修正（options と multi_select に #[serde(default)] を付与し最小 payload を受理、既存フィールド埋まり JSON は不変、回帰テスト追加。upstream schema の根拠はローカルに無く未確認として記録、R20 指摘反映）。
 - [ ] **Answer が unknown fields を許す（upstream schema と非対称・要確認）** — 根拠 `src/ports/user_questions.rs:98-101` / R20-DUAL5-03 / 重大度 low / small
-- [ ] **型付き Event の externally-tagged wire 形が未固定** — 根拠 `src/events.rs:68,86` / R20-DUAL5-04 / 重大度 low / small
+- [x] **型付き Event の externally-tagged wire 形が未固定** — 2026-11-24 修正（enum payload が serde の externally tagged 形 `{"Variant":{...}}` で emit→decode 往復することを固定する回帰テスト追加、R20 指摘反映）。
 - [ ] **GPUI entries toggle UI の state 再読込で未知キーの扱いが未固定** — 根拠 `cordis_entries_toggle_ui.rs:843` / R20-DUAL5-05 / 重大度 low / small
 
 ## 完了
