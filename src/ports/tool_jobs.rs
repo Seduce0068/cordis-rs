@@ -49,11 +49,25 @@ fn job_output_handler(jobs: JobRegistry) -> ToolHandler {
                 .get("wait")
                 .and_then(|value| value.as_bool())
                 .unwrap_or(false);
-            let timeout = args
-                .get("timeout_ms")
-                .and_then(|value| value.as_u64())
-                .unwrap_or(DEFAULT_WAIT_TIMEOUT_MS)
-                .min(MAX_WAIT_TIMEOUT_MS);
+            // Distinguish a missing key (use the default) from an explicit
+            // but invalid value (reject instead of silently falling back,
+            // swarm review R19-TM07).
+            let timeout = match args.get("timeout_ms") {
+                None => DEFAULT_WAIT_TIMEOUT_MS,
+                Some(value) if value.is_number() => value
+                    .as_u64()
+                    .ok_or_else(|| {
+                        ToolError::InvalidArgs(
+                            "timeout_ms must be a non-negative integer".to_string(),
+                        )
+                    })?
+                    .min(MAX_WAIT_TIMEOUT_MS),
+                Some(_) => {
+                    return Err(ToolError::InvalidArgs(
+                        "timeout_ms must be a number".to_string(),
+                    ));
+                }
+            };
             if wait {
                 // `wait` is a blocking Condvar wait; keep it off the async
                 // worker. A timeout returns the current state, not an error.

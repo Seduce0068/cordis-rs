@@ -3739,3 +3739,29 @@ async fn str_replace_editor_view_range_rejects_negative_end() {
             .is_err()
     );
 }
+
+#[tokio::test]
+async fn tool_jobs_rejects_invalid_timeout_ms() {
+    use cordis_rs::core_services::{ToolError, ToolExecContext, provide_jobs, provide_tools};
+    use cordis_rs::plugin_ports::mount_tool_jobs;
+
+    let ctx = Context::root("tool-jobs-timeout");
+    let (tools, _) = provide_tools(&ctx).await.unwrap();
+    let jobs = provide_jobs(&ctx).await.unwrap();
+    mount_tool_jobs(&ctx).await.unwrap();
+    let exec = || ToolExecContext::agent("a");
+    let handle = jobs.start(Some("a".to_string())).unwrap();
+
+    let error = tools
+        .invoke(
+            "job_output",
+            serde_json::json!({ "job_id": handle.id(), "session_id": "a", "timeout_ms": -1 }),
+            exec(),
+        )
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(error, ToolError::InvalidArgs(ref msg) if msg.contains("non-negative integer")),
+        "unexpected error: {error}"
+    );
+}
