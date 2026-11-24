@@ -7532,3 +7532,19 @@ async fn skill_registry_same_rank_uses_latest_provider() {
     latest.dispose().await.unwrap();
     assert_eq!(registry.catalog().skills[0].source, "first");
 }
+
+#[test]
+fn ask_question_accepts_minimal_wire_payload() {
+    use cordis_rs::plugin_ports::AskRequest;
+
+    // The minimal payload defaults `options` to [] and `multi_select` to
+    // false, so it reaches the provider waterfall instead of failing decode
+    // (swarm review R20-DUAL5-02).
+    let request: AskRequest = serde_json::from_value(serde_json::json!({
+        "questions": [{ "id": "q1", "question": "Pick one" }]
+    }))
+    .unwrap();
+    assert_eq!(request.questions.len(), 1);
+    assert!(request.questions[0].options.is_empty());
+    assert!(!request.questions[0].multi_select);
+}
