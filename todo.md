@@ -395,7 +395,7 @@ status: current
 - [x] **acknowledge の doc 冒頭が実装と逆だった（DUAL3-02 修正済みの記録）** — R18-DUAL3-02 / 完了済み（2026-11-24、ドキュメント＋clamp テスト）
 
 - [ ] **validate_refresh_interval が 0 を受理し毎ステップ注入になる** — 根拠 `src/services/time_context.rs:13-24,84-88` / R19-TM01 / 重大度 low / small
-- [ ] **TimeoutPolicy::check が timeout_of を再解決し 0ms メッセージを作り得る** — 根拠 `src/services/timeout_policy.rs:37-56` / R19-TM02 / 重大度 low / small
+- [x] **TimeoutPolicy::check が timeout_of を再解決し 0ms メッセージを作り得る** — 2026-11-24 修正（budget を1回だけ解決して期限判定と報告値を一致させ、unwrap_or(0) の自己矛盾メッセージを排除、既存テスト不変、R19 指摘反映）。
 - [ ] **shell with_timeout(0) が即タイムアウトになり hooks 側と非対称** — 根拠 `src/services/shell.rs:39-42,232` / R19-TM03 / 重大度 low / small
 - [ ] **telemetry が as_millis() の u128→u64 cast を黙って truncate** — 根拠 `src/services/telemetry.rs:134-137` / R19-TM05 / 重大度 low / small
 - [ ] **retry backoff が 2^53 超の max_delay_ms を f64 で丸める** — 根拠 `src/services/retry.rs:122-125` / R19-TM06 / 重大度 low / small

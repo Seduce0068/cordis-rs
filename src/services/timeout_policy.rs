@@ -46,13 +46,12 @@ impl TimeoutPolicy {
         }
     }
 
-    /// Build the timeout result when expired.
+    /// Build the timeout result when expired. The budget is resolved once so
+    /// the reported value is exactly the one used for the expiry check
+    /// (swarm review R19-TM02).
     pub fn check(&self, declared: Option<u64>, elapsed_ms: u64) -> Option<TimeoutResult> {
-        if self.is_expired(declared, elapsed_ms) {
-            Some(tool_timeout_result(self.timeout_of(declared).unwrap_or(0)))
-        } else {
-            None
-        }
+        let budget = self.timeout_of(declared)?;
+        (elapsed_ms >= budget).then(|| tool_timeout_result(budget))
     }
 }
 
