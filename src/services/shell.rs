@@ -95,6 +95,19 @@ pub enum ShellError {
     },
 }
 
+impl ShellError {
+    /// The configured timeout budget, when this is a timeout error. Kept out
+    /// of `Display` to avoid retry misdetection on 3-digit values; read it
+    /// structurally instead (swarm review R18-ER04).
+    pub fn timeout_ms(&self) -> Option<u64> {
+        match self {
+            Self::TimedOut(ms) => Some(*ms),
+            Self::TimedOutCleanupFailed { timeout_ms, .. } => Some(*timeout_ms),
+            _ => None,
+        }
+    }
+}
+
 impl std::fmt::Display for ShellError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

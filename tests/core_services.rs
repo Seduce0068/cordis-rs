@@ -7332,3 +7332,28 @@ fn raw_todo_validation_is_deferred_to_to_todo_list() {
     assert_eq!(raw.status, "bogus");
     assert!(to_todo_list(&[raw], false).is_err());
 }
+
+#[test]
+fn shell_error_exposes_timeout_ms_structurally() {
+    use cordis_rs::core_services::{RetryPolicy, ShellError};
+
+    assert_eq!(ShellError::TimedOut(80).timeout_ms(), Some(80));
+    assert_eq!(
+        ShellError::TimedOutCleanupFailed {
+            timeout_ms: 500,
+            cleanup: "kill".to_string(),
+        }
+        .timeout_ms(),
+        Some(500)
+    );
+    assert_eq!(ShellError::Spawn("x".to_string()).timeout_ms(), None);
+
+    // Display stays free of the numeric budget so retry cannot mistake it
+    // for an HTTP code (swarm review R3-IV03).
+    let text = ShellError::TimedOut(500).to_string();
+    assert!(!text.contains("500"));
+    assert_eq!(
+        RetryPolicy::error_code(&cordis_rs::Error::Other(text)),
+        None
+    );
+}

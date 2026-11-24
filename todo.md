@@ -386,7 +386,7 @@ status: current
 - [x] **PruneError::RemovalNotFound が生成箇所ゼロのデッド契約** — 2026-11-24 修正（reserved／現在は未 emit を doc 明記、バリアント削除による後方互換破壊は回避、R18 指摘反映）。
 - [x] **ApprovalError::Cancelled が生成箇所ゼロのデッド契約** — 2026-11-24 修正（reserved／現在は未 emit を doc 明記、バリアント削除による後方互換破壊は回避、R18 指摘反映）。
 - [x] **UserQuestionError の phase-2 予約4バリアントが code()/Display に漏れる** — 2026-11-24 修正（code()  containing は R2-ER06 の public code-set stability で意図的と確認、4バリアントに「never emitted / kept for stability」を doc 明記、既存 code 固定テストは不変、R18 指摘反映）。
-- [ ] **ShellError の TimedOut 系が timeout_ms を Display で落とす** — 根拠 `src/services/shell.rs:84-110` / R18-ER04 / 重大度 low / small
+- [x] **ShellError の TimedOut 系が timeout_ms を Display で落とす** — 2026-11-24 修正（timeout_ms() getter を追加し構造化値として公開、Display 文言と retry 誤検出回避は不変、回帰テスト追加、R18 指摘反映）。
 - [x] **FsError の PartialEq が cause を無視する契約が doc 未明記** — 2026-11-24 修正（安定した分類フィールドのみで比較し cause は除外する意図を doc 明記、別 Arc インスタンスが等しい回帰テスト追加、R18 指摘反映）。
 - [x] **RawTodo::new が検証を to_todo_list に遅延する旨が doc 未明記** — 2026-11-24 修正（検証遅延の契約を doc 明記、不正値が constructor を通り to_todo_list で拒否される回帰テスト追加、R18 指摘反映）。
 - [x] **ToolExecution::agent("") が空名を受理し anonymous と区別される** — 2026-11-24 修正（空／空白名を None に正規化し anonymous と同一視、正常名は前後空白含めて不変、回帰テスト追加、R18 指摘反映）。
