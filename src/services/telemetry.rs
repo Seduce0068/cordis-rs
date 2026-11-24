@@ -249,6 +249,9 @@ impl OTel {
         (reporter, disposer)
     }
 
+    /// Channel names in registration order (the underlying store is a Vec).
+    /// Reporters are cloned for observation, not replaced on re-registration
+    /// (swarm review R20-ID01).
     pub fn channel_names(&self) -> Vec<String> {
         self.state
             .read()

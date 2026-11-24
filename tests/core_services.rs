@@ -7589,3 +7589,19 @@ async fn system_prompt_delayed_disposer_does_not_remove_newer_section() {
     assert!(!assembled.text.contains("old"));
     let _ = Arc::new(());
 }
+
+#[tokio::test]
+async fn otel_channel_names_follow_registration_order() {
+    use cordis_rs::core_services::{EventLogOptions, provide_otel};
+
+    let ctx = Context::root("otel-order");
+    let otel = provide_otel(&ctx).await.unwrap();
+    let options = EventLogOptions {
+        max_events: 3,
+        batch_size: 2,
+    };
+    let _a = otel.event_channel("a", options.clone());
+    let _b = otel.event_channel("b", options);
+    // Registration order is the documented contract (swarm review R20-ID01).
+    assert_eq!(otel.channel_names(), ["a", "b"]);
+}

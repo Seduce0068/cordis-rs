@@ -410,7 +410,7 @@ status: current
 - [x] **user_questions の serde 必須フィールド契約が doc/テスト未固定** — 2026-11-24 修正（Option 以外のフィールドは deserialize 時に必須という契約を doc 明記、欠落時に Err となる回帰テスト追加、R19 指摘反映）。
 - [x] **ToolRegistry / CommandRegistry が空名を検証せず登録** — 2026-11-24 修正（ToolRegistry に try_register を追加し空名を拒否、既存 register は Disposer/last-write-wins 不変。CommandRegistry 側は CommandDefinition::new が既に construction 時に拒否しており誤検知気味であることを記録、R19 指摘反映）。
 
-- [ ] **OTel channel_names の順序が doc 未明記（実装は Vec で決定的）** — 根拠 `src/services/telemetry.rs:252-260` / R20-ID01 / 重大度 low / small
+- [x] **OTel channel_names の順序が doc 未明記（実装は Vec で決定的）** — 2026-11-24 修正（登録順である契約を doc 明記、複数 channel の順序を固定する回帰テスト追加、R20 指摘反映）。
 - [ ] **SessionQueryEngine 再 index で古い Session ハンドルが divergence する** — 根拠 `src/services/session_query.rs:38-47` / R20-ID02 / 重大度 low / small
 - [x] **SystemPrompt::section の disposer が name のみで fencing 無し** — 2026-11-24 修正（private state に generation id を追加し disposer が id 一致時のみ削除、Tools/Commands と同じ fencing パターン、古い disposer の再実行で新しい section が消えない回帰テスト追加、R20 指摘反映）。
 - [x] **LlmService::names が同名 provider の重複を表示する** — 2026-11-24 修正（同名重複は R13-OW02 の id 所有の正当な帰結と判定、names() が registration ごとに1件返す契約を doc 明記＋回帰テスト追加、try_register 化は回帰テスト前提を壊すため却下、R20 指摘反映）。
