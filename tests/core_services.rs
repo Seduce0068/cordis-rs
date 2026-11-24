@@ -7565,3 +7565,27 @@ async fn llm_names_reflect_each_registration_including_duplicates() {
     assert_eq!(llm.names(), ["dup"]);
     first.dispose().await.unwrap();
 }
+
+#[tokio::test]
+async fn system_prompt_delayed_disposer_does_not_remove_newer_section() {
+    use cordis_rs::core_services::{AssembleContext, PromptSection, SystemPrompt};
+    use std::sync::Arc;
+
+    let prompt = SystemPrompt::default();
+    let old = prompt.section(PromptSection::new("x", 1, "old")).unwrap();
+    // Run the old disposer, re-register the same name, then run the stale
+    // disposer a second time: it must not remove the newer section
+    // (swarm review R20-ID04).
+    old.dispose().await.unwrap();
+    let _new = prompt.section(PromptSection::new("x", 1, "new")).unwrap();
+    old.dispose().await.unwrap();
+
+    let assembled = prompt
+        .assemble(&AssembleContext {
+            variables: Default::default(),
+        })
+        .unwrap();
+    assert!(assembled.text.contains("new"));
+    assert!(!assembled.text.contains("old"));
+    let _ = Arc::new(());
+}

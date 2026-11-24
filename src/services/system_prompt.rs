@@ -61,7 +61,8 @@ impl std::fmt::Display for PromptError {
 
 #[derive(Default)]
 struct RegistryState {
-    sections: BTreeMap<String, PromptSection>,
+    sections: BTreeMap<String, (u64, PromptSection)>,
+    next_id: u64,
 }
 
 /// The shared system prompt registry.
@@ -78,22 +79,28 @@ impl SystemPrompt {
     /// Register a section. Duplicate names are rejected upstream.
     pub fn section(&self, section: PromptSection) -> std::result::Result<Disposer, PromptError> {
         let state = self.state.clone();
-        {
+        let id = {
             let mut guard = state.write().expect("system prompt poisoned");
             if guard.sections.contains_key(&section.name) {
                 return Err(PromptError::DuplicateSection(section.name.clone()));
             }
-            guard.sections.insert(section.name.clone(), section.clone());
-        }
+            let id = guard.next_id;
+            guard.next_id += 1;
+            guard
+                .sections
+                .insert(section.name.clone(), (id, section.clone()));
+            id
+        };
         Ok(Disposer::new(move || {
             let state = state.clone();
             let name = section.name.clone();
             async move {
-                state
-                    .write()
-                    .expect("system prompt poisoned")
-                    .sections
-                    .remove(&name);
+                let mut guard = state.write().expect("system prompt poisoned");
+                // A delayed disposer must not remove a newer section with the
+                // same name (swarm review R20-ID04).
+                if guard.sections.get(&name).map(|(current, _)| *current) == Some(id) {
+                    guard.sections.remove(&name);
+                }
                 Ok(())
             }
         }))
@@ -124,7 +131,11 @@ impl SystemPrompt {
         context: &AssembleContext,
     ) -> std::result::Result<PromptAssembly, PromptError> {
         let guard = self.state.read().expect("system prompt poisoned");
-        let mut sections: Vec<&PromptSection> = guard.sections.values().collect();
+        let mut sections: Vec<&PromptSection> = guard
+            .sections
+            .values()
+            .map(|(_, section)| section)
+            .collect();
         sections.sort_by(|a, b| a.order.cmp(&b.order).then_with(|| a.name.cmp(&b.name)));
 
         let complete: Vec<&PromptSection> =
