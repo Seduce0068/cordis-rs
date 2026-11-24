@@ -424,6 +424,16 @@ status: current
 - [x] **型付き Event の externally-tagged wire 形が未固定** — 2026-11-24 修正（enum payload が serde の externally tagged 形 `{"Variant":{...}}` で emit→decode 往復することを固定する回帰テスト追加、R20 指摘反映）。
 - [x] **GPUI entries toggle UI の state 再読込で未知キーの扱いが未固定** — 2026-11-24 修正（CompositionState は serde derive でなく手書きパースで未知 id も override として保持される契約を doc 明記＋回帰テスト追加。deny_unknown_fields は適用対象が無く将来 entry の設定保持も壊すため却下、R20 指摘反映）。
 
+- [ ] **OutputRing が全バイト不正チャンクで retain_bytes を超えて捨てる** — 根拠 `src/services/jobs.rs:50-61` / R21-LM01 / 重大度 low / small
+- [ ] **JobRegistry::new が retain_bytes=0 の丸めを doc 未明記** — 根拠 `src/services/jobs.rs:176-186` / R21-LM02 / 重大度 low / small
+- [ ] **EventLogOptions の validation スタイルが panic と Result で混在** — 根拠 `src/services/telemetry.rs:104-108` / R21-LM04 / 重大度 low / small
+- [ ] **native_tool_executor が max_parallel=0 を 1 に丸める旨を doc 未明記** — 根拠 `src/ports/native_tool_executor.rs:115-116,198` / R21-LM06 / 重大度 low / small
+- [ ] **jobs::start が max_concurrent=0 で「停止」を表現できない** — 根拠 `src/services/jobs.rs:176-186,193` / R21-LM08 / 重大度 low / small
+- [ ] **GPUI permission UI が tool args の改行で行を偽造できる** — 根拠 `cordis_permission_ui.rs:260,263-266,279` / R21-CTL02 / 重大度 medium / small
+- [ ] **GPUI status_line / error 系が改行入りエラーでレイアウト崩れ** — 根拠 `cordis_composition_toggle_ui.rs:21-31, cordis_title_ui.rs:33` / R21-CTL03 / 重大度 low / small
+- [ ] **OTLP が attribute key の制御文字を除去していない** — 根拠 `src/ports/otel_exporter.rs:48,61` / R21-CTL04 / 重大度 medium / small
+- [ ] **UI 表示で空文字と空白のみが区別されない** — 根拠 `acp_stream_ui.rs:211, cordis_agent_ui.rs:239` / R21-CTL05 / 重大度 low / small
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -470,3 +480,4 @@ status: current
 - **R19 コンボ（round 342）**: specialist 2体から16件取得。TM04 は即修正（ms→ns 乗算を saturating_mul に）、残り15件を追記。観点を「時刻・期間の単位変換と境界」および「空白・大小文字・serde 既定値の非対称」に絞った再走。
 - **R20 コンボ（round 357）**: specialist 2体から15件取得。ID03 は即修正（同 rank を last-write-wins に統一）、残り14件を追記。観点を「ID/名前の衝突・一意性・順序契約」および「serde 表現安定性と読む側の対応」に絞った再走。ID01/ID10 は Runtime Proof で却下候補。
 - **R20 コンボ（round 357）完結**: 15件取得、ID03 / DUAL5-02 / ID05 / ID04 / ID01 / ID06 / ID09 / ID07 / ID08 / DUAL5-04 / ID02 / DUAL5-03 / DUAL5-01 / DUAL5-05 を処理（うち却下・既存固定 5件）。
+- **R21 コンボ（round 370）**: specialist 2体から15件取得。CTL-01 は即修正（approval/decided の answerer に audit_text 適用）、残り14件を追記。LM03 / LM05 / LM07 / LM09 / LM10 は Runtime Proof で却下候補。観点を「並行数・バッチサイズ・上限の 0/1 扱い」および「制御文字・改行のサニタイズ範囲」に絞った再走。

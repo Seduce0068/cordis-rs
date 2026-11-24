@@ -7662,3 +7662,29 @@ fn user_question_wire_structs_ignore_unknown_fields() {
     assert_eq!(answer.answers.len(), 1);
     assert_eq!(answer.answers[0].id, "q1");
 }
+
+#[tokio::test]
+async fn approval_audit_sanitizes_answerer_name() {
+    use cordis_rs::core_services::{ApprovalDecision, ApprovalRequest, ApprovalService, Session};
+
+    let session = Session::new("approval-audit-control", None);
+    let approval = ApprovalService::new().with_session(session.clone());
+    let _answerer = approval.add_answerer(
+        "ev\nil\u{1b}[31m",
+        std::sync::Arc::new(|_req: &ApprovalRequest| Some(ApprovalDecision::Allow)),
+    );
+    approval
+        .request(&ApprovalRequest::new("run", "allow command?"))
+        .unwrap();
+
+    let decided = session
+        .events()
+        .into_iter()
+        .find(|event| event.event_type == "approval/decided")
+        .expect("decided audit event");
+    let name = decided.data["answerer"].as_str().unwrap();
+    // Control characters are stripped so one audit event stays on one line
+    // (swarm review R21-CTL01).
+    assert!(!name.chars().any(|ch| ch.is_control()));
+    assert_eq!(name, "evil[31m");
+}

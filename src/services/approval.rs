@@ -246,7 +246,7 @@ impl ApprovalService {
                 serde_json::json!({
                     "action": audit_text(&req.action),
                     "decision": decision,
-                    "answerer": answerer,
+                    "answerer": audit_text(&answerer),
                     "asked_seq": asked_seq,
                 }),
             );
