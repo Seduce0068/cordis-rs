@@ -420,7 +420,7 @@ status: current
 - [x] **Telemetry event_channel の id overflow で古い disposer が新 channel を消す** — 2026-11-24 記録（R1 判定で Result 化は非互換・saturating_add も完全でないため、ID06 と方針を揃え overflow 未ガードを event_channel の doc 明記、R20 指摘反映）。
 - [ ] **GPUI tag_from_json が未知タグを `<unknown>` に丸めて観測不能** — 根拠 `acp_stream_ui.rs:235-251` / R20-DUAL5-01 / 重大度 low / small
 - [x] **AskRequest の options / multi_select が必須で upstream 互換性が未確認** — 2026-11-24 修正（options と multi_select に #[serde(default)] を付与し最小 payload を受理、既存フィールド埋まり JSON は不変、回帰テスト追加。upstream schema の根拠はローカルに無く未確認として記録、R20 指摘反映）。
-- [ ] **Answer が unknown fields を許す（upstream schema と非対称・要確認）** — 根拠 `src/ports/user_questions.rs:98-101` / R20-DUAL5-03 / 重大度 low / small
+- [x] **Answer が unknown fields を許す（upstream schema と非対称・要確認）** — 2026-11-24 修正（upstream 根拠がローカルに無く推測で後方互換を壊さないため deny_unknown_fields は却下、unknown fields ignored を doc 明記＋回帰テスト追加、R20 指摘反映）。
 - [x] **型付き Event の externally-tagged wire 形が未固定** — 2026-11-24 修正（enum payload が serde の externally tagged 形 `{"Variant":{...}}` で emit→decode 往復することを固定する回帰テスト追加、R20 指摘反映）。
 - [ ] **GPUI entries toggle UI の state 再読込で未知キーの扱いが未固定** — 根拠 `cordis_entries_toggle_ui.rs:843` / R20-DUAL5-05 / 重大度 low / small
 

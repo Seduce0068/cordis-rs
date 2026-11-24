@@ -70,7 +70,9 @@ impl std::fmt::Display for UserQuestionError {
 /// Wire structs below use serde defaults: fields without `Option` or
 /// `#[serde(default)]` are required on deserialization. `options` and
 /// `multi_select` default to an empty list / false so a minimal question
-/// payload is accepted (swarm review R19-DUAL4-05, R20-DUAL5-02).
+/// payload is accepted (swarm review R19-DUAL4-05, R20-DUAL5-02). Unknown
+/// fields are ignored on deserialization, keeping model responses with extra
+/// keys compatible (swarm review R20-DUAL5-03).
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct QuestionOption {
     pub label: String,

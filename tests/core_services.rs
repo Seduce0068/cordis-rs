@@ -7649,3 +7649,16 @@ async fn subagent_try_register_rejects_duplicate_name() {
     assert!(subagents.names().iter().any(|name| name == "worker"));
     first.dispose().await.unwrap();
 }
+
+#[test]
+fn user_question_wire_structs_ignore_unknown_fields() {
+    use cordis_rs::plugin_ports::Answer;
+
+    let with_extra = serde_json::json!({
+        "answers": [{ "id": "q1", "selected": [], "custom": null, "debug": 1 }],
+        "extra_top_level": "ignored"
+    });
+    let answer: Answer = serde_json::from_value(with_extra).unwrap();
+    assert_eq!(answer.answers.len(), 1);
+    assert_eq!(answer.answers[0].id, "q1");
+}
