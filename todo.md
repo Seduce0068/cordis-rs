@@ -424,7 +424,7 @@ status: current
 - [x] **型付き Event の externally-tagged wire 形が未固定** — 2026-11-24 修正（enum payload が serde の externally tagged 形 `{"Variant":{...}}` で emit→decode 往復することを固定する回帰テスト追加、R20 指摘反映）。
 - [x] **GPUI entries toggle UI の state 再読込で未知キーの扱いが未固定** — 2026-11-24 修正（CompositionState は serde derive でなく手書きパースで未知 id も override として保持される契約を doc 明記＋回帰テスト追加。deny_unknown_fields は適用対象が無く将来 entry の設定保持も壊すため却下、R20 指摘反映）。
 
-- [ ] **OutputRing が全バイト不正チャンクで retain_bytes を超えて捨てる** — 根拠 `src/services/jobs.rs:50-61` / R21-LM01 / 重大度 low / small
+- [x] **OutputRing が全バイト不正チャンクで retain_bytes を超えて捨てる** — 2026-11-24 修正（境界調整が全バイト不正で全件ドロップになる場合のみ U+FFFD を先頭に立てて損失を明示、通常の境界調整は R17-PN04 の挙動維持、回帰テスト追加、R21 指摘反映）。
 - [ ] **JobRegistry::new が retain_bytes=0 の丸めを doc 未明記** — 根拠 `src/services/jobs.rs:176-186` / R21-LM02 / 重大度 low / small
 - [ ] **EventLogOptions の validation スタイルが panic と Result で混在** — 根拠 `src/services/telemetry.rs:104-108` / R21-LM04 / 重大度 low / small
 - [ ] **native_tool_executor が max_parallel=0 を 1 に丸める旨を doc 未明記** — 根拠 `src/ports/native_tool_executor.rs:115-116,198` / R21-LM06 / 重大度 low / small

@@ -7712,3 +7712,17 @@ fn otlp_sanitizes_attribute_keys_without_fail_open() {
     assert!(!payload.contains("secret-value"));
     assert!(payload.contains("[redacted]"));
 }
+
+#[test]
+fn job_output_invalid_bytes_do_not_drop_everything() {
+    use cordis_rs::core_services::JobRegistry;
+
+    let registry = JobRegistry::new(2, 1024);
+    let handle = registry.start(None).unwrap();
+    // All-invalid bytes push the UTF-8 boundary adjustment past the
+    // retention cap; the loss must be marked, not drop the whole output
+    // (swarm review R21-LM01).
+    handle.append([0xff; 2000]);
+    let (text, _) = handle.read(0);
+    assert_eq!(text, "\u{fffd}");
+}

@@ -51,13 +51,22 @@ impl OutputRing {
         let mut guard = self.bytes.lock().expect("job output poisoned");
         guard.extend_from_slice(chunk);
         if guard.len() > self.retain_bytes {
-            let mut drop_count = guard.len() - self.retain_bytes;
+            let total = guard.len();
+            let cap = total - self.retain_bytes;
+            let mut drop_count = cap;
             // Never cut in the middle of a UTF-8 sequence: the retained tail
             // would decode with U+FFFD forever (swarm review R17-PN04).
             while drop_count < guard.len() && std::str::from_utf8(&guard[drop_count..]).is_err() {
                 drop_count += 1;
             }
             guard.drain(..drop_count);
+            if drop_count == total {
+                // Every byte was invalid, so the boundary walk reached the
+                // end and would drop the whole output. Mark that loss
+                // explicitly (swarm review R21-LM01); ordinary boundary
+                // adjustments keep the existing R17-PN04 behaviour.
+                guard.splice(0..0, b"\xEF\xBF\xBD".iter().copied());
+            }
         }
     }
 
