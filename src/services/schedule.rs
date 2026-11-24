@@ -74,6 +74,9 @@ impl ScheduleService {
     /// empty strings): this in-memory registry does not validate display text.
     /// Hosts requiring non-empty titles should validate before calling
     /// (swarm review R13-ST04).
+    /// Create a record due at `next_due_ms` (Unix epoch milliseconds, not
+    /// seconds). `due()` takes the same unit for `now_ms` (swarm review
+    /// R19-TM08).
     pub fn create(
         &self,
         title: impl Into<String>,
@@ -154,6 +157,8 @@ impl ScheduleService {
     }
 
     /// Active records whose next delivery time has passed, in id order.
+    /// `now_ms` is a Unix epoch timestamp in milliseconds (swarm review
+    /// R19-TM08).
     pub fn due(&self, now_ms: u64) -> Vec<ScheduleRecord> {
         let guard = self.state.read().expect("schedule state poisoned");
         let mut due: Vec<_> = guard

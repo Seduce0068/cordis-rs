@@ -400,7 +400,7 @@ status: current
 - [x] **telemetry が as_millis() の u128→u64 cast を黙って truncate** — 2026-11-24 修正（u64::try_from(...).unwrap_or(u64::MAX) に変更し、極端な未来時刻でも記録時刻が wrap しないようにした、R19 指摘反映）。
 - [ ] **retry backoff が 2^53 超の max_delay_ms を f64 で丸める** — 根拠 `src/services/retry.rs:122-125` / R19-TM06 / 重大度 low / small
 - [x] **tool_jobs の負の timeout_ms が黙って DEFAULT にフォールバック** — 2026-11-24 修正（キー欠落は DEFAULT、数値だが u64 変換不可は InvalidArgs、非数値も InvalidArgs、正数は clamp のまま、回帰テスト追加、R19 指摘反映）。
-- [ ] **schedule due_ms の単位（Unix ms）が doc 未明記で秒渡しを検出できない** — 根拠 `src/services/schedule.rs:36,81,157-167` / R19-TM08 / 重大度 low / small
+- [x] **schedule due_ms の単位（Unix ms）が doc 未明記で秒渡しを検出できない** — 2026-11-24 修正（create / due の引数が Unix epoch milliseconds であることを doc 明記、既存 due テストが同単位を固定済み、R19 指摘反映）。
 - [ ] **LLM total timeout が budget 値をログに出さない（per-chunk と非対称）** — 根拠 `src/ports/llm_resilience.rs:53-90` / R19-TM09 / 重大度 low / small
 - [ ] **ms u64 と Duration の混在に対する README 単位ガイドが無い** — 根拠 `README.md` / R19-TM10 / 重大度 low / small
 - [x] **StorageHub の空白名が受理され GoalStore/Shell と非対称** — 2026-11-24 修正（try_register_backend / try_define_domain を trim().is_empty() 拒否に揃え、空白名の回帰テスト追加、R19 指摘反映）。
