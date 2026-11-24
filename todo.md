@@ -418,7 +418,7 @@ status: current
 - [ ] **ApprovalService が同名 answerer を二重登録できる** — 根拠 `src/services/approval.rs:152-173` / R20-ID07 / 重大度 low / small
 - [ ] **SubagentRegistry が重複登録を検出できない** — 根拠 `src/services/subagents.rs:57-77` / R20-ID08 / 重大度 low / small
 - [ ] **Telemetry event_channel の id overflow で古い disposer が新 channel を消す** — 根拠 `src/services/telemetry.rs:71-72,232-248` / R20-ID09 / 重大度 low / small
-- [ ] **GPUI tag_from_json が未知タグを '<unknown>' に丸めて観測不能** — 根拠 `acp_stream_ui.rs:235-251` / R20-DUAL5-01 / 重大度 low / small
+- [ ] **GPUI tag_from_json が未知タグを `<unknown>` に丸めて観測不能** — 根拠 `acp_stream_ui.rs:235-251` / R20-DUAL5-01 / 重大度 low / small
 - [ ] **AskRequest の options / multi_select が必須で upstream 互換性が未確認** — 根拠 `src/ports/user_questions.rs:70-95` / R20-DUAL5-02 / 重大度 medium / small
 - [ ] **Answer が unknown fields を許す（upstream schema と非対称・要確認）** — 根拠 `src/ports/user_questions.rs:98-101` / R20-DUAL5-03 / 重大度 low / small
 - [ ] **型付き Event の externally-tagged wire 形が未固定** — 根拠 `src/events.rs:68,86` / R20-DUAL5-04 / 重大度 low / small
