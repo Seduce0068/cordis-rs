@@ -216,6 +216,11 @@ impl Shell {
         let Some(timeout_ms) = request.timeout_ms else {
             return self.run(request);
         };
+        if timeout_ms == 0 {
+            return Err(ShellError::InvalidCommand(
+                "timeout_ms must be positive".to_string(),
+            ));
+        }
         let spec = self.resolve(request)?;
         let mut command = tokio::process::Command::new(&spec.program);
         command.args(&spec.args);

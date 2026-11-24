@@ -396,7 +396,7 @@ status: current
 
 - [x] **validate_refresh_interval が 0 を受理し毎ステップ注入になる** — 2026-11-24 修正（0 拒否はデフォルト設定の TimeContext 生成を壊すため却下、0 = 毎ステップ注入を doc 明記し回帰テスト追加、R19 指摘反映）。
 - [x] **TimeoutPolicy::check が timeout_of を再解決し 0ms メッセージを作り得る** — 2026-11-24 修正（budget を1回だけ解決して期限判定と報告値を一致させ、unwrap_or(0) の自己矛盾メッセージを排除、既存テスト不変、R19 指摘反映）。
-- [ ] **shell with_timeout(0) が即タイムアウトになり hooks 側と非対称** — 根拠 `src/services/shell.rs:39-42,232` / R19-TM03 / 重大度 low / small
+- [x] **shell with_timeout(0) が即タイムアウトになり hooks 側と非対称** — 2026-11-24 修正（run_with_timeout で timeout_ms=0 を InvalidCommand として構造化拒否、builder シグネチャと None/正数は不変、回帰テスト追加、R19 指摘反映）。
 - [x] **telemetry が as_millis() の u128→u64 cast を黙って truncate** — 2026-11-24 修正（u64::try_from(...).unwrap_or(u64::MAX) に変更し、極端な未来時刻でも記録時刻が wrap しないようにした、R19 指摘反映）。
 - [ ] **retry backoff が 2^53 超の max_delay_ms を f64 で丸める** — 根拠 `src/services/retry.rs:122-125` / R19-TM06 / 重大度 low / small
 - [x] **tool_jobs の負の timeout_ms が黙って DEFAULT にフォールバック** — 2026-11-24 修正（キー欠落は DEFAULT、数値だが u64 変換不可は InvalidArgs、非数値も InvalidArgs、正数は clamp のまま、回帰テスト追加、R19 指摘反映）。

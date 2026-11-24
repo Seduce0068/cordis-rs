@@ -7439,3 +7439,17 @@ fn time_context_zero_refresh_interval_means_every_step() {
     ctx.mark_injected(100);
     assert!(ctx.should_inject(100));
 }
+
+#[tokio::test]
+async fn shell_run_with_timeout_rejects_zero() {
+    use cordis_rs::core_services::{ShellError, ShellRequest, provide_shell};
+
+    let ctx = Context::root("shell-zero-timeout");
+    let shell = provide_shell(&ctx).await.unwrap();
+    let request = ShellRequest::new("echo".to_string()).with_timeout(0);
+    let error = shell.run_with_timeout(&request).await.unwrap_err();
+    assert!(
+        matches!(error, ShellError::InvalidCommand(ref msg) if msg.contains("must be positive")),
+        "unexpected error: {error}"
+    );
+}
