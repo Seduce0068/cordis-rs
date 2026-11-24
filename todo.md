@@ -406,7 +406,7 @@ status: current
 - [x] **StorageHub の空白名が受理され GoalStore/Shell と非対称** — 2026-11-24 修正（try_register_backend / try_define_domain を trim().is_empty() 拒否に揃え、空白名の回帰テスト追加、R19 指摘反映）。
 - [ ] **SessionQueryEngine::search の Unicode 正規化が text_search と非対称** — 根拠 `src/services/session_query.rs:111,121` / R19-DUAL4-02 / 重大度 low / small
 - [x] **CredentialProvider::set が空白値を受理し resolve も解決可能** — 2026-11-24 修正（set と resolve の両方で空白値を未設定扱いに統一、空白値が拒否され real 値は前後空白保持で解決する回帰テスト追加、R19 指摘反映）。
-- [ ] **GPUI secret mask と OTLP redaction の大小文字扱いが非対称（要確認）** — 根拠 `acp_llm_probe.rs:237` / R19-DUAL4-04 / 重大度 medium / small
+- [x] **GPUI secret mask と OTLP redaction の大小文字扱いが非対称（要確認）** — R6 Runtime Proof で誤検知と判定（GPUI は denylist の大小無視、OTLP は allowlist の大小厳密で役割が逆。いずれも大小違いのキーを redact 側に倒し漏洩方向の非対称なし。case-insensitive 化は fail-open 化するため現状維持）。
 - [ ] **user_questions の serde 必須フィールド契約が doc/テスト未固定** — 根拠 `src/ports/user_questions.rs:70-104` / R19-DUAL4-05 / 重大度 low / small
 - [ ] **ToolRegistry / CommandRegistry が空名を検証せず登録** — 根拠 `src/services/tools.rs:189-207, commands.rs:100-123` / R19-DUAL4-06 / 重大度 low / small
 
