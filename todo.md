@@ -429,7 +429,7 @@ status: current
 - [ ] **EventLogOptions の validation スタイルが panic と Result で混在** — 根拠 `src/services/telemetry.rs:104-108` / R21-LM04 / 重大度 low / small
 - [ ] **native_tool_executor が max_parallel=0 を 1 に丸める旨を doc 未明記** — 根拠 `src/ports/native_tool_executor.rs:115-116,198` / R21-LM06 / 重大度 low / small
 - [ ] **jobs::start が max_concurrent=0 で「停止」を表現できない** — 根拠 `src/services/jobs.rs:176-186,193` / R21-LM08 / 重大度 low / small
-- [ ] **GPUI permission UI が tool args の改行で行を偽造できる** — 根拠 `cordis_permission_ui.rs:260,263-266,279` / R21-CTL02 / 重大度 medium / small
+- [x] **GPUI permission UI が tool args の改行で行を偽造できる** — 2026-11-24 修正（display_text ヘルパで制御文字を空白化し表示箇所に適用、色分け判定は元文字列のまま、通常文字列は不変、回帰テスト追加、R21 指摘反映）。
 - [ ] **GPUI status_line / error 系が改行入りエラーでレイアウト崩れ** — 根拠 `cordis_composition_toggle_ui.rs:21-31, cordis_title_ui.rs:33` / R21-CTL03 / 重大度 low / small
 - [x] **OTLP が attribute key の制御文字を除去していない** — 2026-11-24 修正（出力する attribute key のみ is_control 除去＋truncate。allowlist 判定は元 key のままで `"too\nl"` が `"tool"` に化けて fail-open しないことを回帰テストで固定、R21 指摘反映）。
 - [ ] **UI 表示で空文字と空白のみが区別されない** — 根拠 `acp_stream_ui.rs:211, cordis_agent_ui.rs:239` / R21-CTL05 / 重大度 low / small
