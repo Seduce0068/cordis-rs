@@ -67,6 +67,9 @@ impl std::fmt::Display for UserQuestionError {
     }
 }
 
+/// Wire structs below use serde defaults: fields without `Option` are
+/// required on deserialization; only `Option` fields may be omitted
+/// (swarm review R19-DUAL4-05).
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct QuestionOption {
     pub label: String,

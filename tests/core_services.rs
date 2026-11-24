@@ -7453,3 +7453,14 @@ async fn shell_run_with_timeout_rejects_zero() {
         "unexpected error: {error}"
     );
 }
+
+#[test]
+fn user_question_wire_fields_are_required_unless_optional() {
+    use cordis_rs::plugin_ports::Answer;
+
+    // `answers` is required; omitting it must fail rather than default.
+    let missing = serde_json::json!({});
+    assert!(serde_json::from_value::<Answer>(missing).is_err());
+    let valid = serde_json::json!({ "answers": [] });
+    assert!(serde_json::from_value::<Answer>(valid).is_ok());
+}
