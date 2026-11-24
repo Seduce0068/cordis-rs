@@ -425,10 +425,10 @@ status: current
 - [x] **GPUI entries toggle UI の state 再読込で未知キーの扱いが未固定** — 2026-11-24 修正（CompositionState は serde derive でなく手書きパースで未知 id も override として保持される契約を doc 明記＋回帰テスト追加。deny_unknown_fields は適用対象が無く将来 entry の設定保持も壊すため却下、R20 指摘反映）。
 
 - [x] **OutputRing が全バイト不正チャンクで retain_bytes を超えて捨てる** — 2026-11-24 修正（境界調整が全バイト不正で全件ドロップになる場合のみ U+FFFD を先頭に立てて損失を明示、通常の境界調整は R17-PN04 の挙動維持、回帰テスト追加、R21 指摘反映）。
-- [ ] **JobRegistry::new が retain_bytes=0 の丸めを doc 未明記** — 根拠 `src/services/jobs.rs:176-186` / R21-LM02 / 重大度 low / small
+- [x] **JobRegistry::new が retain_bytes=0 の丸めを doc 未明記** — 2026-11-24 修正（max_concurrent>=1 / retain_bytes>=1024 の clamp と「0 は停止・保持なしを表せない」旨を new() の doc 明記、既存テストが clamp を固定済み、R21 指摘反映）。
 - [ ] **EventLogOptions の validation スタイルが panic と Result で混在** — 根拠 `src/services/telemetry.rs:104-108` / R21-LM04 / 重大度 low / small
 - [ ] **native_tool_executor が max_parallel=0 を 1 に丸める旨を doc 未明記** — 根拠 `src/ports/native_tool_executor.rs:115-116,198` / R21-LM06 / 重大度 low / small
-- [ ] **jobs::start が max_concurrent=0 で「停止」を表現できない** — 根拠 `src/services/jobs.rs:176-186,193` / R21-LM08 / 重大度 low / small
+- [x] **jobs::start が max_concurrent=0 で「停止」を表現できない** — 2026-11-24 修正（LM02 と同じ new() の doc で 0 は 1 に丸められ停止を表せない旨を明記、専用 gate を使うよう案内、API 変更は後方互換のため見送り、R21 指摘反映）。
 - [x] **GPUI permission UI が tool args の改行で行を偽造できる** — 2026-11-24 修正（display_text ヘルパで制御文字を空白化し表示箇所に適用、色分け判定は元文字列のまま、通常文字列は不変、回帰テスト追加、R21 指摘反映）。
 - [ ] **GPUI status_line / error 系が改行入りエラーでレイアウト崩れ** — 根拠 `cordis_composition_toggle_ui.rs:21-31, cordis_title_ui.rs:33` / R21-CTL03 / 重大度 low / small
 - [x] **OTLP が attribute key の制御文字を除去していない** — 2026-11-24 修正（出力する attribute key のみ is_control 除去＋truncate。allowlist 判定は元 key のままで `"too\nl"` が `"tool"` に化けて fail-open しないことを回帰テストで固定、R21 指摘反映）。

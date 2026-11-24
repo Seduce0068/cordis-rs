@@ -182,6 +182,10 @@ pub struct JobRegistry {
 }
 
 impl JobRegistry {
+    /// Create a registry. `max_concurrent` is clamped to at least 1 and
+    /// `retain_bytes` to at least 1024; zero cannot express "paused" or
+    /// "no retention" — use a separate gate to stop accepting jobs
+    /// (swarm review R21-LM02, R21-LM08).
     pub fn new(max_concurrent: usize, retain_bytes: usize) -> Self {
         Self {
             state: Arc::new(RwLock::new(RegistryState {
