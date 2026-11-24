@@ -7726,3 +7726,23 @@ fn job_output_invalid_bytes_do_not_drop_everything() {
     let (text, _) = handle.read(0);
     assert_eq!(text, "\u{fffd}");
 }
+
+#[test]
+fn fallible_cap_builders_reject_zero() {
+    use cordis_rs::core_services::{EventLogOptions, EventLogReporter, PlanMode};
+
+    // Result variants let hosts handle a zero cap without catching a panic
+    // (swarm review R21-LM04).
+    assert!(
+        EventLogReporter::new("zero-cap", EventLogOptions::default())
+            .try_with_max_counters(0)
+            .is_err()
+    );
+    assert!(
+        EventLogReporter::new("ok-cap", EventLogOptions::default())
+            .try_with_max_counters(10)
+            .is_ok()
+    );
+    assert!(PlanMode::default().try_with_max_events(0).is_err());
+    assert!(PlanMode::default().try_with_max_events(10).is_ok());
+}

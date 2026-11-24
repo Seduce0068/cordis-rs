@@ -99,14 +99,25 @@ impl EventLogReporter {
         }
     }
 
-    /// Override the distinct-counter cap (builder, keeps EventLogOptions
-    /// struct literals unchanged).
-    pub fn with_max_counters(mut self, max_counters: usize) -> Self {
-        // Fail fast on a zero cap, consistent with EventLogOptions::validate
-        // (swarm review R2-CF03).
-        assert!(max_counters > 0, "max_counters must be positive");
+    /// Fallible variant of [`Self::with_max_counters`]: a zero cap returns
+    /// `Err` instead of panicking (swarm review R21-LM04).
+    pub fn try_with_max_counters(
+        mut self,
+        max_counters: usize,
+    ) -> std::result::Result<Self, TelemetryError> {
+        if max_counters == 0 {
+            return Err(TelemetryError::InvalidOptions);
+        }
         self.max_counters = max_counters;
-        self
+        Ok(self)
+    }
+
+    /// Override the distinct-counter cap (builder, keeps EventLogOptions
+    /// struct literals unchanged). Panics on zero; use
+    /// [`Self::try_with_max_counters`] to handle that case.
+    pub fn with_max_counters(self, max_counters: usize) -> Self {
+        self.try_with_max_counters(max_counters)
+            .expect("max_counters must be positive")
     }
 
     pub fn name(&self) -> &str {

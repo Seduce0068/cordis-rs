@@ -61,11 +61,21 @@ impl PlanMode {
         Self::default()
     }
 
-    /// Override the retained-event cap (builder keeps `new()` unchanged).
-    pub fn with_max_events(mut self, max_events: usize) -> Self {
-        assert!(max_events > 0, "max_events must be positive");
+    /// Fallible variant of [`Self::with_max_events`]: a zero cap returns
+    /// `Err` instead of panicking (swarm review R21-LM04).
+    pub fn try_with_max_events(mut self, max_events: usize) -> std::result::Result<Self, String> {
+        if max_events == 0 {
+            return Err("max_events must be positive".to_string());
+        }
         self.max_events = max_events;
-        self
+        Ok(self)
+    }
+
+    /// Override the retained-event cap (builder keeps `new()` unchanged).
+    /// Panics on zero; use [`Self::try_with_max_events`] to handle that case.
+    pub fn with_max_events(self, max_events: usize) -> Self {
+        self.try_with_max_events(max_events)
+            .expect("max_events must be positive")
     }
 
     /// Append a plan/mode event. Last event wins when folding. An empty

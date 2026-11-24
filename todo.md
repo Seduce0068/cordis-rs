@@ -426,7 +426,7 @@ status: current
 
 - [x] **OutputRing が全バイト不正チャンクで retain_bytes を超えて捨てる** — 2026-11-24 修正（境界調整が全バイト不正で全件ドロップになる場合のみ U+FFFD を先頭に立てて損失を明示、通常の境界調整は R17-PN04 の挙動維持、回帰テスト追加、R21 指摘反映）。
 - [x] **JobRegistry::new が retain_bytes=0 の丸めを doc 未明記** — 2026-11-24 修正（max_concurrent>=1 / retain_bytes>=1024 の clamp と「0 は停止・保持なしを表せない」旨を new() の doc 明記、既存テストが clamp を固定済み、R21 指摘反映）。
-- [ ] **EventLogOptions の validation スタイルが panic と Result で混在** — 根拠 `src/services/telemetry.rs:104-108` / R21-LM04 / 重大度 low / small
+- [x] **EventLogOptions の validation スタイルが panic と Result で混在** — 2026-11-24 修正（try_with_max_counters / try_with_max_events を追加して既存 assert 版は adapter として維持、repo の try_ パターンに統一、回帰テスト追加、R21 指摘反映）。
 - [x] **native_tool_executor が max_parallel=0 を 1 に丸める旨を doc 明記** — 2026-11-24 修正（with_max_parallel と mount の doc に「0 は 1 に clamp され execution 無効は表現できない」と明記、既存テストが clamp を固定済み、R21 指摘反映）。
 - [x] **jobs::start が max_concurrent=0 で「停止」を表現できない** — 2026-11-24 修正（LM02 と同じ new() の doc で 0 は 1 に丸められ停止を表せない旨を明記、専用 gate を使うよう案内、API 変更は後方互換のため見送り、R21 指摘反映）。
 - [x] **GPUI permission UI が tool args の改行で行を偽造できる** — 2026-11-24 修正（display_text ヘルパで制御文字を空白化し表示箇所に適用、色分け判定は元文字列のまま、通常文字列は不変、回帰テスト追加、R21 指摘反映）。
