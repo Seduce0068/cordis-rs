@@ -403,7 +403,7 @@ status: current
 - [ ] **schedule due_ms の単位（Unix ms）が doc 未明記で秒渡しを検出できない** — 根拠 `src/services/schedule.rs:36,81,157-167` / R19-TM08 / 重大度 low / small
 - [ ] **LLM total timeout が budget 値をログに出さない（per-chunk と非対称）** — 根拠 `src/ports/llm_resilience.rs:53-90` / R19-TM09 / 重大度 low / small
 - [ ] **ms u64 と Duration の混在に対する README 単位ガイドが無い** — 根拠 `README.md` / R19-TM10 / 重大度 low / small
-- [ ] **StorageHub の空白名が受理され GoalStore/Shell と非対称** — 根拠 `src/services/storage.rs:148,187,193` / R19-DUAL4-01 / 重大度 medium / small
+- [x] **StorageHub の空白名が受理され GoalStore/Shell と非対称** — 2026-11-24 修正（try_register_backend / try_define_domain を trim().is_empty() 拒否に揃え、空白名の回帰テスト追加、R19 指摘反映）。
 - [ ] **SessionQueryEngine::search の Unicode 正規化が text_search と非対称** — 根拠 `src/services/session_query.rs:111,121` / R19-DUAL4-02 / 重大度 low / small
 - [ ] **CredentialProvider::set が空白値を受理し resolve も解決可能** — 根拠 `src/services/credentials.rs:98,126-138` / R19-DUAL4-03 / 重大度 medium / small
 - [ ] **GPUI secret mask と OTLP redaction の大小文字扱いが非対称（要確認）** — 根拠 `acp_llm_probe.rs:237` / R19-DUAL4-04 / 重大度 medium / small

@@ -145,7 +145,7 @@ impl StorageHub {
         backend: MemoryBackend,
     ) -> std::result::Result<(), StorageError> {
         let name = name.into();
-        if name.is_empty() {
+        if name.trim().is_empty() {
             return Err(StorageError::InvalidBackend {
                 backend: name,
                 reason: "name must not be empty".to_string(),
@@ -184,7 +184,7 @@ impl StorageHub {
     /// Validating variant of [`Self::define_domain`]: rejects empty names,
     /// empty `required_fields`, and duplicate domains (swarm review R10-IV01).
     pub fn try_define_domain(&self, spec: DomainSpec) -> std::result::Result<(), StorageError> {
-        if spec.name.is_empty() {
+        if spec.name.trim().is_empty() {
             return Err(StorageError::InvalidDomain {
                 domain: spec.name,
                 reason: "name must not be empty".to_string(),

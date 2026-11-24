@@ -7391,3 +7391,21 @@ fn otel_timestamp_overflow_saturates() {
     // The wrapped (release-mode) product would be 2^64 - 1_000_000.
     assert!(!rendered.contains(&(u64::MAX - 999_999).to_string()));
 }
+
+#[test]
+fn storage_rejects_whitespace_only_names() {
+    use cordis_rs::core_services::{DomainSpec, MemoryBackend, StorageError, StorageHub};
+
+    let hub = StorageHub::default();
+    assert!(matches!(
+        hub.try_register_backend("   ", MemoryBackend::default()),
+        Err(StorageError::InvalidBackend { .. })
+    ));
+    assert!(matches!(
+        hub.try_define_domain(DomainSpec {
+            name: "   ".to_string(),
+            required_fields: vec!["id".to_string()],
+        }),
+        Err(StorageError::InvalidDomain { .. })
+    ));
+}
