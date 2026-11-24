@@ -422,7 +422,7 @@ status: current
 - [x] **AskRequest の options / multi_select が必須で upstream 互換性が未確認** — 2026-11-24 修正（options と multi_select に #[serde(default)] を付与し最小 payload を受理、既存フィールド埋まり JSON は不変、回帰テスト追加。upstream schema の根拠はローカルに無く未確認として記録、R20 指摘反映）。
 - [x] **Answer が unknown fields を許す（upstream schema と非対称・要確認）** — 2026-11-24 修正（upstream 根拠がローカルに無く推測で後方互換を壊さないため deny_unknown_fields は却下、unknown fields ignored を doc 明記＋回帰テスト追加、R20 指摘反映）。
 - [x] **型付き Event の externally-tagged wire 形が未固定** — 2026-11-24 修正（enum payload が serde の externally tagged 形 `{"Variant":{...}}` で emit→decode 往復することを固定する回帰テスト追加、R20 指摘反映）。
-- [ ] **GPUI entries toggle UI の state 再読込で未知キーの扱いが未固定** — 根拠 `cordis_entries_toggle_ui.rs:843` / R20-DUAL5-05 / 重大度 low / small
+- [x] **GPUI entries toggle UI の state 再読込で未知キーの扱いが未固定** — 2026-11-24 修正（CompositionState は serde derive でなく手書きパースで未知 id も override として保持される契約を doc 明記＋回帰テスト追加。deny_unknown_fields は適用対象が無く将来 entry の設定保持も壊すため却下、R20 指摘反映）。
 
 ## 完了
 
@@ -469,3 +469,4 @@ status: current
 - **R18 コンボ（round 327）で DUAL3-02 を修正**: acknowledge の doc 冒頭を実装（drain + cursor rebase）に合わせ、through=usize::MAX の clamp テストを追加（2026-11-24）。
 - **R19 コンボ（round 342）**: specialist 2体から16件取得。TM04 は即修正（ms→ns 乗算を saturating_mul に）、残り15件を追記。観点を「時刻・期間の単位変換と境界」および「空白・大小文字・serde 既定値の非対称」に絞った再走。
 - **R20 コンボ（round 357）**: specialist 2体から15件取得。ID03 は即修正（同 rank を last-write-wins に統一）、残り14件を追記。観点を「ID/名前の衝突・一意性・順序契約」および「serde 表現安定性と読む側の対応」に絞った再走。ID01/ID10 は Runtime Proof で却下候補。
+- **R20 コンボ（round 357）完結**: 15件取得、ID03 / DUAL5-02 / ID05 / ID04 / ID01 / ID06 / ID09 / ID07 / ID08 / DUAL5-04 / ID02 / DUAL5-03 / DUAL5-01 / DUAL5-05 を処理（うち却下・既存固定 5件）。

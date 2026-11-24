@@ -1540,3 +1540,25 @@ entries:
     // The YAML parser echoes the original expression in the error, so the
     // key assertion is the explicit "nested interpolation" reason above.
 }
+
+#[test]
+fn composition_state_keeps_overrides_for_unknown_ids() {
+    use cordis_rs::loader::CompositionState;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let dir = std::env::temp_dir().join(format!("cordis-state-unknown-{unique}"));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("state.json");
+    std::fs::write(&path, r#"{"future-id": false, "known": true}"#).unwrap();
+
+    let state = CompositionState::try_load(&path).unwrap();
+    // Unknown ids are retained as overrides rather than rejected
+    // (swarm review R20-DUAL5-05).
+    assert_eq!(state.overrides.get("future-id"), Some(&false));
+    assert_eq!(state.overrides.get("known"), Some(&true));
+    std::fs::remove_dir_all(&dir).unwrap();
+}

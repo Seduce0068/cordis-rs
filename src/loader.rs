@@ -257,7 +257,9 @@ impl CompositionState {
 
     /// Load overrides, surfacing corruption instead of silently falling back
     /// to YAML defaults (a saved `false` must not become enabled on restart).
-    /// A missing file is a fresh start (`Ok` with empty overrides).
+    /// A missing file is a fresh start (`Ok` with empty overrides). Keys absent
+    /// from the current YAML are kept as overrides (no schema allowlist); only
+    /// non-boolean values are rejected (swarm review R20-DUAL5-05).
     pub fn try_load(path: impl AsRef<std::path::Path>) -> std::result::Result<Self, LoaderError> {
         let path = path.as_ref();
         let text = match std::fs::read_to_string(path) {
