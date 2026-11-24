@@ -112,6 +112,8 @@ impl NativeToolExecutor {
         }
     }
 
+    /// Set the parallelism cap. Zero is clamped to 1 (never zero-parallel),
+    /// so it cannot express "disable execution" (swarm review R21-LM06).
     pub fn with_max_parallel(mut self, max_parallel: usize) -> Self {
         self.max_parallel = max_parallel.max(1);
         self
@@ -194,7 +196,8 @@ impl crate::Plugin for NativeToolExecutorPlugin {
     }
 }
 
-/// Mount the executor selector service on a context.
+/// Mount the executor selector service on a context. `max_parallel` is
+/// clamped to at least 1 by `with_max_parallel` (swarm review R21-LM06).
 pub async fn mount(ctx: &Context, max_parallel: usize) -> Result<NativeToolExecutor> {
     let tools = ctx.require::<ToolRegistry>("tools").await?;
     let pipeline = ctx.get::<ToolPipeline>("toolPipeline");
