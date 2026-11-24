@@ -380,7 +380,7 @@ status: current
 
 - [x] **TimeoutPolicy::default_timeout_ms の None 意味が service/port で食い違う** — R6 Runtime Proof で誤検知と判定（service の「no timeout」と port の「pass through」は同じ contract、単一の timeout_of に集約され port 側に独自既定なし、None/Some(0)→None は既存テスト固定済み）。
 - [x] **SessionQueryEngine::trace の 'in seq order' が seq 飛び時に保証されない** — R6 Runtime Proof で誤検知と判定（append_with_seq が seq <= next_seq を拒否し log.events は常に seq 単調、trace はそのまま clone するだけ。「seq order」は昇順の意味で連続の意味ではない、gap 単調は既存 restore テスト固定済み）。
-- [ ] **GPUI resolve_patch_path の非 UTF-8 パス扱いが未定義** — 根拠 `dsh-gpui-client-poc/src/bin/acp_llm_probe.rs:170-180` / R18-DUAL3-04 / 重大度 low / small
+- [x] **GPUI resolve_patch_path の非 UTF-8 パス扱いが未定義** — R6 Runtime Proof で誤検知と判定（OsString を Path::new に直接渡し is_file チェック後そのまま返すロスレス経路、to_string_lossy 未使用、エラーは {:?} で escape 表示。非 UTF-8 は既に正しく扱われており、lossy 化を入れる提案は逆に有害）。
 - [x] **fs read_window の clamp が total_lines に効くか未固定** — 2026-11-24 修正（clamp は保持行のみに効き total_lines は全行を数える契約を doc 明記、READ_LIMIT 超のファイルで固定する回帰テスト追加、R18 指摘反映）。
 - [x] **retry should_retry_message が error_code() を経由するか未固定** — 2026-11-24 修正（Runtime Proof で経由を確認し、ラベル付き HTTP コードは Retry／「retry in 500ms」は Stop を固定する回帰テスト追加、R18 指摘反映）。
 - [x] **PruneError::RemovalNotFound が生成箇所ゼロのデッド契約** — 2026-11-24 修正（reserved／現在は未 emit を doc 明記、バリアント削除による後方互換破壊は回避、R18 指摘反映）。
