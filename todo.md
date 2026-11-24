@@ -390,7 +390,7 @@ status: current
 - [x] **FsError の PartialEq が cause を無視する契約が doc 未明記** — 2026-11-24 修正（安定した分類フィールドのみで比較し cause は除外する意図を doc 明記、別 Arc インスタンスが等しい回帰テスト追加、R18 指摘反映）。
 - [x] **RawTodo::new が検証を to_todo_list に遅延する旨が doc 未明記** — 2026-11-24 修正（検証遅延の契約を doc 明記、不正値が constructor を通り to_todo_list で拒否される回帰テスト追加、R18 指摘反映）。
 - [x] **ToolExecution::agent("") が空名を受理し anonymous と区別される** — 2026-11-24 修正（空／空白名を None に正規化し anonymous と同一視、正常名は前後空白含めて不変、回帰テスト追加、R18 指摘反映）。
-- [ ] **PresetSpec が pub フィールドで register が内容を検証しない** — 根拠 `src/services/permission_presets.rs:93-99,193-218` / R18-BD03 / 重大度 low / small
+- [x] **PresetSpec が pub フィールドで register が内容を検証しない** — 2026-11-24 修正（sandbox/approval は enum で型保証、label/description は optional メタデータで検証不要という設計を doc 明記、None の spec が通る回帰テスト追加、R18 指摘反映）。
 - [x] **TokenMeter::new が budget=0 を 1 に丸める意図が doc 未明記** — 2026-11-24 修正（0 → 1 の丸めが pressure を有限にし fail-closed にする意図を doc 明記、finite 性の回帰テスト追加、R18 指摘反映）。
 - [x] **acknowledge の doc 冒頭が実装と逆だった（DUAL3-02 修正済みの記録）** — R18-DUAL3-02 / 完了済み（2026-11-24、ドキュメント＋clamp テスト）
 

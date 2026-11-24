@@ -7357,3 +7357,20 @@ fn shell_error_exposes_timeout_ms_structurally() {
         None
     );
 }
+
+#[test]
+fn preset_spec_optional_metadata_is_accepted() {
+    use cordis_rs::core_services::{ApprovalPolicy, PermissionPresets, PresetSpec, SandboxMode};
+
+    let presets = PermissionPresets::default();
+    let spec = PresetSpec {
+        sandbox: SandboxMode::ReadOnly,
+        approval: ApprovalPolicy::Never,
+        label: None,
+        description: None,
+    };
+    // `label`/`description` are optional metadata; no content validation is
+    // needed because the enums already guarantee their value domain
+    // (swarm review R18-BD03).
+    assert!(presets.try_register("custom", spec).is_ok());
+}

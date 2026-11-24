@@ -200,6 +200,9 @@ impl PermissionPresets {
 
     /// Register a custom preset, rejecting a built-in name so a caller cannot
     /// silently change the meaning of `read-only` etc. (swarm review R8-AP01).
+    /// The spec contents need no validation: `sandbox`/`approval` are typed
+    /// enums and `label`/`description` are optional metadata (swarm review
+    /// R18-BD03).
     pub fn try_register(
         &self,
         name: impl Into<String>,
