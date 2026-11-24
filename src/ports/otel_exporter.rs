@@ -191,7 +191,7 @@ pub fn otlp_payload_with_timestamps(
             "scopeLogs": [{
                 "logRecords": safe.iter().enumerate().map(|(index, record)| serde_json::json!({
                     "timeUnixNano": timestamps_ms.get(index)
-                        .map(|ms| (ms * 1_000_000).to_string())
+                        .map(|ms| ms.saturating_mul(1_000_000).to_string())
                         .unwrap_or_else(|| now_ns.clone()),
                     "severityNumber": 9,
                     "name": record.name,

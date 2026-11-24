@@ -394,6 +394,22 @@ status: current
 - [x] **TokenMeter::new が budget=0 を 1 に丸める意図が doc 未明記** — 2026-11-24 修正（0 → 1 の丸めが pressure を有限にし fail-closed にする意図を doc 明記、finite 性の回帰テスト追加、R18 指摘反映）。
 - [x] **acknowledge の doc 冒頭が実装と逆だった（DUAL3-02 修正済みの記録）** — R18-DUAL3-02 / 完了済み（2026-11-24、ドキュメント＋clamp テスト）
 
+- [ ] **validate_refresh_interval が 0 を受理し毎ステップ注入になる** — 根拠 `src/services/time_context.rs:13-24,84-88` / R19-TM01 / 重大度 low / small
+- [ ] **TimeoutPolicy::check が timeout_of を再解決し 0ms メッセージを作り得る** — 根拠 `src/services/timeout_policy.rs:37-56` / R19-TM02 / 重大度 low / small
+- [ ] **shell with_timeout(0) が即タイムアウトになり hooks 側と非対称** — 根拠 `src/services/shell.rs:39-42,232` / R19-TM03 / 重大度 low / small
+- [ ] **telemetry が as_millis() の u128→u64 cast を黙って truncate** — 根拠 `src/services/telemetry.rs:134-137` / R19-TM05 / 重大度 low / small
+- [ ] **retry backoff が 2^53 超の max_delay_ms を f64 で丸める** — 根拠 `src/services/retry.rs:122-125` / R19-TM06 / 重大度 low / small
+- [ ] **tool_jobs の負の timeout_ms が黙って DEFAULT にフォールバック** — 根拠 `src/ports/tool_jobs.rs:52-56` / R19-TM07 / 重大度 low / small
+- [ ] **schedule due_ms の単位（Unix ms）が doc 未明記で秒渡しを検出できない** — 根拠 `src/services/schedule.rs:36,81,157-167` / R19-TM08 / 重大度 low / small
+- [ ] **LLM total timeout が budget 値をログに出さない（per-chunk と非対称）** — 根拠 `src/ports/llm_resilience.rs:53-90` / R19-TM09 / 重大度 low / small
+- [ ] **ms u64 と Duration の混在に対する README 単位ガイドが無い** — 根拠 `README.md` / R19-TM10 / 重大度 low / small
+- [ ] **StorageHub の空白名が受理され GoalStore/Shell と非対称** — 根拠 `src/services/storage.rs:148,187,193` / R19-DUAL4-01 / 重大度 medium / small
+- [ ] **SessionQueryEngine::search の Unicode 正規化が text_search と非対称** — 根拠 `src/services/session_query.rs:111,121` / R19-DUAL4-02 / 重大度 low / small
+- [ ] **CredentialProvider::set が空白値を受理し resolve も解決可能** — 根拠 `src/services/credentials.rs:98,126-138` / R19-DUAL4-03 / 重大度 medium / small
+- [ ] **GPUI secret mask と OTLP redaction の大小文字扱いが非対称（要確認）** — 根拠 `acp_llm_probe.rs:237` / R19-DUAL4-04 / 重大度 medium / small
+- [ ] **user_questions の serde 必須フィールド契約が doc/テスト未固定** — 根拠 `src/ports/user_questions.rs:70-104` / R19-DUAL4-05 / 重大度 low / small
+- [ ] **ToolRegistry / CommandRegistry が空名を検証せず登録** — 根拠 `src/services/tools.rs:189-207, commands.rs:100-123` / R19-DUAL4-06 / 重大度 low / small
+
 ## 完了
 
 - [x] `todo.md` をプロジェクト内へ配置（2026-11-17）
@@ -437,3 +453,4 @@ status: current
 - **swarm コンボ R6 集約（2026-11-24、round 297）**: specialist 2体から16件取得。R6 で path:line を Runtime Proof で確認し、3件を除外（RA07 は前回 doc 明記済み、RA10 は実害なし、DUAL05 は前回対処済み）し13件を追記。観点を「直近修正ラッシュの残余非対称」と「片側だけ更新されたエラー型・状態」に絞った再走。
 - **swarm コンボ R6 集約（2026-11-24、round 311）**: specialist 2体から16件取得。PN01 は即修正、PN05 は Runtime Proof で panic 経路なしとして除外、残り14件を追記（追記処理の欠落を round 312 で検出して補完）。観点を「公開 API の panic 経路」と「未固定の Err/None 分岐」に絞った再走。
 - **R18 コンボ（round 327）で DUAL3-02 を修正**: acknowledge の doc 冒頭を実装（drain + cursor rebase）に合わせ、through=usize::MAX の clamp テストを追加（2026-11-24）。
+- **R19 コンボ（round 342）**: specialist 2体から16件取得。TM04 は即修正（ms→ns 乗算を saturating_mul に）、残り15件を追記。観点を「時刻・期間の単位変換と境界」および「空白・大小文字・serde 既定値の非対称」に絞った再走。

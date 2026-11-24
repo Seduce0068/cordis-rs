@@ -7374,3 +7374,20 @@ fn preset_spec_optional_metadata_is_accepted() {
     // (swarm review R18-BD03).
     assert!(presets.try_register("custom", spec).is_ok());
 }
+
+#[test]
+fn otel_timestamp_overflow_saturates() {
+    use cordis_rs::core_services::EventRecord;
+    use cordis_rs::plugin_ports::otlp_payload_with_timestamps;
+
+    let record = EventRecord {
+        name: "x".to_string(),
+        attributes: std::collections::HashMap::new(),
+        seq: 1,
+    };
+    let payload = otlp_payload_with_timestamps(&[record], &[u64::MAX]);
+    let rendered = payload.to_string();
+    assert!(rendered.contains(&u64::MAX.to_string()));
+    // The wrapped (release-mode) product would be 2^64 - 1_000_000.
+    assert!(!rendered.contains(&(u64::MAX - 999_999).to_string()));
+}
