@@ -7605,3 +7605,28 @@ async fn otel_channel_names_follow_registration_order() {
     // Registration order is the documented contract (swarm review R20-ID01).
     assert_eq!(otel.channel_names(), ["a", "b"]);
 }
+
+#[tokio::test]
+async fn approval_duplicate_answerer_names_are_allowed() {
+    use cordis_rs::core_services::{
+        ApprovalDecision, ApprovalMode, ApprovalRequest, ApprovalService,
+    };
+    use std::sync::Arc;
+
+    let approval = ApprovalService::default();
+    approval.set_policy(ApprovalMode::Ask);
+    let first = approval.add_answerer("dup", Arc::new(|_| Some(ApprovalDecision::Deny)));
+    let second = approval.add_answerer("dup", Arc::new(|_| Some(ApprovalDecision::Allow)));
+    // Later registration is asked first regardless of the shared name
+    // (swarm review R20-ID07).
+    let outcome = approval
+        .request(&ApprovalRequest::new("test", "description"))
+        .unwrap();
+    assert_eq!(outcome.decision, ApprovalDecision::Allow);
+    second.dispose().await.unwrap();
+    let outcome = approval
+        .request(&ApprovalRequest::new("test", "description"))
+        .unwrap();
+    assert_eq!(outcome.decision, ApprovalDecision::Deny);
+    first.dispose().await.unwrap();
+}

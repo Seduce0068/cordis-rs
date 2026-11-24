@@ -151,6 +151,8 @@ impl ApprovalService {
 
     /// Register an answerer. Higher-priority (larger id) answerers are asked
     /// first, mirroring the upstream waterfall's most-recent-listener order.
+    /// `name` is informational only: duplicate names are allowed and do not
+    /// affect waterfall order (swarm review R20-ID07).
     pub fn add_answerer(&self, name: impl Into<String>, answerer: Answerer) -> Disposer {
         let state = self.state.clone();
         let mut guard = state.write().expect("approval state poisoned");
