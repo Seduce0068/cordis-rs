@@ -133,7 +133,7 @@ impl EventLogReporter {
         let seq = guard.next_seq;
         let recorded_at_ms = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|duration| duration.as_millis() as u64)
+            .map(|duration| u64::try_from(duration.as_millis()).unwrap_or(u64::MAX))
             .unwrap_or(0);
         guard.events.push((
             EventRecord {
