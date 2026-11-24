@@ -103,7 +103,10 @@ impl SessionQueryEngine {
         hits
     }
 
-    /// Case-insensitive substring search over event text fields.
+    /// Case-insensitive substring search over event text fields. Unicode case
+    /// folding only: no accent or fullwidth normalization (unlike
+    /// `text_search::normalize`), so `cafe` does not match `café`
+    /// (swarm review R19-DUAL4-02).
     pub fn search(&self, query: &str) -> Vec<SessionHit> {
         if query.trim().is_empty() {
             return Vec::new();

@@ -7494,3 +7494,17 @@ fn tool_registry_try_register_rejects_empty_name() {
             .is_ok()
     );
 }
+
+#[tokio::test]
+async fn session_query_search_does_not_normalize_accents() {
+    use cordis_rs::core_services::{Session, provide_session_query};
+
+    let ctx = Context::root("session-query-accents");
+    let engine = provide_session_query(&ctx).await.unwrap();
+    let session = Session::new("sq", None);
+    session.append("user/message", serde_json::json!({ "text": "café" }));
+    engine.index(session);
+
+    assert_eq!(engine.search("CAFÉ").len(), 1);
+    assert!(engine.search("cafe").is_empty());
+}
