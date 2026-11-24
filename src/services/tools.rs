@@ -186,6 +186,19 @@ pub struct ToolRegistry {
 }
 
 impl ToolRegistry {
+    /// Validate the tool name before registering. The legacy `register`
+    /// stays unchanged (Disposer, last-write-wins); this fallible variant
+    /// lets hosts reject empty names (swarm review R19-DUAL4-06).
+    pub fn try_register(
+        &self,
+        definition: ToolDefinition,
+    ) -> std::result::Result<Disposer, String> {
+        if definition.name().trim().is_empty() {
+            return Err("tool name must be non-empty".to_string());
+        }
+        Ok(self.register(definition))
+    }
+
     pub fn register(&self, definition: ToolDefinition) -> Disposer {
         let state = self.state.clone();
         let mut guard = state.write().expect("tool registry poisoned");

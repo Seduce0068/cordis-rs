@@ -7464,3 +7464,29 @@ fn user_question_wire_fields_are_required_unless_optional() {
     let valid = serde_json::json!({ "answers": [] });
     assert!(serde_json::from_value::<Answer>(valid).is_ok());
 }
+
+#[test]
+fn tool_registry_try_register_rejects_empty_name() {
+    use cordis_rs::core_services::{ToolDefinition, ToolRegistry};
+    use std::sync::Arc;
+
+    let registry = ToolRegistry::default();
+    let handler = Arc::new(
+        |_args: serde_json::Value,
+         _ctx: cordis_rs::core_services::ToolExecContext|
+         -> cordis_rs::events::BoxFuture<
+            'static,
+            Result<cordis_rs::core_services::ToolOutput, cordis_rs::core_services::ToolError>,
+        > { Box::pin(async { Ok(cordis_rs::core_services::ToolOutput::text("ok")) }) },
+    );
+    assert!(
+        registry
+            .try_register(ToolDefinition::new("", "", handler.clone()))
+            .is_err()
+    );
+    assert!(
+        registry
+            .try_register(ToolDefinition::new("good", "", handler))
+            .is_ok()
+    );
+}

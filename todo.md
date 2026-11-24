@@ -408,7 +408,7 @@ status: current
 - [x] **CredentialProvider::set が空白値を受理し resolve も解決可能** — 2026-11-24 修正（set と resolve の両方で空白値を未設定扱いに統一、空白値が拒否され real 値は前後空白保持で解決する回帰テスト追加、R19 指摘反映）。
 - [x] **GPUI secret mask と OTLP redaction の大小文字扱いが非対称（要確認）** — R6 Runtime Proof で誤検知と判定（GPUI は denylist の大小無視、OTLP は allowlist の大小厳密で役割が逆。いずれも大小違いのキーを redact 側に倒し漏洩方向の非対称なし。case-insensitive 化は fail-open 化するため現状維持）。
 - [x] **user_questions の serde 必須フィールド契約が doc/テスト未固定** — 2026-11-24 修正（Option 以外のフィールドは deserialize 時に必須という契約を doc 明記、欠落時に Err となる回帰テスト追加、R19 指摘反映）。
-- [ ] **ToolRegistry / CommandRegistry が空名を検証せず登録** — 根拠 `src/services/tools.rs:189-207, commands.rs:100-123` / R19-DUAL4-06 / 重大度 low / small
+- [x] **ToolRegistry / CommandRegistry が空名を検証せず登録** — 2026-11-24 修正（ToolRegistry に try_register を追加し空名を拒否、既存 register は Disposer/last-write-wins 不変。CommandRegistry 側は CommandDefinition::new が既に construction 時に拒否しており誤検知気味であることを記録、R19 指摘反映）。
 
 ## 完了
 
