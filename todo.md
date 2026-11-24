@@ -411,7 +411,7 @@ status: current
 - [x] **ToolRegistry / CommandRegistry が空名を検証せず登録** — 2026-11-24 修正（ToolRegistry に try_register を追加し空名を拒否、既存 register は Disposer/last-write-wins 不変。CommandRegistry 側は CommandDefinition::new が既に construction 時に拒否しており誤検知気味であることを記録、R19 指摘反映）。
 
 - [x] **OTel channel_names の順序が doc 未明記（実装は Vec で決定的）** — 2026-11-24 修正（登録順である契約を doc 明記、複数 channel の順序を固定する回帰テスト追加、R20 指摘反映）。
-- [ ] **SessionQueryEngine 再 index で古い Session ハンドルが divergence する** — 根拠 `src/services/session_query.rs:38-47` / R20-ID02 / 重大度 low / small
+- [x] **SessionQueryEngine 再 index で古い Session ハンドルが divergence する** — R6 Runtime Proof で既に固定済みと判定（index は渡されたハンドルを保持するスナップショット、Session clone は inner を共有し append は反映、refresh は明示的な置換。index の doc と `session_query_index_is_a_snapshot_with_refresh_and_remove` テストが契約を表明済み）。
 - [x] **SystemPrompt::section の disposer が name のみで fencing 無し** — 2026-11-24 修正（private state に generation id を追加し disposer が id 一致時のみ削除、Tools/Commands と同じ fencing パターン、古い disposer の再実行で新しい section が消えない回帰テスト追加、R20 指摘反映）。
 - [x] **LlmService::names が同名 provider の重複を表示する** — 2026-11-24 修正（同名重複は R13-OW02 の id 所有の正当な帰結と判定、names() が registration ごとに1件返す契約を doc 明記＋回帰テスト追加、try_register 化は回帰テスト前提を壊すため却下、R20 指摘反映）。
 - [x] **Schedule next_id が overflow で既存 ID と衝突し得る** — 2026-11-24 記録（R1 Runtime Proof で u64::MAX 回の create は物理的に不可能かつ Result 化は後方互換破壊、saturating_add は同一 ID 上書きでむしろ悪化と判定。overflow 未ガードを create の doc 明記、R20 指摘反映）。
