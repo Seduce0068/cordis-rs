@@ -7548,3 +7548,20 @@ fn ask_question_accepts_minimal_wire_payload() {
     assert!(request.questions[0].options.is_empty());
     assert!(!request.questions[0].multi_select);
 }
+
+#[tokio::test]
+async fn llm_names_reflect_each_registration_including_duplicates() {
+    use cordis_rs::core_services::{LlmService, echo_provider};
+
+    let llm = LlmService::default();
+    let first = llm.register(echo_provider("dup"));
+    let second = llm.register(echo_provider("dup"));
+    // Duplicate names are intentional: default ownership is by provider id
+    // (R13-OW02), so `names()` reports one entry per registration
+    // (swarm review R20-ID05).
+    assert_eq!(llm.names(), ["dup", "dup"]);
+    assert_eq!(llm.resolve(Some("dup")).unwrap().name(), "dup");
+    second.dispose().await.unwrap();
+    assert_eq!(llm.names(), ["dup"]);
+    first.dispose().await.unwrap();
+}

@@ -413,7 +413,7 @@ status: current
 - [ ] **OTel channel_names の順序が doc 未明記（実装は Vec で決定的）** — 根拠 `src/services/telemetry.rs:252-260` / R20-ID01 / 重大度 low / small
 - [ ] **SessionQueryEngine 再 index で古い Session ハンドルが divergence する** — 根拠 `src/services/session_query.rs:38-47` / R20-ID02 / 重大度 low / small
 - [ ] **SystemPrompt::section の disposer が name のみで fencing 無し** — 根拠 `src/services/system_prompt.rs:78-99` / R20-ID04 / 重大度 low / small
-- [ ] **LlmService::names が同名 provider の重複を表示する** — 根拠 `src/services/llm.rs:110-124,149-157` / R20-ID05 / 重大度 low / small
+- [x] **LlmService::names が同名 provider の重複を表示する** — 2026-11-24 修正（同名重複は R13-OW02 の id 所有の正当な帰結と判定、names() が registration ごとに1件返す契約を doc 明記＋回帰テスト追加、try_register 化は回帰テスト前提を壊すため却下、R20 指摘反映）。
 - [ ] **Schedule next_id が overflow で既存 ID と衝突し得る** — 根拠 `src/services/schedule.rs:60,87-89` / R20-ID06 / 重大度 low / small
 - [ ] **ApprovalService が同名 answerer を二重登録できる** — 根拠 `src/services/approval.rs:152-173` / R20-ID07 / 重大度 low / small
 - [ ] **SubagentRegistry が重複登録を検出できない** — 根拠 `src/services/subagents.rs:57-77` / R20-ID08 / 重大度 low / small

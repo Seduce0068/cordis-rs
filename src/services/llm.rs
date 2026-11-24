@@ -146,6 +146,10 @@ impl LlmService {
         }
     }
 
+    /// One entry per registration: the same name may appear more than once.
+    /// Use `resolve(Some(name))` for the effective provider (the first
+    /// registration wins); duplicates are allowed so provider ownership can be
+    /// tracked by id (swarm review R20-ID05).
     pub fn names(&self) -> Vec<String> {
         self.state
             .read()
