@@ -7688,3 +7688,27 @@ async fn approval_audit_sanitizes_answerer_name() {
     assert!(!name.chars().any(|ch| ch.is_control()));
     assert_eq!(name, "evil[31m");
 }
+
+#[test]
+fn otlp_sanitizes_attribute_keys_without_fail_open() {
+    use cordis_rs::core_services::EventRecord;
+    use cordis_rs::plugin_ports::otlp_payload;
+    use std::collections::HashMap;
+
+    let make = |key: &str, value: &str| EventRecord {
+        name: "e".to_string(),
+        attributes: HashMap::from([(key.to_string(), value.to_string())]),
+        seq: 1,
+    };
+
+    // A control char in a key is stripped from the emitted field name
+    // (swarm review R21-CTL04).
+    let payload = otlp_payload(&[make("\nfoo", "bar")]).to_string();
+    assert!(!payload.contains('\n'));
+    assert!(payload.contains("foo"));
+
+    // Sanitizing must not widen the allowlist: "too\nl" stays unauthorized.
+    let payload = otlp_payload(&[make("too\nl", "secret-value")]).to_string();
+    assert!(!payload.contains("secret-value"));
+    assert!(payload.contains("[redacted]"));
+}

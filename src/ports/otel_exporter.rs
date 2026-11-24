@@ -51,9 +51,13 @@ pub fn redact_record(record: &EventRecord) -> EventRecord {
         .attributes
         .iter()
         .map(|(key, value)| {
+            // Classify by the original key: sanitizing before this check
+            // could turn "too\nl" into an allowlisted "tool" (fail-open).
             let safe = ALLOWED_ATTRIBUTE_KEYS.contains(&key.as_str());
+            let safe_key: String = key.chars().filter(|ch| !ch.is_control()).collect();
+            let safe_key = truncate_chars(&safe_key, MAX_NAME_LEN);
             (
-                key.clone(),
+                safe_key,
                 if safe {
                     // Allowlisted keys still carry untrusted values (e.g. a
                     // model-supplied tool name): strip control chars so they
