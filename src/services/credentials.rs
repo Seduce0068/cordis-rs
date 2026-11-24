@@ -95,7 +95,7 @@ impl CredentialProvider {
         // Names must be resolvable via `$NAME` references; reject lowercase
         // or otherwise invalid names so a config typo cannot look successful
         // (swarm review R2-IV01).
-        if value.is_empty() || !is_valid_env_name(&name) {
+        if value.trim().is_empty() || !is_valid_env_name(&name) {
             return false;
         }
         self.state
@@ -123,7 +123,7 @@ impl CredentialProvider {
             .store
             .get(&reference.name)
             .cloned()
-            .filter(|value| !value.is_empty())
+            .filter(|value| !value.trim().is_empty())
         {
             return Some(ResolvedCredential {
                 value,
@@ -135,7 +135,7 @@ impl CredentialProvider {
             .expect("credentials env poisoned")
             .get(&reference.name)
             .cloned()
-            .filter(|v| !v.is_empty())
+            .filter(|v| !v.trim().is_empty())
             .map(|value| ResolvedCredential {
                 value,
                 source: "env".to_string(),

@@ -7409,3 +7409,16 @@ fn storage_rejects_whitespace_only_names() {
         Err(StorageError::InvalidDomain { .. })
     ));
 }
+
+#[test]
+fn credential_provider_treats_whitespace_value_as_unset() {
+    use cordis_rs::core_services::{CredentialProvider, credential_ref};
+
+    let provider = CredentialProvider::new();
+    let reference = credential_ref("$KEY").unwrap();
+    assert!(!provider.set("KEY", "   "));
+    assert!(provider.resolve(&reference).is_none());
+
+    assert!(provider.set("KEY", " real "));
+    assert_eq!(provider.resolve(&reference).unwrap().value, " real ");
+}
