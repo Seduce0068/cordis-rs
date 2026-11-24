@@ -394,7 +394,7 @@ status: current
 - [x] **TokenMeter::new が budget=0 を 1 に丸める意図が doc 未明記** — 2026-11-24 修正（0 → 1 の丸めが pressure を有限にし fail-closed にする意図を doc 明記、finite 性の回帰テスト追加、R18 指摘反映）。
 - [x] **acknowledge の doc 冒頭が実装と逆だった（DUAL3-02 修正済みの記録）** — R18-DUAL3-02 / 完了済み（2026-11-24、ドキュメント＋clamp テスト）
 
-- [ ] **validate_refresh_interval が 0 を受理し毎ステップ注入になる** — 根拠 `src/services/time_context.rs:13-24,84-88` / R19-TM01 / 重大度 low / small
+- [x] **validate_refresh_interval が 0 を受理し毎ステップ注入になる** — 2026-11-24 修正（0 拒否はデフォルト設定の TimeContext 生成を壊すため却下、0 = 毎ステップ注入を doc 明記し回帰テスト追加、R19 指摘反映）。
 - [x] **TimeoutPolicy::check が timeout_of を再解決し 0ms メッセージを作り得る** — 2026-11-24 修正（budget を1回だけ解決して期限判定と報告値を一致させ、unwrap_or(0) の自己矛盾メッセージを排除、既存テスト不変、R19 指摘反映）。
 - [ ] **shell with_timeout(0) が即タイムアウトになり hooks 側と非対称** — 根拠 `src/services/shell.rs:39-42,232` / R19-TM03 / 重大度 low / small
 - [x] **telemetry が as_millis() の u128→u64 cast を黙って truncate** — 2026-11-24 修正（u64::try_from(...).unwrap_or(u64::MAX) に変更し、極端な未来時刻でも記録時刻が wrap しないようにした、R19 指摘反映）。

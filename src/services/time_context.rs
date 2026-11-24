@@ -14,7 +14,8 @@ pub struct TimeContextConfig {
     pub refresh_interval_ms: u64,
 }
 
-/// Validate the refresh interval: a non-negative safe integer.
+/// Validate the refresh interval: a non-negative safe integer. Zero is valid
+/// and means a time line is injected on every step (swarm review R19-TM01).
 pub fn validate_refresh_interval(ms: u64) -> std::result::Result<(), Error> {
     if ms > i64::MAX as u64 {
         return Err(Error::Other(format!(

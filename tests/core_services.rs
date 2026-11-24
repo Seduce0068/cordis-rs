@@ -7422,3 +7422,20 @@ fn credential_provider_treats_whitespace_value_as_unset() {
     assert!(provider.set("KEY", " real "));
     assert_eq!(provider.resolve(&reference).unwrap().value, " real ");
 }
+
+#[test]
+fn time_context_zero_refresh_interval_means_every_step() {
+    use cordis_rs::core_services::{TimeContext, TimeContextConfig, validate_refresh_interval};
+
+    assert!(validate_refresh_interval(0).is_ok());
+    assert!(validate_refresh_interval(1000).is_ok());
+    assert!(validate_refresh_interval(i64::MAX as u64 + 1).is_err());
+    // Zero is documented as "inject every step" (swarm review R19-TM01).
+    let ctx = TimeContext::new(TimeContextConfig {
+        refresh_interval_ms: 0,
+    })
+    .unwrap();
+    assert!(ctx.should_inject(100));
+    ctx.mark_injected(100);
+    assert!(ctx.should_inject(100));
+}
