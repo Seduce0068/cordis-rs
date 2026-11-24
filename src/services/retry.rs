@@ -11,6 +11,9 @@ use crate::Result;
 pub struct RetryPolicy {
     pub max_retries: u32,
     pub initial_delay_ms: u64,
+    /// Upper bound in milliseconds. Values above 2^53 lose precision when
+    /// combined with jitter in `f64`; keep within the safe-integer range
+    /// (swarm review R19-TM06).
     pub max_delay_ms: u64,
     pub jitter_ratio: f64,
     pub retryable_codes: Vec<u32>,

@@ -398,11 +398,11 @@ status: current
 - [x] **TimeoutPolicy::check が timeout_of を再解決し 0ms メッセージを作り得る** — 2026-11-24 修正（budget を1回だけ解決して期限判定と報告値を一致させ、unwrap_or(0) の自己矛盾メッセージを排除、既存テスト不変、R19 指摘反映）。
 - [x] **shell with_timeout(0) が即タイムアウトになり hooks 側と非対称** — 2026-11-24 修正（run_with_timeout で timeout_ms=0 を InvalidCommand として構造化拒否、builder シグネチャと None/正数は不変、回帰テスト追加、R19 指摘反映）。
 - [x] **telemetry が as_millis() の u128→u64 cast を黙って truncate** — 2026-11-24 修正（u64::try_from(...).unwrap_or(u64::MAX) に変更し、極端な未来時刻でも記録時刻が wrap しないようにした、R19 指摘反映）。
-- [ ] **retry backoff が 2^53 超の max_delay_ms を f64 で丸める** — 根拠 `src/services/retry.rs:122-125` / R19-TM06 / 重大度 low / small
+- [x] **retry backoff が 2^53 超の max_delay_ms を f64 で丸める** — 2026-11-24 記録（R1 Runtime Proof で到達困難な設定_domain の問題と判定、2^53 超の精度限界を max_delay_ms の doc 明記、コード変更なし、R19 指摘反映）。
 - [x] **tool_jobs の負の timeout_ms が黙って DEFAULT にフォールバック** — 2026-11-24 修正（キー欠落は DEFAULT、数値だが u64 変換不可は InvalidArgs、非数値も InvalidArgs、正数は clamp のまま、回帰テスト追加、R19 指摘反映）。
 - [x] **schedule due_ms の単位（Unix ms）が doc 未明記で秒渡しを検出できない** — 2026-11-24 修正（create / due の引数が Unix epoch milliseconds であることを doc 明記、既存 due テストが同単位を固定済み、R19 指摘反映）。
 - [x] **LLM total timeout が budget 値をログに出さない（per-chunk と非対称）** — 2026-11-24 修正（total timeout エラーにも `after {n}ms` を追加し per-chunk と対称に、既存テストに budget 値のアサーション追加、R19 指摘反映）。
-- [ ] **ms u64 と Duration の混在に対する README 単位ガイドが無い** — 根拠 `README.md` / R19-TM10 / 重大度 low / small
+- [x] **ms u64 と Duration の混在に対する README 単位ガイドが無い** — 2026-11-24 修正（公開 API は `*_ms: u64`、llm_resilience decorator のみ Duration という単位規約を README に明記、R19 指摘反映）。
 - [x] **StorageHub の空白名が受理され GoalStore/Shell と非対称** — 2026-11-24 修正（try_register_backend / try_define_domain を trim().is_empty() 拒否に揃え、空白名の回帰テスト追加、R19 指摘反映）。
 - [x] **SessionQueryEngine::search の Unicode 正規化が text_search と非対称** — 2026-11-24 修正（lowercase のみで accent/fullwidth 正規化なしと doc 明記、cafe が café に hit しない契約を回帰テスト追加。normalize 適用は検索セマンティクスが広がるため却下、R19 指摘反映）。
 - [x] **CredentialProvider::set が空白値を受理し resolve も解決可能** — 2026-11-24 修正（set と resolve の両方で空白値を未設定扱いに統一、空白値が拒否され real 値は前後空白保持で解決する回帰テスト追加、R19 指摘反映）。

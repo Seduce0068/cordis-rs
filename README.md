@@ -68,6 +68,12 @@ lifecycle の要否で選ぶ（R1-AP03。二系統の統一は v1.0 の設計課
 
 新規 library port の追加基準は [ADR-008](docs/ADR-008-library-port-policy.md) を参照。
 
+### 時間の単位
+
+公開 API の時間引数は原則 `*_ms: u64`（Unix epoch milliseconds を含む）で、
+`llm_resilience` の decorator のみ `std::time::Duration` を取ります。
+新規 API は `*_ms` に統一してください（swarm review R19-TM10）。
+
 ## 安定性マトリクス（production-ready の前に読む）
 
 **このリポジトリは PoC であり、production-ready ではない。** port 数・テスト数は
