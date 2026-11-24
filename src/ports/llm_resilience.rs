@@ -68,23 +68,24 @@ pub fn with_llm_timeout(handler: StreamHandler, budget: Duration) -> StreamHandl
 /// duration even when the provider emits chunks regularly. On expiry it yields
 /// exactly one `StreamChunk::Error` and terminates (swarm review R9-ST01).
 pub fn with_llm_total_timeout(handler: StreamHandler, total: Duration) -> StreamHandler {
+    let total_ms = total.as_millis();
     Arc::new(move |request: LlmRequest| {
         let deadline = tokio::time::Instant::now() + total;
         let stream = handler(request);
         Box::pin(futures::stream::unfold(
-            (stream, deadline, false),
-            |(mut stream, deadline, terminated)| async move {
+            (stream, deadline, false, total_ms),
+            |(mut stream, deadline, terminated, total_ms)| async move {
                 if terminated {
                     return None;
                 }
                 match tokio::time::timeout_at(deadline, stream.next()).await {
-                    Ok(Some(chunk)) => Some((chunk, (stream, deadline, false))),
+                    Ok(Some(chunk)) => Some((chunk, (stream, deadline, false, total_ms))),
                     Ok(None) => None,
                     Err(_) => Some((
                         StreamChunk::Error(format!(
-                            "{TIMEOUT_PREFIX}llm request exceeded total deadline"
+                            "{TIMEOUT_PREFIX}llm request exceeded total deadline after {total_ms}ms"
                         )),
-                        (stream, deadline, true),
+                        (stream, deadline, true, total_ms),
                     )),
                 }
             },

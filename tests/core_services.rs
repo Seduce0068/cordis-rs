@@ -5897,6 +5897,10 @@ async fn llm_total_timeout_fires_even_with_regular_chunks() {
         "exactly one timeout error expected: {chunks:?}"
     );
     assert!(
+        errors[0].contains("after 40ms"),
+        "total budget must be reported: {errors:?}"
+    );
+    assert!(
         chunks
             .last()
             .is_some_and(|c| matches!(c, StreamChunk::Error(_)))
