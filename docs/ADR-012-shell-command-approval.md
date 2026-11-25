@@ -111,4 +111,4 @@ model 由来の `bash` コマンドは **shell 層ではなく tool boundary の
 ## 関連
 
 - [ADR-011](ADR-011-event-scope-view.md) — tool pipeline の middleware 構成（install_default_controls）を共有
-- [ADR-008](ADR-008-breaking-change-policy.md) — 後方互換方針の根拠（private field ＋ builder は破壊変更に当たらない）
+- [ADR-008](ADR-008-library-port-policy.md) — library port の受け入れ基準（既存の参照可能な ADR）
