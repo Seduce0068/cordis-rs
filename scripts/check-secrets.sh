@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# CI gate: reject secrets with gitleaks (AGENTS.md §4).
+# CI gate: reject secrets with Betterleaks (AGENTS.md §4); gitleaks remains as
+# an auxiliary scanner below.
 #
 # This is the final gate: a pre-commit hook (see .pre-commit-config.yaml) can
 # be bypassed with `git commit --no-verify`, so CI must always run this check.
-# --redact keeps a detected secret out of the CI log itself.
+# --no-banner / --redact keep a detected secret out of the CI log itself.
 set -euo pipefail
 
 GITLEAKS_VERSION="8.28.0"
@@ -51,5 +52,13 @@ fi
 # added later for a documented test fixture; keep it path-specific and dated.
 gitleaks detect --no-banner --redact --no-git
 gitleaks detect --no-banner --redact
+
+# Betterleaks v1.10.1 is the primary gate (AGENTS.md §4). CI installs it via
+# .github/workflows/ci.yml -> secret-gates.yml@v1 and scans the full history;
+# run the same check here when the binary is available. `set -e` above makes a
+# non-zero exit fail closed.
+if command -v betterleaks >/dev/null 2>&1; then
+  betterleaks git --no-banner .
+fi
 
 echo "no secrets found"
