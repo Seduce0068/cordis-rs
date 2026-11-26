@@ -34,6 +34,9 @@ bash scripts/check-no-unsafe.sh
 echo "=== doc counts ==="
 bash scripts/check-doc-counts.sh
 
+echo "=== lean ==="
+bash scripts/check-lean.sh
+
 echo "=== cargo audit ==="
 if command -v cargo-audit >/dev/null 2>&1; then
 	cargo audit

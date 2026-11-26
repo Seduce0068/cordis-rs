@@ -1,0 +1,8 @@
+name = "caddy-formal"
+defaultTargets = ["CaddyFormal"]
+
+[[lean_lib]]
+name = "CaddyFormal"
+
+[[lean_lib]]
+name = "Caddy"
